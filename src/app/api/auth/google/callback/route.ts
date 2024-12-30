@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, res: Response) {
 
     const session = await lucia.createSession(userId, {})
     const sessionCookie = await lucia.createSessionCookie(session.id)
-    ;(await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+        ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
 
-    return redirect('/dashboard')
+    return redirect('/')
 }

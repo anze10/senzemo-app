@@ -1,17 +1,17 @@
-// import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 
-// const nextConfig: NextConfig = {
-//   /* config options here */
-// };
+const nextConfig: NextConfig = {
+    /* config options here */
+};
 
-// export default nextConfig;
+export default nextConfig;
 /**
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
-import "./src/env.js";
+// import "./src/env.js";
 
-/** @type {import("next").NextConfig} */
-const config = {};
+// /** @type {import("next").NextConfig} */
+// const config = {};
 
-export default config;
+// export default config;
