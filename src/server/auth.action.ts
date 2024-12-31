@@ -1,4 +1,4 @@
-'use server'
+"use server";
 
 import { z } from "zod"
 //import { signUpSchema } from "./SignUpForm"
@@ -7,7 +7,7 @@ import { Argon2id } from 'oslo/password'
 import { lucia } from "src/server/lucia"
 import { cookies } from "next/headers"
 //import { signInSchema } from "./SignInForm"
-import { redirect } from "next/navigation"
+import { NextResponse } from 'next/server';
 import { generateCodeVerifier, generateState } from "arctic"
 import { googleOAuthClient } from "src/server/googleOauth"
 
@@ -74,11 +74,10 @@ export const signIn = async (values: z.infer<typeof signInSchema>) => {
         ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
     return { success: true }
 }
-
-export const logOut = async () => {
-    const sessionCookie = await lucia.createBlankSessionCookie()
-        ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
-    return redirect('/authenticate')
+export async function logOut() {
+    const sessionCookie = lucia.createBlankSessionCookie();
+    (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    return NextResponse.redirect('http://localhost:3000');
 }
 
 export const getGoogleOauthConsentUrl = async () => {

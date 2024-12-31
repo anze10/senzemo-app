@@ -5,6 +5,7 @@ import { prisma } from "src/server/prisma";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
+import bcrypt from "bcrypt"; 
 
 export async function GET(req: NextRequest) {
     try {
@@ -86,6 +87,8 @@ export async function GET(req: NextRequest) {
 
         let user;
         try {
+            const defaultPassword = "123456789";
+            const hashedDefaultPassword = await bcrypt.hash(defaultPassword, 10);
             user = await prisma.user.upsert({
                 where: { email: googleData.email },
                 update: {
@@ -97,7 +100,7 @@ export async function GET(req: NextRequest) {
                     email: googleData.email,
                     picture: picture,
                     role: "user",
-                    hashedPassword: null,
+                    hashedPassword: hashedDefaultPassword,
                 },
             });
             console.log("User upserted successfully:", user);
