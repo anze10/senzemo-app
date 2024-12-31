@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import React from 'react'
-import { RiGoogleFill } from '@remixicon/react'
 import { getGoogleOauthConsentUrl } from 'src/server/auth.action'
 import { toast } from 'sonner'
 

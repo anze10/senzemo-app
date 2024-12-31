@@ -55,7 +55,7 @@ export const signInSchema = z.object({
 //     }
 // }
 
-export const signIn = async (values: z.infer<typeof signInSchema>) => {
+export async function  signIn  (values: z.infer<typeof signInSchema>) {
     const user = await prisma.user.findUnique({
         where: {
             email: values.email
@@ -80,7 +80,7 @@ export async function logOut() {
     return NextResponse.redirect('http://localhost:3000');
 }
 
-export const getGoogleOauthConsentUrl = async () => {
+export async function  getGoogleOauthConsentUrl () {
     try {
         const state = generateState()
         const codeVerifier = generateCodeVerifier()

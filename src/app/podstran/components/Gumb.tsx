@@ -1,24 +1,24 @@
-'use client'
-import React from 'react'
-import { Button } from '@mui/material'
-import { logOut } from 'src/server/auth.action'
+// 'use client'
+// import React from 'react'
+// import { Button } from '@mui/material'
+// import { logOut } from 'src/server/auth.action'
 
-type Props = {
-    children: React.ReactNode
-}
+// type Props = {
+//     children: React.ReactNode
+// }
 
-const SignOutButton = ({ children }: Props) => {
+// const SignOutButton = ({ children }: Props) => {
     
     
-    return (
-        <div>
-        <Button onClick={() => { logOut() }}>{children}</Button>
+//     return (
+//         <div>
+//         <Button onClick={() => { logOut() }}>{children}</Button>
 
-      </div>
-    )
-}
+//       </div>
+//     )
+// }
     
 
    
 
-export default SignOutButton
+// export default SignOutButton

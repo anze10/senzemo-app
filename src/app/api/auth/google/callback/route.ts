@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import bcrypt from "bcrypt"; 
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest, res: Response) {
     try {
         console.log("Incoming request:", req.url);
 
