@@ -11,6 +11,19 @@ import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic"
 import { googleOAuthClient } from "src/server/googleOauth"
 
+export const signInSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+})
+// export const signUpSchema = z.object({
+//     name: z.string().min(5),
+//     email: z.string().email(),
+//     password: z.string().min(8),
+//     confirmPassword: z.string().min(8),
+// }).refine(data => data.password === data.confirmPassword, {
+//     message: 'Passwords do not match',
+//     path: ['confirmPassword']
+// })
 
 // export const signUp = async (values: z.infer<typeof signUpSchema>) => {
 //     try {
@@ -37,30 +50,30 @@ import { googleOAuthClient } from "src/server/googleOauth"
 //         const sessionCookie = await lucia.createSessionCookie(session.id)
 //             ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
 //         return { success: true }
-//     } catch (error) {
+//     } catch {
 //         return { error: 'Something went wrong', success: false }
 //     }
 // }
 
-// export const signIn = async (values: z.infer<typeof signInSchema>) => {
-//     const user = await prisma.user.findUnique({
-//         where: {
-//             email: values.email
-//         }
-//     })
-//     if (!user || !user.hashedPassword) {
-//         return { success: false, error: "Invalid Credentials!" }
-//     }
-//     const passwordMatch = await new Argon2id().verify(user.hashedPassword, values.password)
-//     if (!passwordMatch) {
-//         return { success: false, error: "Invalid Credentials!" }
-//     }
-//     // successfully login
-//     const session = await lucia.createSession(user.id, {})
-//     const sessionCookie = await lucia.createSessionCookie(session.id)
-//         ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
-//     return { success: true }
-// }
+export const signIn = async (values: z.infer<typeof signInSchema>) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            email: values.email
+        }
+    })
+    if (!user || !user.hashedPassword) {
+        return { success: false, error: "Invalid Credentials!" }
+    }
+    const passwordMatch = await new Argon2id().verify(user.hashedPassword, values.password)
+    if (!passwordMatch) {
+        return { success: false, error: "Invalid Credentials!" }
+    }
+    // successfully login
+    const session = await lucia.createSession(user.id, {})
+    const sessionCookie = await lucia.createSessionCookie(session.id)
+        ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+    return { success: true }
+}
 
 export const logOut = async () => {
     const sessionCookie = await lucia.createBlankSessionCookie()
@@ -82,12 +95,10 @@ export const getGoogleOauthConsentUrl = async () => {
                 secure: process.env.NODE_ENV === 'production'
             })
 
-        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, {
-            scopes: ['email', 'profile']
-        })
+        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, ['email', 'profile'])
         return { success: true, url: authUrl.toString() }
 
-    } catch (error) {
+    } catch {
         return { success: false, error: 'Something went wrong' }
     }
 }
