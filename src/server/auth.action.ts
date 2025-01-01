@@ -62,11 +62,6 @@ import { googleOAuthClient } from "src/server/googleOauth"
 //     return { success: true }
 // }
 
-// export const logOut = async () => {
-//     const sessionCookie = await lucia.createBlankSessionCookie()
-//         ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
-//     return redirect('/')
-// }
 export async function logOut() {
     const sessionCookie = lucia.createBlankSessionCookie();
     (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
