@@ -1,13 +1,13 @@
 'use server'
 
-import { z } from "zod"
+// import { z } from "zod"
 //import { signUpSchema } from "./SignUpForm"
-import { prisma } from "src/server/prisma"
-import { Argon2id } from 'oslo/password'
+// import { prisma } from "src/server/prisma"
+// import { Argon2id } from 'oslo/password'
 import { lucia } from "src/server/lucia"
 import { cookies } from "next/headers"
 //import { signInSchema } from "./SignInForm"
-import { redirect } from "next/navigation"
+//import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic"
 import { googleOAuthClient } from "src/server/googleOauth"
 
@@ -62,10 +62,15 @@ import { googleOAuthClient } from "src/server/googleOauth"
 //     return { success: true }
 // }
 
-export const logOut = async () => {
-    const sessionCookie = await lucia.createBlankSessionCookie()
-        ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
-    return redirect('/authenticate')
+// export const logOut = async () => {
+//     const sessionCookie = await lucia.createBlankSessionCookie()
+//         ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+//     return redirect('/')
+// }
+export async function logOut() {
+    const sessionCookie = lucia.createBlankSessionCookie();
+    (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    return { success: true }; // Plain object
 }
 
 export const getGoogleOauthConsentUrl = async () => {
@@ -82,9 +87,7 @@ export const getGoogleOauthConsentUrl = async () => {
                 secure: process.env.NODE_ENV === 'production'
             })
 
-        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, {
-            scopes: ['email', 'profile']
-        })
+        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, ['email', 'profile'])
         return { success: true, url: authUrl.toString() }
 
     } catch (error) {

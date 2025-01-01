@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import React from 'react'
-import { RiGoogleFill } from '@remixicon/react'
 import { getGoogleOauthConsentUrl } from 'src/server/auth.action'
 import { toast } from 'sonner'
+// import { signIn, signInSchema } from 'src/server/auth_due.actions'
+//import { z } from "zod"
 
 export default function Signin() {
 
@@ -36,7 +37,24 @@ export default function Signin() {
         }
     }
 
-
+    // async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    //     e.preventDefault()
+    //     const formData = new FormData(e.currentTarget)
+    //     const values = {
+    //         email: formData.get('email') as string,
+    //         password: formData.get('password') as string,
+    //     }
+    //     const res = await signIn(values)
+    //     if (res.success) {
+    //         toast.success('Login successful')
+    //         router.push('/podstran')
+    //     } else {
+    //         toast.error(res.error)
+    //     }
+    //     // Do something with the form values.
+    //     // ✅ This will be type-safe and validated.
+    //     console.log(values)
+    // }
 
     return (
         <div className="w-full max-w-md">
