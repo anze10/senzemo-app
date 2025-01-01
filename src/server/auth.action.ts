@@ -1,16 +1,15 @@
-'use server'
+"use server";
 
 // import { z } from "zod"
 //import { signUpSchema } from "./SignUpForm"
 // import { prisma } from "src/server/prisma"
 // import { Argon2id } from 'oslo/password'
-import { lucia } from "src/server/lucia"
-import { cookies } from "next/headers"
+import { lucia } from "src/server/lucia";
+import { cookies } from "next/headers";
 //import { signInSchema } from "./SignInForm"
 //import { redirect } from "next/navigation"
-import { generateCodeVerifier, generateState } from "arctic"
-import { googleOAuthClient } from "src/server/googleOauth"
-
+import { generateCodeVerifier, generateState } from "arctic";
+import { googleOAuthClient } from "src/server/googleOauth";
 
 // export const signUp = async (values: z.infer<typeof signUpSchema>) => {
 //     try {
@@ -63,29 +62,36 @@ import { googleOAuthClient } from "src/server/googleOauth"
 // }
 
 export async function logOut() {
-    const sessionCookie = lucia.createBlankSessionCookie();
-    (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-    return { success: true }; // Plain object
+  const sessionCookie = lucia.createBlankSessionCookie();
+  (await cookies()).set(
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
+  return { success: true }; // Plain object
 }
 
-export const getGoogleOauthConsentUrl = async () => {
-    try {
-        const state = generateState()
-        const codeVerifier = generateCodeVerifier()
+export async function getGoogleOauthConsentUrl() {
+  try {
+    const state = generateState();
+    const codeVerifier = generateCodeVerifier();
 
-            ; (await cookies()).set('codeVerifier', codeVerifier, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production'
-            })
-            ; (await cookies()).set('state', state, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production'
-            })
+    (await cookies()).set("codeVerifier", codeVerifier, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+    (await cookies()).set("state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
 
-        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, ['email', 'profile'])
-        return { success: true, url: authUrl.toString() }
-
-    } catch (error) {
-        return { success: false, error: 'Something went wrong' }
-    }
+    const authUrl = googleOAuthClient.createAuthorizationURL(
+      state,
+      codeVerifier,
+      ["email", "profile"]
+    );
+    return { success: true, url: authUrl.toString() };
+  } catch (error: unknown) {
+    return { success: false, error };
+  }
 }
