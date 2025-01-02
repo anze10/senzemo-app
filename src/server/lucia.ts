@@ -7,7 +7,7 @@ const adapter = new PrismaAdapter(prisma.session, prisma.user)
 
 export const lucia = new Lucia(adapter, {
     sessionCookie: {
-        name: 'elliott-auth-cookie',
+        name: 'lucia_auth_token',
         expires: false,
         attributes: {
             secure: process.env.NODE_ENV === 'production'
@@ -25,11 +25,11 @@ export const getUser = async () => {
         if (session && session.fresh) {
             // refreshing their session cookie
             const sessionCookie = await lucia.createSessionCookie(session.id)
-            ;(await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+                ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
         }
         if (!session) {
             const sessionCookie = await lucia.createBlankSessionCookie()
-            ;(await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+                ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
         }
 
     } catch (error) {
