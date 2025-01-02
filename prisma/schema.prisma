@@ -15,12 +15,26 @@ model User {
   hashedPassword String?
   picture        String?
 
-  session Session[]
+  session      Session[]
+  googleTokens GoogleTokens?
 }
 
 model Session {
   id        String   @id
   userId    String
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model GoogleTokens {
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+
+  accessToken String
+
+  refreshToken String
+
   expiresAt DateTime
 
   user User @relation(fields: [userId], references: [id])

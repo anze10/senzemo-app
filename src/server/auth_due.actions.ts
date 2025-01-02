@@ -1,72 +1,57 @@
-"use server";
-
-import { z } from "zod";
-import { prisma } from "src/server/prisma";
+"use server"
 import { Argon2id } from "oslo/password";
-import { lucia } from "src/server/lucia";
-import { cookies } from "next/headers";
-import { signInSchema } from "~/validators/auth_due";
+import { PrismaClient } from "@prisma/client";
+import { OAuth2Client } from "google-auth-library";
 
-export async function signIn(values: z.infer<typeof signInSchema>) {
-  console.log("Starting signIn function...");
+const prisma = new PrismaClient();
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!; // Your Google OAuth Client ID
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!; // Your Google OAuth Client Secret
+const REDIRECT_URI = "http://localhost:3000/api/auth/password/"; // Update with your redirect URI
 
-  // Validate input
-  const validationResult = signInSchema.safeParse(values);
-  if (!validationResult.success) {
-    console.error("Validation failed:", validationResult.error);
-    throw new Error("Invalid input data.");
-  }
-  console.log("Validation passed:", values);
+const oAuth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
-  try {
-    // Fetch user from database
+export async function signIn(values: { email: string; password: string }) {
+    // Step 1: Validate user credentials
     const user = await prisma.user.findUnique({
-      where: { email: values.email },
+        where: { email: values.email },
     });
-    console.log("Fetched user:", user);
 
     if (!user || !user.hashedPassword) {
-      console.error("User not found or missing hashedPassword.");
-      throw new Error("Invalid Credentials!");
+        throw new Error("Invalid Credentials!");
     }
 
-    // Verify password
-    const argon2 = new Argon2id();
-    console.log("Verifying password...");
-    const passwordMatch = await argon2.verify(
-      user.hashedPassword,
-      values.password
-    );
-    console.log("Password match result:", passwordMatch);
-
+    const passwordMatch = await new Argon2id().verify(user.hashedPassword, values.password);
     if (!passwordMatch) {
-      console.error("Password verification failed.");
-      throw new Error("Invalid Credentials!");
+        throw new Error("Invalid Credentials!");
     }
 
-    // Create session
-    console.log("Creating session...");
-    const session = await lucia.createSession(user.id, {});
-    console.log("Created session:", session);
+    // Generate an authorization URL for Google OAuth 2.0
+    const authUrl = oAuth2Client.generateAuthUrl({
+        access_type: "offline", // Needed to get a refresh token
+        scope: ["https://www.googleapis.com/auth/drive.readonly"],
+        state: JSON.stringify({ userId: user.id }) // Pass user ID in the state parameter
+    });
 
-    // Create session cookie
-    console.log("Creating session cookie...");
-    const sessionCookie = await lucia.createSessionCookie(session.id);
-    console.log("Session cookie created:", sessionCookie);
+    console.log("Redirect to this URL:", authUrl);
+    // Redirect user to authUrl
+    return { success: true, redirectUrl: authUrl };
+}
 
-    // Set cookie in headers
-    console.log("Setting session cookie...");
-    const cookieHandler = await cookies();
-    cookieHandler.set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    );
-    console.log("Session cookie set successfully.");
+// This function should be triggered by a separate endpoint that handles the Google callback
+export async function handleGoogleCallback(code: string, state: string) {
+    const { userId } = JSON.parse(state); // Extract user ID from state
+
+    const { tokens } = await oAuth2Client.getToken(code); // Exchange code for tokens
+
+    // Save tokens in the database
+    await prisma.googleTokens.update({
+        where: { id: userId },
+        data: {
+            accessToken: tokens.access_token ?? undefined,
+            refreshToken: tokens.refresh_token ?? undefined,
+            expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+        },
+    });
 
     return { success: true };
-  } catch (error) {
-    console.error("Error in signIn function:", error);
-    throw error; // Rethrow error for upstream handling
-  }
 }
