@@ -1,5 +1,6 @@
-"use server"
-import { lucia } from "src/server/lucia";  // Ensure you import your configured Lucia instance
+// pages/api/createSpreadsheet.js
+
+import { lucia } from "src/server/lucia";  // Make sure this path is correct
 import { google } from "googleapis";
 
 export default async function createSpreadsheet(req, res) {
@@ -12,10 +13,9 @@ export default async function createSpreadsheet(req, res) {
   }
 
   // Verify the JWT token using Lucia
-  let userId;
+  let user;
   try {
-    const user = await lucia.auth.authenticateUser("jwt", token);
-    userId = user.user_id;  // or any other user identifier you need
+    user = await lucia.verifySession(token);
   } catch (error) {
     res.status(401).json({ error: "Authentication failed: " + error.message });
     return;
@@ -46,4 +46,6 @@ export default async function createSpreadsheet(req, res) {
     res.status(200).json(response.data);  // Send back the spreadsheet details
   } catch (err) {
     console.error("Error creating Google Spreadsheet", err);
-    res.status(500).json({ error: "Google Spreadsheet creation failed"
+    res.status(500).json({ error: "Google Spreadsheet creation failed" });
+  }
+}
