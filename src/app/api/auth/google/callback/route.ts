@@ -4,7 +4,6 @@ import { lucia } from "src/server/lucia";
 import { prisma } from "src/server/prisma";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
-
 import argon2 from "argon2";
 import { getBaseUrl } from "~/lib/getBaseUrl";
 
@@ -16,56 +15,42 @@ export async function GET(req: NextRequest) {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
 
-    console.log("Received query parameters:", { code, state });
-
     if (!code || !state) {
       console.error("Missing code or state in query parameters");
-      return new Response("Invalid Request: Missing code or state", {
-        status: 400,
-      });
+      return new Response("Invalid Request: Missing code or state", { status: 400 });
     }
 
     const getCookieValue = async (cookieName: string) => {
       const allCookies = await cookies();
       const cookie = allCookies.get(cookieName);
-      console.log(`Cookie [${cookieName}]:`, cookie);
       return cookie ? cookie.value : null;
     };
 
     const codeVerifier = await getCookieValue("codeVerifier");
     const savedState = await getCookieValue("state");
 
-    if (!codeVerifier || !savedState) {
-      console.error("Missing required cookies: codeVerifier or state");
-      return new Response("Invalid Request: Missing cookies", { status: 400 });
-    }
-
-    if (state !== savedState) {
-      console.error("State mismatch", {
-        received: state,
-        expected: savedState,
-      });
-      return new Response("Invalid Request: State mismatch", { status: 400 });
+    if (!codeVerifier || !savedState || state !== savedState) {
+      console.error("State mismatch or missing cookies");
+      return new Response("Invalid Request", { status: 400 });
     }
 
     let accessToken: string;
+    let response;
     try {
-      const response = await googleOAuthClient.validateAuthorizationCode(
+      response = await googleOAuthClient.validateAuthorizationCode(
         code,
         codeVerifier
       );
-      console.log("Authorization Code Response:", response);
+      console.log("Google OAuth response:", response);
       accessToken = response.accessToken();
 
       if (!accessToken || typeof accessToken !== "string") {
-        console.error("Invalid access token:", accessToken);
+        console.error("Invalid access token");
         return new Response("Invalid access token", { status: 400 });
       }
     } catch (error) {
       console.error("Error validating authorization code:", error);
-      return new Response("Failed to validate authorization code", {
-        status: 500,
-      });
+      return new Response("Failed to validate authorization code", { status: 500 });
     }
 
     let googleData;
@@ -77,32 +62,30 @@ export async function GET(req: NextRequest) {
         }
       );
 
-      console.log("Google API response status:", googleResponse.status);
-
       if (!googleResponse.ok) {
-        const errorBody = await googleResponse.text();
-        console.error("Failed to fetch user info:", errorBody);
+        console.error("Failed to fetch user info");
         return new Response("Failed to fetch user info", { status: 500 });
       }
 
       googleData = await googleResponse.json();
-      console.log("Google User Data:", googleData);
 
-      if (!googleData || !googleData.email || !googleData.name) {
-        console.error("Invalid Google user data:", googleData);
-        return new Response("Invalid user data from Google", { status: 400 });
+      if (!googleData?.email || !googleData?.name) {
+        console.error("Invalid user data from Google");
+        return new Response("Invalid user data", { status: 400 });
       }
     } catch (error) {
-      console.error("Error fetching user data from Google:", error);
+      console.error("Error fetching user data:", error);
       return new Response("Failed to fetch user data", { status: 500 });
     }
 
     const picture = googleData.picture ?? null;
 
+    // Upsert the user
     let user;
     try {
       const defaultPassword = "123456789";
       const hashedDefaultPassword = await argon2.hash(defaultPassword);
+
       user = await prisma.user.upsert({
         where: { email: googleData.email },
         update: {
@@ -117,27 +100,45 @@ export async function GET(req: NextRequest) {
           hashedPassword: hashedDefaultPassword,
         },
       });
-      console.log("User upserted successfully:", user);
     } catch (error) {
-      console.error("Error upserting user in database:", error);
+      console.error("Error upserting user:", error);
       return new Response("Database operation failed", { status: 500 });
     }
 
+    // Upsert tokens after ensuring user exists
+    try {
+      await prisma.googleTokens.upsert({
+        where: { userId: user.id },
+        update: {
+          accessToken: response.accessToken(),
+          idToken: response.idToken(),
+          scope: response.scopes().join(" "),
+          tokenType: response.tokenType(),
+          expiryDate: new Date(
+            Date.now() + response.accessTokenExpiresInSeconds() * 1000
+          ),
+        },
+        create: {
+          userId: user.id,
+          accessToken: response.accessToken(),
+          idToken: response.idToken(),
+          scope: response.scopes().join(" "),
+          tokenType: response.tokenType(),
+          expiryDate: new Date(
+            Date.now() + response.accessTokenExpiresInSeconds() * 1000
+          ),
+        },
+      });
+    } catch (error) {
+      console.error("Error upserting tokens:", error);
+      return new Response("Failed to save tokens", { status: 500 });
+    }
+
+    // Create session and session cookie
     let session, sessionCookie;
     try {
       session = await lucia.createSession(user.id, {});
-      console.log("Session created:", session);
-
-      if (!session || !session.id) {
-        throw new Error("Session creation failed");
-      }
-
       sessionCookie = await lucia.createSessionCookie(session.id);
-      console.log("Session cookie created:", sessionCookie);
-
-      if (!sessionCookie || !sessionCookie.name || !sessionCookie.value) {
-        throw new Error("Invalid session cookie");
-      }
 
       (await cookies()).set(sessionCookie.name, sessionCookie.value, {
         ...sessionCookie.attributes,
@@ -155,12 +156,7 @@ export async function GET(req: NextRequest) {
       userId: user.id,
     });
 
-    try {
-      return Response.redirect(`${getBaseUrl()}/podstran`, 307);
-    } catch (error) {
-      console.error("Unexpected error:", error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
+    return Response.redirect(`${getBaseUrl()}/podstran`, 307);
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response("Internal Server Error", { status: 500 });

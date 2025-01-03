@@ -8,15 +8,15 @@ datasource db {
 }
 
 model User {
-  id             String  @id @default(cuid())
-  email          String  @unique
+  id             String        @id @default(cuid())
+  email          String        @unique
   name           String
   role           String?
   hashedPassword String?
   picture        String?
-
-  session      Session[]
-  googleTokens GoogleTokens?
+  createdAt      DateTime      @default(now())
+  session        Session[]
+  googleTokens   GoogleTokens?
 }
 
 model Session {
@@ -33,9 +33,13 @@ model GoogleTokens {
 
   accessToken String
 
-  refreshToken String
+  idToken String
 
-  expiresAt DateTime
+  scope String
+
+  tokenType String
+
+  expiryDate DateTime
 
   user User @relation(fields: [userId], references: [id])
 }
