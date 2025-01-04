@@ -1,6 +1,6 @@
 "use client";
 import * as React from 'react';
-import { useState, useRef, use } from 'react';
+import { useState, useRef } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -22,6 +22,8 @@ import type { Session } from "lucia";
 
 //import { GetUseFromSession } from './GetUser';
 import { getCurrentSession } from '~/server/session';
+import { useQuery } from '@tanstack/react-query';
+//import Image from 'next/image';
 
 const handleAccount = () => {
   console.log('Account clicked');
@@ -55,7 +57,7 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
   };
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    console.log(session)
+    // console.log(session)
     setAnchorElUser(event.currentTarget);
   };
 
@@ -69,8 +71,12 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
 
 
 
+  const session = useQuery({ queryKey: ['session'], queryFn: getCurrentSession });
 
-  const session = use(getCurrentSession());
+
+
+
+
 
   ;
 
@@ -168,11 +174,12 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
           <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="User Avatar" src={session.user?.picture ?? "Na"} />
+                <Avatar alt="User Avatar" src={session.data?.user?.picture} />
+                {/* <Image src={session.data?.user?.picture ?? "Na"} alt="User Avatar" width={40} height={40} /> */}
               </IconButton>
             </Tooltip>
             <Typography sx={{ ml: 1, color: "black" }}>
-              {session?.user?.name ?? "User"}
+              {session?.data?.user?.name ?? "User"}
 
             </Typography>
 

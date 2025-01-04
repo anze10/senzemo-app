@@ -1,7 +1,9 @@
 "use server";
-import { auth } from "~/server/auth";
+
 import { type Auth, google } from "googleapis";
 import * as stream from "stream";
+import { GetAccessToken } from "./GoogleTokenInteractions";
+import { getCurrentSession } from "./session";
 
 // Funkcija za ustvarjanje mape
 async function createFolder(
@@ -449,7 +451,11 @@ export async function createFolderAndSpreadsheet(
   customer_name: string,
   order_number: string,
 ) {
-  const session = await auth();
+  const session = await getCurrentSession();
+  if (!session.session?.userId) {
+    throw new Error("User ID is undefined");
+  }
+  const token = await GetAccessToken(session.session.userId);
   const currentTime = new Date();
   //   console.log({ access_token: session?.user.token });
 
@@ -457,10 +463,10 @@ export async function createFolderAndSpreadsheet(
   const client = new google.auth.OAuth2() as unknown as Auth.OAuth2Client;
 
   client.setCredentials({
-    access_token: session?.user.token,
+    access_token: token
   });
 
-  if (!session?.user.token) throw new Error("No access token found");
+  if (!token) throw new Error("No access token found");
   const name = session?.user.name;
 
   try {
@@ -496,18 +502,22 @@ export async function insert(
   spreadsheetId: string,
   nerEXE: string[],
 ) {
-  const session = await auth();
-  console.log({ access_token: session?.user.token });
+  const session = await getCurrentSession();
+  if (!session.session?.userId) {
+    throw new Error("User ID is undefined");
+  }
+  const token = await GetAccessToken(session.session.userId);
+  console.log({ access_token: token });
   const client = new google.auth.OAuth2() as unknown as Auth.OAuth2Client;
 
   client.setCredentials({
-    access_token: session?.user.token,
+    access_token: token,
   });
 
-  if (!session?.user.token) throw new Error("No access token");
+  if (!token) throw new Error("No access token");
 
-  const tokenInfo = await client.getTokenInfo(session?.user.token);
-  console.log(tokenInfo);
+  //const tokenInfo = await client.getTokenInfo(session?.user.token);
+  //console.log(tokenInfo);
 
   try {
     await insertIntoCsvFile(client, fileId, newRow);

@@ -1,6 +1,7 @@
 // pages/api/createSpreadsheet.js
 
-import { lucia } from "src/server/lucia";  // Make sure this path is correct
+//import { lucia } from "src/server/lucia"; 
+import { validateSessionToken } from "src/server/validate_session";
 import { google } from "googleapis";
 
 export default async function createSpreadsheet(req, res) {
@@ -15,7 +16,7 @@ export default async function createSpreadsheet(req, res) {
   // Verify the JWT token using Lucia
   let user;
   try {
-    user = await lucia.verifySession(token);
+    user = await validateSessionToken(token);
   } catch (error) {
     res.status(401).json({ error: "Authentication failed: " + error.message });
     return;

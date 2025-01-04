@@ -1,16 +1,19 @@
 "use server";
 
-import { z } from "zod"
+// import { z } from "zod"
 
-import { prisma } from "src/server/prisma"
-import { Argon2id } from 'oslo/password'
+// import { prisma } from "src/server/prisma"
+// import { Argon2id } from 'oslo/password'
 import { lucia } from "src/server/lucia";
 import { cookies } from "next/headers";
 //import { signInSchema } from "./SignInForm"
 //import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic";
-import { googleOAuthClient } from "src/server/googleOauth";
-import { signInSchema } from "~/validators/auth_due";
+import { google } from "src/server/googleOauth";
+// import { signInSchema } from "~/validators/auth_due";
+
+
+
 
 // export const signUp = async (values: z.infer<typeof signUpSchema>) => {
 //     try {
@@ -41,28 +44,6 @@ import { signInSchema } from "~/validators/auth_due";
 //         return { error: 'Something went wrong', success: false }
 //     }
 // }
-
-export async function signIn(values: z.infer<typeof signInSchema>) {
-  const user = await prisma.user.findUnique({
-    where: { email: values.email },
-  });
-
-  if (!user || !user.hashedPassword) {
-    throw new Error("Invalid Credentials!");
-  }
-
-  const passwordMatch = await new Argon2id().verify(user.hashedPassword, values.password);
-  if (!passwordMatch) {
-    throw new Error("Invalid Credentials!");
-  }
-
-  const session = await lucia.createSession(user.id, {});
-  const sessionCookie = await lucia.createSessionCookie(session.id);
-
-  (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-
-  return { success: true };
-}
 
 
 export async function logOut() {
@@ -126,7 +107,7 @@ export async function getGoogleOauthConsentUrl() {
     ];
 
     // Create authorization URL with the necessary parameters
-    const authUrl = googleOAuthClient.createAuthorizationURL(
+    const authUrl = google.createAuthorizationURL(
       state,
       codeVerifier,
       scopes
@@ -137,3 +118,6 @@ export async function getGoogleOauthConsentUrl() {
     return { success: false, error };
   }
 }
+
+
+

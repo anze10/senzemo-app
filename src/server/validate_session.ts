@@ -15,7 +15,7 @@ export async function createSession(token: string, userId: number): Promise<Sess
     const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
     const session: Session = {
         id: sessionId,
-        userId: userId.toString(),
+        userId: userId,
         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
     };
     await prisma.session.create({
