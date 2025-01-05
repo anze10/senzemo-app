@@ -1,5 +1,5 @@
 import { getCurrentSession } from "~/server/session";
-import Buttonic from "./components/Buttonic";
+import { Dashboard } from "./components/Buttonic";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
@@ -12,6 +12,6 @@ export default async function Home() {
 
         <><h1>login dela</h1>
             <br />
-            <Buttonic /></>
+            <Dashboard /></>
     );
 }

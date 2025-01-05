@@ -261,6 +261,7 @@ function Component() {
               <Controller
                 control={sensor_form_api.control}
                 name="company_name"
+                defaultValue="Ni definirano"
                 render={({ field }) => (
                   <>
                     <InputLabel htmlFor="Company_name">Company Name</InputLabel>

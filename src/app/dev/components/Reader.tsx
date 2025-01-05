@@ -59,6 +59,7 @@ const SerialPortComponent = () => {
         console.log("Port is already connected.");
       }
 
+      console.log("Port:", portRef.current);
       await readDataFromPort(portRef.current, onDataReceived);
     } catch (error) {
       console.error("Failed to handle click:", error);

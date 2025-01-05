@@ -21,6 +21,7 @@ export const readDataFromPort = async (
   port: SerialPort,
   onDataReceived: (data: string) => void,
 ) => {
+  console.log("Reading data from port...");
   if (typeof port !== "object" || port === null) {
     console.error("Invalid port object");
     return;
