@@ -1,4 +1,3 @@
-
 export const connectToPort = async (): Promise<SerialPort> => {
   try {
     console.log("Requesting port...", navigator.serial);
@@ -21,7 +20,6 @@ export const readDataFromPort = async (
   port: SerialPort,
   onDataReceived: (data: string) => void,
 ) => {
-  console.log("Reading data from port...");
   if (typeof port !== "object" || port === null) {
     console.error("Invalid port object");
     return;
@@ -40,7 +38,7 @@ export const readDataFromPort = async (
     return;
   }
 
-  //const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
+  const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
   const reader = textDecoder.readable.getReader();
 
   let receivedData = "";
