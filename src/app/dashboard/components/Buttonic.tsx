@@ -24,7 +24,7 @@ export function Dashboard() {
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/sestavi-senzorje" passHref>
+                            <Link href="/paramets" passHref>
                                 <Button fullWidth variant="contained">
                                     Začni sestavljanje
                                 </Button>
@@ -52,15 +52,15 @@ export function Dashboard() {
                 <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader
-                            title="Inventar"
+                            title="zaloga"
                             action={<FileBox size={16} />}
                             titleTypographyProps={{ variant: 'subtitle1' }}
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/inventar" passHref>
+                            <Link href="/inventory" passHref>
                                 <Button fullWidth variant="contained">
-                                    Preglej inventar
+                                    Preglej zalogo
                                 </Button>
                             </Link>
                         </CardContent>
@@ -69,15 +69,15 @@ export function Dashboard() {
                 <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader
-                            title="OneDrive"
+                            title="Goole Drive"
                             action={<Cloud size={16} />}
                             titleTypographyProps={{ variant: 'subtitle1' }}
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="https://onedrive.live.com" passHref>
+                            <Link href="https://drive.google.com" passHref>
                                 <Button fullWidth variant="contained">
-                                    Odpri OneDrive
+                                    Odpri Google Drive
                                 </Button>
                             </Link>
                         </CardContent>
