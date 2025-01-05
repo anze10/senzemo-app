@@ -51,7 +51,9 @@ model GoogleTokens {
 ////  ferma
 model Senzor {
   id_senzorja    Int         @id @default(autoincrement())
-  ime_senzorja   String
+  sensor_name    String
+  family_id      Int
+  Product_id     Int
   fotografija    String?
   payloadDecoder String?
   parametri      String?
