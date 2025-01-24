@@ -31,7 +31,7 @@ type Product = {
     price: number;
 };
 
-export function ProductList() {
+export default function ProductList() {
     const [products, setProducts] = useState<Product[]>([
         { id: 1, name: 'Basic Sensor', frequency: '433 MHz', type: 'Sensor', price: 29.99 },
         { id: 2, name: 'Advanced Transmitter', frequency: '868 MHz', type: 'Transmitter', price: 49.99 },
@@ -55,7 +55,7 @@ export function ProductList() {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const newProduct: Product = {
-            id: editingProduct ? editingProduct.id : Math.max(...products.map(p => p.id)) + 1,
+            id: editingProduct ? editingProduct.id : (products.length > 0 ? products[products.length - 1].id + 1 : 1),
             name: formData.get('name') as string,
             frequency: formData.get('frequency') as string,
             type: formData.get('type') as 'Sensor' | 'Transmitter' | 'Receiver',

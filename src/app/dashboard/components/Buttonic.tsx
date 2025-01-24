@@ -1,4 +1,5 @@
-"use client"
+'use client';
+
 import { Typography, Card, CardHeader, CardContent, Button, Box } from '@mui/material';
 import { Gauge, Package, FileBox, Cloud } from 'lucide-react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ export const metadata = {
     description: "Pregled in upravljanje vaše aplikacije",
 };
 
-export function Dashboard() {
+export default function Dashboard() {
     return (
         <Box sx={{ p: 5 }}>
             <Typography variant="h3" component="h1" sx={{ mb: 5, fontWeight: 'bold' }}>

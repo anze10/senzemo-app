@@ -38,6 +38,7 @@ export const readDataFromPort = async (
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
   const reader = textDecoder.readable.getReader();
 

@@ -1,11 +1,11 @@
-import { ProductList } from "./components/SensorList";
+import Side from "./components/Side";
 
 
 
 export default async function Home() {
     return (
         <div>
-            <ProductList />
+            <Side />
         </div>
     );
 }

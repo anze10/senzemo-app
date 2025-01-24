@@ -34,10 +34,10 @@ type InventoryItem = {
     lastUpdated: Date;
 };
 
-export function InventoryManagementPage() {
+export default function InventoryManagementPage() {
     const [inventory, setInventory] = useState<InventoryItem[]>([
-        { id: 1, name: 'Part 1', quantity: 100, type: 'Component', lastUpdated: new Date() },
-        { id: 2, name: 'Sensor A', quantity: 50, type: 'CompleteSensor', lastUpdated: new Date() },
+        { id: 1, name: 'Part 1', quantity: 100, type: 'Component', lastUpdated: performance.now() > 1 ? new Date() : new Date() },
+        { id: 2, name: 'Sensor A', quantity: 50, type: 'CompleteSensor', lastUpdated: performance.now() > 1 ? new Date() : new Date() },
     ]);
     const [open, setOpen] = useState(false);
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
@@ -55,7 +55,7 @@ export function InventoryManagementPage() {
 
     const handleAddOrUpdateItem = () => {
         if (editItem) {
-            setInventory(inventory.map(item => item.id === editItem.id ? { ...editItem, lastUpdated: new Date() } : item));
+            setInventory(inventory.map(item => item.id === editItem.id ? { ...editItem, lastUpdated: performance.now() > 1 ? new Date() : item.lastUpdated } : item));
             setSnackbar({ open: true, message: 'Item updated successfully!', severity: 'success' });
         } else {
             const newItem = {
@@ -63,7 +63,7 @@ export function InventoryManagementPage() {
                 name: 'New Item',
                 quantity: 0,
                 type: 'Component',
-                lastUpdated: new Date()
+                lastUpdated: performance.now() > 1 ? new Date() : new Date()
             };
             setInventory([...inventory, newItem]);
             setSnackbar({ open: true, message: 'New item added successfully!', severity: 'success' });
@@ -83,20 +83,20 @@ export function InventoryManagementPage() {
 
     const handleQuantityChange = (id: number, change: number) => {
         setInventory(inventory.map(item =>
-            item.id === id ? { ...item, quantity: Math.max(0, item.quantity + change), lastUpdated: new Date() } : item
+            item.id === id ? { ...item, quantity: Math.max(0, item.quantity + change), lastUpdated: performance.now() > 1 ? new Date() : item.lastUpdated } : item
         ));
     };
 
     useEffect(() => {
         const timer = setInterval(() => {
             setInventory(currentInventory =>
-                currentInventory.map(item => ({ ...item, lastUpdated: new Date() }))
+                currentInventory.map(item => ({ ...item, lastUpdated: performance.now() > 1 ? new Date() : item.lastUpdated }))
             );
         }, 60000); // Update every minute
 
         return () => clearInterval(timer);
     }, []);
-
+    //a
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />

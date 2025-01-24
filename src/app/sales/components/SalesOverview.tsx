@@ -6,7 +6,7 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import {
     Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Paper,
     Button, TextField, Dialog, DialogContent, DialogTitle,
-    IconButton, Chip, Snackbar, Alert, Typography, Box, Modal
+    IconButton, Snackbar, Alert, Typography, Box, Modal
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -34,7 +34,7 @@ type Sale = {
     customerName: string;
 };
 
-export function SalesOverview() {
+export default function SalesOverview() {
     const [sales, setSales] = useState<Sale[]>([
         { id: 1, sensorId: 1, quantity: 5, date: '2023-06-01', price: 100, customerName: 'Customer A' },
         { id: 2, sensorId: 2, quantity: 3, date: '2023-06-02', price: 150, customerName: 'Customer B' },
@@ -63,7 +63,7 @@ export function SalesOverview() {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const newSale: Sale = {
-            id: editingSale ? editingSale.id : Math.max(...sales.map(s => s.id)) + 1,
+            id: editingSale ? editingSale.id : performance.now(),
             sensorId: Number(formData.get('sensorId')),
             quantity: Number(formData.get('quantity')),
             date: formData.get('date') as string,
@@ -104,7 +104,7 @@ export function SalesOverview() {
     const getTrendData = (sale: Sale) => {
         const saleIndex = sales.findIndex(s => s.id === sale.id);
         const previousSales = sales.slice(0, saleIndex + 1).reverse();
-        return previousSales.map((s, index) => ({
+        return previousSales.map((s,) => ({
             date: s.date,
             price: s.price,
             quantity: s.quantity,

@@ -1,10 +1,10 @@
-import { SalesOverview } from "./components/SalesOverview";
+import Sales from "./components/Sales";
 
 
 export default async function Home() {
     return (
         <div>
-            <SalesOverview />
+            <Sales />
         </div>
     );
 }

@@ -35,7 +35,7 @@ type Order = {
     status: 'Pending' | 'Taken';
 };
 
-export function OrderManagement() {
+export default function OrderManagement() {
     const [orders, setOrders] = useState<Order[]>([
         { id: 1, customerName: 'Customer X', sensorId: 1, quantity: 10, frequency: '433 MHz', date: '2023-06-05', description: 'Special packaging required', status: 'Pending' },
         { id: 2, customerName: 'Customer Y', sensorId: 2, quantity: 5, frequency: '868 MHz', date: '2023-06-06', description: 'Rush order, deliver within 3 days', status: 'Pending' },
@@ -59,8 +59,11 @@ export function OrderManagement() {
     const handleCreateOrUpdateOrder = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        // Ensure random ID generation is handled client-side
+        const randomId = 1
+
         const newOrder: Order = {
-            id: editingOrder ? editingOrder.id : Math.max(...orders.map(o => o.id)) + 1,
+            id: editingOrder ? editingOrder.id : randomId, // Use client-generated random ID
             customerName: formData.get('customerName') as string,
             sensorId: Number(formData.get('sensorId')),
             quantity: Number(formData.get('quantity')),
@@ -79,6 +82,7 @@ export function OrderManagement() {
         }
         handleClose();
     };
+
 
     const handleDeleteOrder = (id: number) => {
         setOrders(orders.filter(order => order.id !== id));

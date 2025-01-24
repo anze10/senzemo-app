@@ -1,12 +1,12 @@
 "use server"
-import  ipp from "ipp";
+import ipp from "ipp";
 import type { PrintJobRequest } from "ipp"
 
 import request from 'request';
 
 export interface Tiskalnik {
-    name: string; 
-    url: string; 
+    name: string;
+    url: string;
 }
 // Define Printer interface
 
@@ -21,7 +21,7 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
 
         request(CUPSurl, (error: Error | null, response: request.Response, body: string) => {
             const printerUrls: Tiskalnik[] = [];
-           
+
 
             if (!error && response.statusCode === 200) {
                 const printersMatches = body.match(/<TR><TD><A HREF="\/printers\/([a-zA-Z0-9-_]+)">([^<]+)<\/A><\/TD><TD>[^<]+<\/TD><TD>[^<]*<\/TD><TD>[^<]+<\/TD><TD>[^<]+<\/TD><\/TR>/gm);
@@ -33,14 +33,16 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
                             console.log("Fetched printer URLs:", a[1]);
                             if (a[1] === undefined) {
                                 printerUrls.push({
-                                    name: "unknown", 
-                                    url: `something went wrong` });
+                                    name: "unknown",
+                                    url: `something went wrong`
+                                });
                             }
                             else {
-                            printerUrls.push({
-                                name: a[1], 
-                                url: `${CUPSurl}/${a[1]}` });
-                            }    
+                                printerUrls.push({
+                                    name: a[1],
+                                    url: `${CUPSurl}/${a[1]}`
+                                });
+                            }
                         }
                     }
                 }
@@ -50,21 +52,21 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
                 reject(error);
             }
         });
-        
+
     });
 }
 
 
 // Function to check printer status and print
 async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
-    
+
     try {
-        
+
         // Check printer status via IPP
-        const printer =  new ipp.Printer(printerUri);
-        
-        
-        printer.execute("Get-Printer-Attributes" , null, (err: Error, res: unknown) => {
+        const printer = new ipp.Printer(printerUri);
+        // og   printer.execute("Get-Printer-Attributes" , null, (err: Error, res: unknown) => {
+
+        printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
             if (err) {
                 console.error("Error getting printer attributes:", err);
                 callback("Failed to get printer attributes");

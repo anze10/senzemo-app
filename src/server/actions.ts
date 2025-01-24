@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // pages/api/createSpreadsheet.js
 
 //import { lucia } from "src/server/lucia"; 
 import { validateSessionToken } from "src/server/validate_session";
 import { google } from "googleapis";
 
-export default async function createSpreadsheet(req, res) {
+import { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function createSpreadsheet(req: NextApiRequest, res: NextApiResponse) {
   // Retrieve the JWT token from cookies (assuming it's stored in cookies)
   const token = req.cookies['lucia_auth_token'];
 
@@ -18,7 +21,11 @@ export default async function createSpreadsheet(req, res) {
   try {
     user = await validateSessionToken(token);
   } catch (error) {
-    res.status(401).json({ error: "Authentication failed: " + error.message });
+    if (error instanceof Error) {
+      res.status(401).json({ error: "Authentication failed: " + error.message });
+    } else {
+      res.status(401).json({ error: "Authentication failed" });
+    }
     return;
   }
 

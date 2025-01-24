@@ -5,3 +5,4 @@ export const google = new Google(
     process.env.GOOGLE_CLIENT_SECRET!,
     process.env.NEXT_PUBLIC_URL + '/login/google/callback'
 )
+
