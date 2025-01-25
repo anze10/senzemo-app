@@ -45,7 +45,7 @@ export default function Signin() {
 
             <Button
                 onClick={() => {
-                    window.location.href = url + "/login/google";
+                    window.location.replace(url + "/login/google");
                 }}
                 fullWidth
                 variant="outlined"
