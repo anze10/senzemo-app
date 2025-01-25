@@ -1,26 +1,8 @@
 // import type { NextConfig } from "next";
 
-<<<<<<< HEAD
 // const nextConfig: NextConfig = {
 //     /* config options here */
 // };
-=======
-const nextConfig: NextConfig = {
-    experimental: {
-        dynamicIO: true,
-    },
-    images: {
-        remotePatterns: [
-            {
-                protocol: 'https',
-                hostname: '**.googleusercontent.com',
-                port: '',
-                search: '',
-            },
-        ],
-    },
-};
->>>>>>> test
 
 // export default nextConfig;
 /**
@@ -35,18 +17,17 @@ const nextConfig: NextConfig = {
 // export default config;
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    webpack: (config: any) => {
-      config.externals.push("@node-rs/argon2", "@node-rs/bcrypt");
-      return config;
-    },
-    images: {
-      remotePatterns: [
-        {
-          hostname: "lh3.googleusercontent.com",
-        },
-      ],
-    },
-  };
-  
-  export default nextConfig;
-  
+  webpack: (config: any) => {
+    config.externals.push("@node-rs/argon2", "@node-rs/bcrypt");
+    return config;
+  },
+  images: {
+    remotePatterns: [
+      {
+        hostname: "lh3.googleusercontent.com",
+      },
+    ],
+  },
+};
+
+export default nextConfig;

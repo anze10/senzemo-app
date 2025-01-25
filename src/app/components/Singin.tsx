@@ -1,12 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import React from 'react'
-import { getGoogleOauthConsentUrl } from 'src/server/auth.action'
-import { toast } from 'sonner'
-=======
 //import { useState } from 'react'
 //import { useRouter } from 'next/navigation'
 import React from "react";
@@ -21,7 +14,6 @@ import GoogleIcon from "@mui/icons-material/Google";
 
 // import { getBaseUrl } from "~/lib/getBaseUrl";
 // import { useRouter } from 'next/navigation'
->>>>>>> test
 
 export default function Signin() {
 

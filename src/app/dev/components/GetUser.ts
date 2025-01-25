@@ -1,4 +1,4 @@
-"use cache";
+
 
 import { Session } from "lucia";
 import { prisma } from "~/server/prisma";
