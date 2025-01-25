@@ -8,13 +8,12 @@ import React from "react";
 import { Box, Typography, Button } from "@mui/material";
 //import { signIn } from "src/server/auth_due.actions";
 
-import { getBaseUrl } from "~/lib/getBaseUrl";
+
 import GoogleIcon from "@mui/icons-material/Google";
 
 
 // import { getBaseUrl } from "~/lib/getBaseUrl";
 // import { useRouter } from 'next/navigation'
-const url = getBaseUrl();
 
 export default function Signin() {
 
@@ -45,7 +44,7 @@ export default function Signin() {
 
             <Button
                 onClick={() => {
-                    window.location.replace(url + "/login/google");
+                    window.location.href = "/login/google";
                 }}
                 fullWidth
                 variant="outlined"
