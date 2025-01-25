@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+<<<<<<< HEAD
     "check": "next lint && tsc --noEmit",
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
@@ -23,33 +24,77 @@
     "@emotion/styled": "^11.14.0",
     "@lucia-auth/adapter-prisma": "^4.0.1",
     "@mui/material": "^6.3.0",
+=======
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@emotion/cache": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@hookform/resolvers": "^3.9.1",
+    "@lucia-auth/adapter-prisma": "^4.0.1",
+    "@mui/icons-material": "^6.3.0",
+    "@mui/material-nextjs": "^6.3.1",
+>>>>>>> test
     "@prisma/client": "^6.1.0",
+    "@radix-ui/react-tabs": "^1.1.2",
     "@remixicon/react": "^4.6.0",
+<<<<<<< HEAD
     "@types/bcrypt": "^5.0.2",
+=======
+    "@tanstack/react-query": "^5.62.15",
+    "@tanstack/react-query-devtools": "^5.62.15",
+    "@tanstack/react-query-next-experimental": "^5.62.15",
+    "@types/ipp": "^2.0.5",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/request": "^2.48.12",
+>>>>>>> test
     "arctic": "^2.3.3",
+    "argon2": "^0.41.1",
+    "axios": "^1.7.9",
+    "bcrypt": "^5.1.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^11.15.0",
+    "from": "^0.1.7",
+    "googleapis": "^144.0.0",
+    "immer": "^10.1.1",
+    "import": "^0.0.6",
     "install": "^0.13.0",
+    "ipp": "^2.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "jwt": "^0.2.0",
     "lucia": "^3.2.2",
+<<<<<<< HEAD
     "mui": "^0.0.1",
     "next": "15.1.3",
+=======
+    "lucide-react": "^0.469.0",
+    "next": "canary",
+    "node-fetch": "^3.3.2",
+>>>>>>> test
     "oslo": "^1.2.1",
     "prisma": "^6.1.0",
     "prizma": "^0.0.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "recharts": "^2.15.0",
+    "request": "^2.88.2",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-key-parser": "^1.5.5",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@types/dom-serial": "^1.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
     "eslint": "^9",
     "eslint-config-next": "15.1.3",
-    "@eslint/eslintrc": "^3"
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }

@@ -7,7 +7,7 @@ const adapter = new PrismaAdapter(prisma.session, prisma.user)
 
 export const lucia = new Lucia(adapter, {
     sessionCookie: {
-        name: 'elliott-auth-cookie',
+        name: 'lucia_auth_token',
         expires: false,
         attributes: {
             secure: process.env.NODE_ENV === 'production'
@@ -25,19 +25,24 @@ export const getUser = async () => {
         if (session && session.fresh) {
             // refreshing their session cookie
             const sessionCookie = await lucia.createSessionCookie(session.id)
-            ;(await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+                ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
         }
         if (!session) {
             const sessionCookie = await lucia.createBlankSessionCookie()
-            ;(await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+                ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
         }
 
+<<<<<<< HEAD
     } catch {
+=======
+    } catch (error) {
+        console.error('Error validating session:', error)
+>>>>>>> test
 
     }
     const dbUser = await prisma.user.findUnique({
         where: {
-            id: user?.id
+            id: user ? parseInt(user.id, 10) : undefined
         },
         select: {
             name: true,
@@ -46,4 +51,26 @@ export const getUser = async () => {
         }
     })
     return dbUser
+}
+
+export async function setSessionTokenCookie(token: string, expiresAt: Date): Promise<void> {
+    const cookieStore = await cookies();
+    cookieStore.set("session", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        expires: expiresAt,
+        path: "/"
+    });
+}
+
+export async function deleteSessionTokenCookie(): Promise<void> {
+    const cookieStore = await cookies();
+    cookieStore.set("session", "", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 0,
+        path: "/"
+    });
 }

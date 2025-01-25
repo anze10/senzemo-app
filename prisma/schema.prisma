@@ -7,7 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//// auth 
 model User {
+<<<<<<< HEAD
   id             String   @id @default(cuid())
   email          String   @unique
   name           String
@@ -16,14 +18,100 @@ model User {
   picture        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+=======
+  id           Int            @id @default(autoincrement())
+  googleId     String         @unique
+  email        String         @unique
+  name         String
+  picture      String
+  role         String?
+  createdAt    DateTime       @default(now())
+  session      Session[]
+  GoogleTokens GoogleTokens[]
+>>>>>>> test
 
-  session Session[]
+  @@index([googleId], name: "google_id_index") // Add the index here
 }
 
 model Session {
   id        String   @id
-  userId    String
+  userId    Int
   expiresAt DateTime
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model GoogleTokens {
+  id                          Int      @id @default(autoincrement())
+  userId                      Int      @unique
+  accessToken                 String
+  accessTokenExpiresAt        DateTime
+  accessTokenExpiresInSeconds Int
+  idToken                     String
+  refreshToken                String?
+  scopes                      String
+  tokenType                   String
+  data                        Json?
+  hasRefreshToken             Boolean  @default(false)
+  hasScopes                   Boolean  @default(false)
+  user                        User     @relation(fields: [userId], references: [id])
+
+  @@map("google_tokens")
+}
+
+////  ferma
+model Senzor {
+  id_senzorja    Int         @id @default(autoincrement())
+  sensor_name    String
+  family_id      Int
+  Product_id     Int
+  fotografija    String?
+  payloadDecoder String?
+  parametri      String?
+  string         String?
+  decoder        String?
+  frekvenca      String?
+  zaloge         Zaloga[]
+  prodaje        Prodaja[]
+  narocila       Naročilo[]
+}
+
+model Zaloga {
+  id_dela          Int     @id @default(autoincrement())
+  id_senzorja      Int?
+  ime_dela         String
+  kolicinaNaZalogi Int
+  tip              String // "Komponenta" ali "CelotenSenzor"
+  senzor           Senzor? @relation(fields: [id_senzorja], references: [id_senzorja])
+
+  CelotenSenzor CelotenSenzor[]
+}
+
+model Prodaja {
+  id_prodaje    Int      @id @default(autoincrement())
+  id_senzorja   Int
+  kolicina      Int
+  datum_prodaje DateTime
+  cena          Float
+  ime_kupca     String
+  senzor        Senzor   @relation(fields: [id_senzorja], references: [id_senzorja])
+}
+
+model Naročilo {
+  id_naročila     Int      @id @default(autoincrement())
+  ime_kupca        String
+  id_senzorja      Int
+  kolicina         Int
+  frekvenca        String
+  datum_naročila  DateTime
+  ostali_parametri String?
+  senzor           Senzor   @relation(fields: [id_senzorja], references: [id_senzorja])
+}
+
+model CelotenSenzor {
+  id_senzorja   Int       @id
+  id_zaloge     Int
+  zaloga        Zaloga    @relation(fields: [id_zaloge], references: [id_dela])
+  specifikacije String?
+  datumIzdelave DateTime?
 }

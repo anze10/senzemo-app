@@ -1,8 +1,26 @@
 // import type { NextConfig } from "next";
 
+<<<<<<< HEAD
 // const nextConfig: NextConfig = {
 //     /* config options here */
 // };
+=======
+const nextConfig: NextConfig = {
+    experimental: {
+        dynamicIO: true,
+    },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: '**.googleusercontent.com',
+                port: '',
+                search: '',
+            },
+        ],
+    },
+};
+>>>>>>> test
 
 // export default nextConfig;
 /**
