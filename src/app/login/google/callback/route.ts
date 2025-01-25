@@ -10,7 +10,6 @@ import { createUser, getUserFromGoogleId } from "~/app/dev/components/GetUser";
 
 import SaveToken from "~/server/GoogleTokenInteractions";
 
-import { getBaseUrl } from "~/lib/getBaseUrl";
 interface Claims {
     sub: string;
     name: string;
@@ -82,7 +81,7 @@ export async function GET(request: Request): Promise<Response> {
     const googleUserId = claims.sub;
     const username = claims.name;
 
-    const baseUrl = getBaseUrl();
+
 
     const existingUser = await getUserFromGoogleId(googleUserId);
 
@@ -99,7 +98,7 @@ export async function GET(request: Request): Promise<Response> {
         return new Response(null, {
             status: 302,
             headers: {
-                Location: baseUrl + "/dashboard"
+                Location: "/dashboard"
             }
         });
     }
@@ -117,7 +116,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(null, {
         status: 302,
         headers: {
-            Location: baseUrl + "/dashboard"
+            Location: "/dashboard"
         }
     });
 }
