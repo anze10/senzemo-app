@@ -10,7 +10,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { connectToPort, readDataFromPort } from "./HandleClick";
-import { logOut as signOut } from "src/server/auth.action";
+import { logOut as signOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { useSensorStore } from "./SensorStore";
 import { z } from "zod";
 // import type { Session } from "next-auth";

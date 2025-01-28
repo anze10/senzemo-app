@@ -1,5 +1,5 @@
 import { Google } from 'arctic'
-import { getBaseUrl } from './Url';
+import { getBaseUrl } from 'src/server/SERVER_ACTIONS/Url';
 const url = getBaseUrl();
 export const google = new Google(
     process.env.GOOGLE_CLIENT_ID!,

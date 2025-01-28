@@ -1,4 +1,4 @@
-import { prisma } from "src/server/prisma";
+import { prisma } from "src/server/DATABASE_ACTION/prisma";
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 

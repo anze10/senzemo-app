@@ -14,7 +14,7 @@ import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 // import AdbIcon from '@mui/icons-material/Adb';
-import { logOut } from "src/server/auth.action";
+import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import Printer_settings from './printer/Printer_settings';
 import { Modal } from '@mui/material';
 import { connectToPort } from "./HandleClick";

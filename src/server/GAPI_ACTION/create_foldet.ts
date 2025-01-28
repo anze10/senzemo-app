@@ -2,8 +2,8 @@
 
 import { type Auth, google } from "googleapis";
 import * as stream from "stream";
-import { GetAccessToken } from "./GoogleTokenInteractions";
-import { getCurrentSession } from "./session";
+import { GetAccessToken } from "src/server/DATABASE_ACTION/GoogleTokenInteractions";
+import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
 
 // Funkcija za ustvarjanje mape
 async function createFolder(

@@ -4,12 +4,12 @@
 
 // import { prisma } from "src/server/prisma"
 // import { Argon2id } from 'oslo/password'
-import { lucia } from "src/server/lucia";
+import { lucia } from "src/server/LOGIN_LUCIA_ACTION/lucia";
 import { cookies } from "next/headers";
 //import { signInSchema } from "./SignInForm"
 //import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic";
-import { google } from "src/server/googleOauth";
+import { google } from "~/server/LOGIN_LUCIA_ACTION/googleOauth";
 // import { signInSchema } from "~/validators/auth_due";
 
 
