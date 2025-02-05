@@ -51,10 +51,10 @@ export const readDataFromPort = async (
   const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
   const reader = textDecoder.readable.getReader();
 
-  let receivedData = "";
-  let isJsonStarted = false;
-  let openBracesCount = 0;
-  let closeBracesCount = 0;
+  // let receivedData = "";
+  // let isJsonStarted = false;
+  // let openBracesCount = 0;
+  // let closeBracesCount = 0;
 
   console.log("Reading data...");
   try {
@@ -66,28 +66,29 @@ export const readDataFromPort = async (
       }
       if (value) {
         console.log("Received raw data chunk:", value);
+        return value;
 
-        if (value.includes("{")) {
-          isJsonStarted = true;
-        }
+        // if (value.includes("{")) {
+        //   isJsonStarted = true;
+        // }
 
-        if (isJsonStarted) {
-          receivedData += value;
+        // if (isJsonStarted) {
+        //   receivedData += value;
 
-          openBracesCount += (value.match(/{/g) ?? []).length;
-          closeBracesCount += (value.match(/}/g) ?? []).length;
+        //   openBracesCount += (value.match(/{/g) ?? []).length;
+        //   closeBracesCount += (value.match(/}/g) ?? []).length;
 
-          if (openBracesCount === closeBracesCount && openBracesCount > 0) {
-            console.log("Received full JSON string:", receivedData);
+        //   if (openBracesCount === closeBracesCount && openBracesCount > 0) {
+        //     console.log("Received full JSON string:", receivedData);
 
-            onDataReceived(receivedData);
+        //     onDataReceived(receivedData);
 
-            receivedData = "";
-            openBracesCount = 0;
-            closeBracesCount = 0;
-            isJsonStarted = false;
-          }
-        }
+        //     receivedData = "";
+        //     openBracesCount = 0;
+        //     closeBracesCount = 0;
+        //     isJsonStarted = false;
+        //   }
+        // }
       }
     }
   } catch (error) {

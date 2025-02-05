@@ -234,7 +234,7 @@ const SerialPortComponent = () => {
             Open Serial Port
           </Button>
           <Box style={{ display: "flex", alignItems: "center" }}>
-            <span>{session?.user.name}</span>
+
           </Box>
         </Box> */}
         <Box className="px-6 py-8 md:px-8 md:py-12">

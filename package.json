@@ -22,6 +22,7 @@
     "@tanstack/react-query": "^5.62.15",
     "@tanstack/react-query-devtools": "^5.62.15",
     "@tanstack/react-query-next-experimental": "^5.62.15",
+    "@types/hex2dec": "^1.1.4",
     "@types/ipp": "^2.0.5",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/request": "^2.48.12",

@@ -9,7 +9,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import { createFolderAndSpreadsheet } from "src/server/create_foldet";
+import { createFolderAndSpreadsheet } from "src/server/GAPI_ACTION/create_foldet";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";

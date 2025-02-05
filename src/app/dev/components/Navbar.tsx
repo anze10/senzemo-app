@@ -21,7 +21,7 @@ import { connectToPort } from "./HandleClick";
 import type { Session } from "lucia";
 
 //import { GetUseFromSession } from './GetUser';
-import { getCurrentSession } from '~/server/session';
+import { getCurrentSession } from 'src/server/LOGIN_LUCIA_ACTION/session';
 import { useQuery } from '@tanstack/react-query';
 //import Image from 'next/image';
 
