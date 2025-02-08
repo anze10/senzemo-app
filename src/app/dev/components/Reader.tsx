@@ -9,7 +9,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import { connectToPort, readDataFromPort } from "./HandleClick";
+import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
 import { logOut as signOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { useSensorStore } from "./SensorStore";
 import { z } from "zod";
@@ -51,7 +51,6 @@ export type SensorFormSchemaType = z.infer<typeof sensor_form_schema>;
 const SerialPortComponent = () => {
   const portRef = useRef<SerialPort | null>(null);
 
-
   const GetDataFromSensor = async (onDataReceived: (data: string) => void) => {
     try {
       if (!portRef.current) {
@@ -61,9 +60,13 @@ const SerialPortComponent = () => {
       }
 
       console.log("Port:", portRef.current);
-      const data: string = await readDataFromPort(portRef.current, onDataReceived);
-      const usefullData: SensorFormSchemaType = SMC30_parser(data);
-      return usefullData;
+      const data = await readDataFromPort(portRef.current, onDataReceived);
+      if (!data) {
+        console.error("No data received.");
+        return;
+      }
+
+      return SMC30_parser(data);
     } catch (error) {
       console.error("Failed to handle click:", error);
     }
@@ -73,16 +76,16 @@ const SerialPortComponent = () => {
     useState<boolean>(false);
 
   const current_sensor_index = useSensorStore(
-    (state) => state.current_sensor_index,
+    (state) => state.current_sensor_index
   );
 
   const default_sensor_data = useSensorStore(
-    (state) => state.default_sensor_data,
+    (state) => state.default_sensor_data
   );
   console.log("default_sensor_data", default_sensor_data);
 
   const current_sensor = useSensorStore(
-    (state) => state.sensors[state.current_sensor_index],
+    (state) => state.sensors[state.current_sensor_index]
   );
 
   const all_sensors = useSensorStore((state) => state.sensors);
@@ -92,13 +95,12 @@ const SerialPortComponent = () => {
   const set_sensor_status = useSensorStore((state) => state.set_sensor_status);
 
   const set_common_sensor_data = useSensorStore(
-    (state) => state.set_common_sensor_data,
+    (state) => state.set_common_sensor_data
   );
 
   const set_current_sensor_index = useSensorStore(
-    (state) => state.set_current_sensor_index,
+    (state) => state.set_current_sensor_index
   );
-
 
   /* useEffect(() => {
     // zamenjaj z funkcijo ki uporabi prejšn socket
@@ -112,7 +114,7 @@ const SerialPortComponent = () => {
   // if values of a are undefined, don't compare them
   const recursive_compare = (
     a: Record<string, unknown>,
-    b: Record<string, unknown>,
+    b: Record<string, unknown>
   ): boolean => {
     for (const key in a) {
       if (!Object.keys(a).includes(key)) continue;
@@ -128,7 +130,7 @@ const SerialPortComponent = () => {
 
         return recursive_compare(
           a_value as Record<string, unknown>,
-          b_value as Record<string, unknown>,
+          b_value as Record<string, unknown>
         );
       } else {
         if (a_value !== b_value) return false;
@@ -148,7 +150,7 @@ const SerialPortComponent = () => {
 
     const is_equal = recursive_compare(
       default_sensor_data,
-      current_sensor?.data.common_data,
+      current_sensor?.data.common_data
     );
 
     if (is_equal) {
@@ -205,11 +207,10 @@ const SerialPortComponent = () => {
       const safe_key = key as keyof SensorFormSchemaType;
       sensor_form_api.setValue(
         safe_key,
-        current_sensor.data.common_data[safe_key],
+        current_sensor.data.common_data[safe_key]
       );
     }
   }, [current_sensor?.data?.common_data, sensor_form_api]);
-
 
   return (
     <form>
@@ -252,7 +253,7 @@ const SerialPortComponent = () => {
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: getStatusColor(
-                current_sensor?.data.common_data.device.status,
+                current_sensor?.data.common_data.device.status
               ),
               padding: "10px",
               borderRadius: "8px",
@@ -493,7 +494,7 @@ const SerialPortComponent = () => {
           <Box className="mt-4 flex justify-between">
             <Button
               onClick={sensor_form_api.handleSubmit(
-                (data: SensorFormSchemaType) => onSubmit(data, true),
+                (data: SensorFormSchemaType) => onSubmit(data, true)
               )}
               style={{
                 backgroundColor: "#4CAF50",
@@ -520,7 +521,7 @@ const SerialPortComponent = () => {
             </Button>
             <Button
               onClick={sensor_form_api.handleSubmit(
-                (data: SensorFormSchemaType) => onSubmit(data, false),
+                (data: SensorFormSchemaType) => onSubmit(data, false)
               )}
               style={{
                 backgroundColor: "#4CAF50",
