@@ -45,6 +45,7 @@ export const readDataFromPort = async (port: SerialPort) => {
       if (value) {
         receivedData += value;
         console.log("Received data chunk:", value);
+        return value;
       }
     }
   } catch (error) {
