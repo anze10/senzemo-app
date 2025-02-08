@@ -15,7 +15,6 @@ import { useSensorStore } from "./SensorStore";
 import { z } from "zod";
 // import type { Session } from "next-auth";
 import { parseZodSchema } from "zod-key-parser";
-import SMC30_parser from "./Reader/ConvertToJason";
 
 export const sensor_form_schema = z.object({
   dev_eui: z.string(),
@@ -51,7 +50,7 @@ export type SensorFormSchemaType = z.infer<typeof sensor_form_schema>;
 const SerialPortComponent = () => {
   const portRef = useRef<SerialPort | null>(null);
 
-  const GetDataFromSensor = async (onDataReceived: (data: string) => void) => {
+  const GetDataFromSensor = async () => {
     try {
       if (!portRef.current) {
         portRef.current = await connectToPort();
@@ -60,13 +59,7 @@ const SerialPortComponent = () => {
       }
 
       console.log("Port:", portRef.current);
-      const data = await readDataFromPort(portRef.current, onDataReceived);
-      if (!data) {
-        console.error("No data received.");
-        return;
-      }
-
-      return SMC30_parser(data);
+      return readDataFromPort(portRef.current);
     } catch (error) {
       console.error("Failed to handle click:", error);
     }
@@ -92,11 +85,9 @@ const SerialPortComponent = () => {
 
   const add_new_sensor = useSensorStore((state) => state.add_new_sensor);
 
-  const set_sensor_status = useSensorStore((state) => state.set_sensor_status);
+  const set_sensor_data = useSensorStore((state) => state.set_sensor_data);
 
-  const set_common_sensor_data = useSensorStore(
-    (state) => state.set_common_sensor_data
-  );
+  const set_sensor_status = useSensorStore((state) => state.set_sensor_status);
 
   const set_current_sensor_index = useSensorStore(
     (state) => state.set_current_sensor_index
@@ -150,7 +141,7 @@ const SerialPortComponent = () => {
 
     const is_equal = recursive_compare(
       default_sensor_data,
-      current_sensor?.data.common_data
+      current_sensor?.data
     );
 
     if (is_equal) {
@@ -179,7 +170,7 @@ const SerialPortComponent = () => {
 
     set_sensor_status(current_sensor_index, okay);
 
-    set_common_sensor_data(current_sensor_index, data);
+    set_sensor_data(current_sensor_index, data);
 
     console.log("onSubmit after", {
       all_sensors,
@@ -190,7 +181,7 @@ const SerialPortComponent = () => {
     sensor_form_api.reset();
 
     // set_current_sensor_index(current_sensor_index + 1);
-    await GetDataFromSensor((data) => add_new_sensor(data));
+    add_new_sensor(await GetDataFromSensor());
   };
 
   /* const updateForm = (data: string) => {
@@ -201,16 +192,13 @@ const SerialPortComponent = () => {
   }; */
 
   useEffect(() => {
-    if (!current_sensor?.data?.common_data) return;
+    if (!current_sensor?.data) return;
 
     for (const key in parsed_sensor_schema.keys) {
       const safe_key = key as keyof SensorFormSchemaType;
-      sensor_form_api.setValue(
-        safe_key,
-        current_sensor.data.common_data[safe_key]
-      );
+      sensor_form_api.setValue(safe_key, current_sensor.data[safe_key]);
     }
-  }, [current_sensor?.data?.common_data, sensor_form_api]);
+  }, [current_sensor?.data, sensor_form_api]);
 
   return (
     <form>
@@ -253,7 +241,7 @@ const SerialPortComponent = () => {
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: getStatusColor(
-                current_sensor?.data.common_data.device.status
+                current_sensor?.data.device.status
               ),
               padding: "10px",
               borderRadius: "8px",

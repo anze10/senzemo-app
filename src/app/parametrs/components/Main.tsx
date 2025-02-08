@@ -9,7 +9,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import { createFolderAndSpreadsheet } from "src/server/GAPI_ACTION/create_foldet";
+import { createFolderAndSpreadsheet } from "~/server/GAPI_ACTION/create_folder";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
@@ -17,10 +17,8 @@ import type { SensorFormSchemaType } from "src/app/dev/components/Reader";
 import { useSensorStore } from "~/app/dev/components/SensorStore";
 import { useGoogleIDSstore } from "./Credentisal";
 import { GetArrayofDevices } from "./functions";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import { Sensor } from "./functions";
-
-
 
 export default function Parameters() {
   const sensor_form_api = useForm<SensorFormSchemaType>();
@@ -28,17 +26,19 @@ export default function Parameters() {
 
   // const devices = useQuery({ queryKey: ['device'], queryFn: GetArrayofDevices });
 
-  const devices = useQuery<Sensor[]>({ queryKey: ['device'], queryFn: GetArrayofDevices });
+  const devices = useQuery<Sensor[]>({
+    queryKey: ["device"],
+    queryFn: GetArrayofDevices,
+  });
 
   console.log(devices.data);
   const router = useRouter();
   const set_default_sensor_data = useSensorStore(
-    (state) => state.set_default_sensor_data,
+    (state) => state.set_default_sensor_data
   );
 
   const set_credentials = useGoogleIDSstore((state) => state.set_credentials);
   return (
-
     <form>
       <Box className="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-6">
         <Typography variant="h3" className="mb-8 font-bold">
@@ -63,9 +63,7 @@ export default function Parameters() {
                     <MenuItem value="2-8">SSM40</MenuItem>
                     <MenuItem value="3-9">SXX3.6</MenuItem> */}
                     {devices.data?.map((device) => (
-                      <MenuItem key={device.familyId} value={device.product
-
-                      }>
+                      <MenuItem key={device.familyId} value={device.product}>
                         {device.name}
                       </MenuItem>
                     ))}
@@ -309,7 +307,7 @@ export default function Parameters() {
                 const custome_name = formData.company_name;
                 const result = await createFolderAndSpreadsheet(
                   custome_name,
-                  order_number,
+                  order_number
                 );
                 console.log(result);
                 set_credentials(result);
@@ -318,7 +316,6 @@ export default function Parameters() {
             >
               Start Scan
             </Button>
-
           </Box>
         </Box>
       </Box>

@@ -16,10 +16,7 @@ export const connectToPort = async (): Promise<SerialPort> => {
   }
 };
 
-export const readDataFromPort = async (
-  port: SerialPort,
-  onDataReceived: (data: string) => void
-) => {
+export const readDataFromPort = async (port: SerialPort) => {
   if (typeof port !== "object" || port === null) {
     console.error("Invalid port object");
     return;
@@ -58,7 +55,6 @@ export const readDataFromPort = async (
   }
 
   console.log("Final received data:", receivedData);
-  onDataReceived(receivedData);
 
   return receivedData;
 };

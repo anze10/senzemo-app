@@ -1,35 +1,35 @@
 "use client";
-import * as React from 'react';
-import { useState, useRef } from 'react';
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuIcon from '@mui/icons-material/Menu';
-import Container from '@mui/material/Container';
-import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
-import MenuItem from '@mui/material/MenuItem';
+import * as React from "react";
+import { useState, useRef } from "react";
+import AppBar from "@mui/material/AppBar";
+import Box from "@mui/material/Box";
+import Toolbar from "@mui/material/Toolbar";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import Menu from "@mui/material/Menu";
+import MenuIcon from "@mui/icons-material/Menu";
+import Container from "@mui/material/Container";
+import Avatar from "@mui/material/Avatar";
+import Button from "@mui/material/Button";
+import Tooltip from "@mui/material/Tooltip";
+import MenuItem from "@mui/material/MenuItem";
 // import AdbIcon from '@mui/icons-material/Adb';
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
-import Printer_settings from './printer/Printer_settings';
-import { Modal } from '@mui/material';
-import { connectToPort } from "./HandleClick";
+import Printer_settings from "./printer/Printer_settings";
+import { Modal } from "@mui/material";
+import { connectToPort } from "./Reader/HandleClick";
 import type { Session } from "lucia";
 
 //import { GetUseFromSession } from './GetUser';
-import { getCurrentSession } from 'src/server/LOGIN_LUCIA_ACTION/session';
-import { useQuery } from '@tanstack/react-query';
+import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
+import { useQuery } from "@tanstack/react-query";
 //import Image from 'next/image';
 
 const handleAccount = () => {
-  console.log('Account clicked');
+  console.log("Account clicked");
 };
 
-const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
+const ResponsiveAppBar: React.FC<{ session?: Session }> = ({}) => {
   const portRef = useRef<SerialPort | null>(null);
 
   const GetDataFromSensor = async () => {
@@ -69,16 +69,10 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
     setAnchorElUser(null);
   };
 
-
-
-  const session = useQuery({ queryKey: ['session'], queryFn: getCurrentSession });
-
-
-
-
-
-
-  ;
+  const session = useQuery({
+    queryKey: ["session"],
+    queryFn: getCurrentSession,
+  });
 
   return (
     <AppBar position="static" sx={{ backgroundColor: "#f5f5f5" }}>
@@ -91,20 +85,19 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
             component="a"
             href="#"
             sx={{
-
               mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
+              display: { xs: "none", md: "flex" },
+              fontFamily: "monospace",
               fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'black',
-              textDecoration: 'none',
+              letterSpacing: ".3rem",
+              color: "black",
+              textDecoration: "none",
             }}
           >
             SENZEMO
           </Typography>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+          <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
             <IconButton
               size="large"
               aria-label="menu"
@@ -118,13 +111,12 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
             <Menu
               id="menu-appbar"
               anchorEl={anchorElNav}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
               keepMounted
-              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              transformOrigin={{ vertical: "top", horizontal: "left" }}
               open={Boolean(anchorElNav)}
               onClose={handleCloseNavMenu}
-            >
-            </Menu>
+            ></Menu>
           </Box>
 
           <Typography
@@ -134,13 +126,13 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
             href="#"
             sx={{
               mr: 2,
-              display: { xs: 'flex', md: 'none' },
+              display: { xs: "flex", md: "none" },
               flexGrow: 1,
-              fontFamily: 'monospace',
+              fontFamily: "monospace",
               fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'black',
-              textDecoration: 'none',
+              letterSpacing: ".3rem",
+              color: "black",
+              textDecoration: "none",
             }}
           >
             LOGO
@@ -153,7 +145,7 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
               justifyContent: "space-between",
               alignItems: "center",
               padding: "10px 20px",
-              flexGrow: 1
+              flexGrow: 1,
             }}
           >
             <Button
@@ -180,25 +172,38 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
             </Tooltip>
             <Typography sx={{ ml: 1, color: "black" }}>
               {session?.data?.user?.name ?? "User"}
-
             </Typography>
 
             <Menu
-              sx={{ mt: '45px' }}
+              sx={{ mt: "45px" }}
               id="menu-appbar"
               anchorEl={anchorElUser}
-              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              anchorOrigin={{ vertical: "top", horizontal: "right" }}
               keepMounted
-              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
-              <MenuItem onClick={() => { handleCloseUserMenu(); handleAccount(); }}>
-                <Typography sx={{ textAlign: 'center', color: "black" }}>Account</Typography>
+              <MenuItem
+                onClick={() => {
+                  handleCloseUserMenu();
+                  handleAccount();
+                }}
+              >
+                <Typography sx={{ textAlign: "center", color: "black" }}>
+                  Account
+                </Typography>
               </MenuItem>
 
-              <MenuItem onClick={() => { handleCloseUserMenu(); handleDashboard(); }}>
-                <Typography sx={{ textAlign: 'center', color: "black" }}>Printer Settings</Typography>
+              <MenuItem
+                onClick={() => {
+                  handleCloseUserMenu();
+                  handleDashboard();
+                }}
+              >
+                <Typography sx={{ textAlign: "center", color: "black" }}>
+                  Printer Settings
+                </Typography>
               </MenuItem>
 
               <Modal
@@ -209,11 +214,11 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
               >
                 <Box
                   sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    bgcolor: 'background.paper',
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    bgcolor: "background.paper",
                     boxShadow: 24,
                     p: 4,
                     borderRadius: 2,
@@ -224,8 +229,15 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
                 </Box>
               </Modal>
 
-              <MenuItem onClick={async () => { handleCloseUserMenu(); await logOut(); }}>
-                <Typography sx={{ textAlign: 'center', color: "black" }}>Logout</Typography>
+              <MenuItem
+                onClick={async () => {
+                  handleCloseUserMenu();
+                  await logOut();
+                }}
+              >
+                <Typography sx={{ textAlign: "center", color: "black" }}>
+                  Logout
+                </Typography>
               </MenuItem>
             </Menu>
           </Box>
@@ -233,6 +245,6 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
       </Container>
     </AppBar>
   );
-}
+};
 
 export default ResponsiveAppBar;

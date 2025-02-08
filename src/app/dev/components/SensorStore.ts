@@ -1,16 +1,11 @@
 import { create, type StateCreator } from "zustand";
 import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { parsed_sensor_schema, type SensorFormSchemaType } from "./Reader";
-
-export type SensorData = {
-  common_data: SensorFormSchemaType;
-  custom_data?: Record<string, unknown>;
-
-};
+import { type SensorFormSchemaType } from "./Reader";
+import SMC30_parser from "./Reader/ConvertToJason";
 
 export type RatedSensorData = {
-  data: SensorData;
+  data: SensorFormSchemaType;
   okay?: boolean;
 };
 
@@ -21,16 +16,12 @@ interface SensorState {
   sensors: RatedSensorData[];
   reset: () => void;
   set_default_sensor_data: (data: Partial<SensorFormSchemaType>) => void;
-  add_new_sensor: (data: string) => void;
+  add_new_sensor: (data: string | undefined) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
-  set_common_sensor_data: (
+  set_sensor_data: (
     sensor_number: number,
-    common_data: SensorData["common_data"],
-  ) => void;
-  set_custom_sensor_data: (
-    sensor_number: number,
-    custom_data: SensorData["custom_data"],
+    common_data: SensorFormSchemaType
   ) => void;
 }
 
@@ -39,14 +30,13 @@ const initial_state = {
   sensors: [],
 };
 
-type ParsedDataType = SensorFormSchemaType & Record<string, unknown>;
 const sensor_callback: StateCreator<SensorState> = (set) => ({
   ...initial_state,
   default_sensor_data: undefined,
   reset: () => {
     set(() => initial_state);
   },
-  set_default_sensor_data: (data: Partial<SensorData["common_data"]>) => {
+  set_default_sensor_data: (data: Partial<SensorFormSchemaType>) => {
     set(
       produce((state: SensorState) => {
         state.default_sensor_data = data;
@@ -54,25 +44,28 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     );
   },
   add_new_sensor: (data) => {
-    const parsed_data = JSON.parse(data) as ParsedDataType;
+    if (!data) {
+      console.error("No data received.");
+      return;
+    }
 
-    const { common_data, custom_data } =
+    const parsed_data = SMC30_parser(data);
+
+    /* const { common_data, custom_data } =
       split_common_custom_sensor_data(parsed_data);
 
     const new_data: SensorData = {
       common_data,
       custom_data,
-    };
+    }; */
 
-    console.log("Adding new sensor:", new_data);
+    console.log("Adding new sensor:", parsed_data);
     set(
       produce((state: SensorState) => {
-        state.sensors.push({
-          data: new_data,
-        });
+        state.sensors.push({ data: parsed_data });
 
         state.current_sensor_index = state.sensors.length - 1;
-      }),
+      })
     );
   },
   set_current_sensor_index: (new_index: number) =>
@@ -84,27 +77,17 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
         if (!this_sensor) return;
 
         this_sensor.okay = okay;
-      }),
+      })
     );
   },
-  set_common_sensor_data: (sensor_number, common_data) => {
+  set_sensor_data: (sensor_number, data) => {
     set(
       produce((state: SensorState) => {
         const this_sensor = state.sensors[sensor_number];
         if (!this_sensor) return;
 
-        this_sensor.data.common_data = common_data;
-      }),
-    );
-  },
-  set_custom_sensor_data: (sensor_number, custom_data) => {
-    set(
-      produce((state: SensorState) => {
-        const this_sensor = state.sensors[sensor_number];
-        if (!this_sensor) return;
-
-        this_sensor.data.custom_data = custom_data;
-      }),
+        this_sensor.data = data;
+      })
     );
   },
 });
@@ -113,7 +96,7 @@ export const useSensorStore = create<SensorState>()(
   persist(sensor_callback, {
     name: "sensor-store",
     storage: createJSONStorage(() => localStorage),
-  }),
+  })
 );
 
 export enum SensorModel {
@@ -128,7 +111,7 @@ export enum SensorModel {
   SPU10,
 }
 
-export function split_common_custom_sensor_data(parsed_data: ParsedDataType): {
+/* export function split_common_custom_sensor_data(parsed_data: ParsedDataType): {
   common_data: SensorFormSchemaType;
   custom_data: Record<string, unknown>;
 } {
@@ -160,4 +143,4 @@ export function split_common_custom_sensor_data(parsed_data: ParsedDataType): {
     common_data: common_data as SensorFormSchemaType,
     custom_data,
   };
-}
+} */

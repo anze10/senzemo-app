@@ -3,28 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useSensorStore } from "../dev/components/SensorStore";
 import { useCallback } from "react";
-import { insert } from "~/server/create_foldet";
+import { insert } from "~/server/GAPI_ACTION/create_folder";
 import { useGoogleIDSstore } from "../parametrs/components/Credentisal";
 //import { string } from "zod";
 
-
 export function Konec() {
-  const credentials = useGoogleIDSstore((state) => state.set_data,);
+  const credentials = useGoogleIDSstore((state) => state.set_data);
   const sensor_data = useSensorStore((state) => state.sensors);
   const resetStore = useSensorStore((state) => state.reset);
   const custom_FW = "N/A";
-
-
 
   const lorawan_version = "RP001_V1_0_3_REV_A";
 
   const router = useRouter();
 
-
-
   const posli = useCallback(async () => {
-
-
     let newRowCSV = [];
     let newROWEXE = [];
     for (const element of sensor_data) {
@@ -40,7 +33,7 @@ export function Konec() {
 
             break;
           case 2:
-            model_id = "SSM40";;
+            model_id = "SSM40";
             break;
           case 3:
             model_id = "SXX3.6";
@@ -93,11 +86,15 @@ export function Konec() {
         if (!credentials?.fileId) {
           throw new Error("No credentials");
         }
-        void insert(credentials?.fileId, newRowCSV as string[], credentials?.spreadsheetId, newROWEXE as string[]);
+        void insert(
+          credentials?.fileId,
+          newRowCSV as string[],
+          credentials?.spreadsheetId,
+          newROWEXE as string[]
+        );
       }
     }
-  }, [sensor_data, credentials?.fileId, credentials?.spreadsheetId])
-
+  }, [sensor_data, credentials?.fileId, credentials?.spreadsheetId]);
 
   return (
     <div>
