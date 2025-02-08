@@ -18,7 +18,7 @@ export const connectToPort = async (): Promise<SerialPort> => {
 
 export const readDataFromPort = async (
   port: SerialPort,
-  onDataReceived: (data: string) => void
+  onDataReceived: (data: string) => void,
 ) => {
   if (typeof port !== "object" || port === null) {
     console.error("Invalid port object");
@@ -27,34 +27,15 @@ export const readDataFromPort = async (
 
   try {
     const writer = port.writable.getWriter();
-    await writer.write(new TextEncoder().encode("R"));
+    await writer.write(new TextEncoder().encode("R")); // Pošljemo "R" bralniku
     writer.releaseLock();
   } catch (error) {
     console.error("Error writing to port:", error);
     return;
   }
 
-  const textDecoder = new TextDecoderStream();
-  const readableStream = port.readable;
-
-  if (!readableStream) {
-    console.error("Port does not have a readable stream.");
-    return;
-  }
-
-  if (readableStream.locked) {
-    console.error("Readable stream is already locked.");
-    return;
-  }
-
-  // Pipe the readable stream to the text decoder
-  const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
-  const reader = textDecoder.readable.getReader();
-
-  // let receivedData = "";
-  // let isJsonStarted = false;
-  // let openBracesCount = 0;
-  // let closeBracesCount = 0;
+  const reader = port.readable.getReader();
+  let receivedData = "";
 
   console.log("Reading data...");
   try {
@@ -65,30 +46,8 @@ export const readDataFromPort = async (
         break;
       }
       if (value) {
-        console.log("Received raw data chunk:", value);
-        return value;
-
-        // if (value.includes("{")) {
-        //   isJsonStarted = true;
-        // }
-
-        // if (isJsonStarted) {
-        //   receivedData += value;
-
-        //   openBracesCount += (value.match(/{/g) ?? []).length;
-        //   closeBracesCount += (value.match(/}/g) ?? []).length;
-
-        //   if (openBracesCount === closeBracesCount && openBracesCount > 0) {
-        //     console.log("Received full JSON string:", receivedData);
-
-        //     onDataReceived(receivedData);
-
-        //     receivedData = "";
-        //     openBracesCount = 0;
-        //     closeBracesCount = 0;
-        //     isJsonStarted = false;
-        //   }
-        // }
+        receivedData += value;
+        console.log("Received data chunk:", value);
       }
     }
   } catch (error) {
@@ -97,4 +56,10 @@ export const readDataFromPort = async (
     reader.releaseLock();
     console.log("Reader lock released.");
   }
+
+  console.log("Final received data:", receivedData);
+  onDataReceived(receivedData);
+
+
 };
+

@@ -15,6 +15,7 @@ import { useSensorStore } from "./SensorStore";
 import { z } from "zod";
 // import type { Session } from "next-auth";
 import { parseZodSchema } from "zod-key-parser";
+import SMC30_parser from "./Reader/ConvertToJason";
 
 export const sensor_form_schema = z.object({
   dev_eui: z.string(),
@@ -60,7 +61,9 @@ const SerialPortComponent = () => {
       }
 
       console.log("Port:", portRef.current);
-      await readDataFromPort(portRef.current, onDataReceived);
+      const data: string = await readDataFromPort(portRef.current, onDataReceived);
+      const usefullData: SensorFormSchemaType = SMC30_parser(data);
+      return usefullData;
     } catch (error) {
       console.error("Failed to handle click:", error);
     }
@@ -77,6 +80,7 @@ const SerialPortComponent = () => {
     (state) => state.default_sensor_data,
   );
   console.log("default_sensor_data", default_sensor_data);
+
   const current_sensor = useSensorStore(
     (state) => state.sensors[state.current_sensor_index],
   );
