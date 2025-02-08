@@ -26,7 +26,7 @@ export function Konec() {
         let device_name = "";
         let frequancy_plan_id = "";
         let band_id = "";
-        switch (element?.data.common_data?.family_id) {
+        switch (element?.data.family_id) {
           case 1:
             model_id = "SMC30";
             device_name = "Senstick Microclimate";
@@ -40,7 +40,7 @@ export function Konec() {
 
             break;
         }
-        switch (element?.data.common_data?.lora.freq_reg) {
+        switch (element?.data.lora.freq_reg) {
           case "AS923":
             frequancy_plan_id = "AS_920_923_TTN_AU";
             band_id = "AS_923";
@@ -55,33 +55,33 @@ export function Konec() {
             break;
         }
         newRowCSV = [
-          model_id + "-" + element?.data.common_data?.dev_eui,
-          element?.data.common_data?.dev_eui,
-          element?.data.common_data?.join_eui,
+          model_id + "-" + element?.data.dev_eui,
+          element?.data.dev_eui,
+          element?.data.join_eui,
           device_name,
           frequancy_plan_id,
           lorawan_version,
           "unknown",
-          element?.data.common_data?.app_key,
+          element?.data.app_key,
           "Senzemo",
           model_id,
-          element?.data.common_data?.device.hw_ver,
-          element?.data.common_data.device.fw_ver,
+          element?.data.device.hw_ver,
+          element?.data.device.fw_ver,
           band_id,
         ];
         newROWEXE = [
           model_id,
-          element?.data.common_data?.dev_eui,
-          element?.data.common_data?.app_key,
-          element?.data.common_data?.join_eui,
-          element?.data.common_data?.lora.freq_reg,
+          element?.data.dev_eui,
+          element?.data.app_key,
+          element?.data.join_eui,
+          element?.data.lora.freq_reg,
           "FSB2",
-          element?.data.common_data?.device.hw_ver,
-          element?.data.common_data.device.fw_ver,
+          element?.data.device.hw_ver,
+          element?.data.device.fw_ver,
           custom_FW,
-          element?.data.common_data?.lora.send_period,
-          element?.data.common_data.device.adc_delay,
-          element?.data.common_data.device.mov_thr,
+          element?.data.lora.send_period,
+          element?.data.device.adc_delay,
+          element?.data.device.mov_thr,
         ];
         if (!credentials?.fileId) {
           throw new Error("No credentials");

@@ -1,14 +1,14 @@
 "use server"
-import { generateSessionToken, createSession, } from "src/server/validate_session";
-import { setSessionTokenCookie } from "src/server/session";
-import { google } from "src/server/googleOauth";
+import { generateSessionToken, createSession, } from "src/server/LOGIN_LUCIA_ACTION/validate_session";
+import { setSessionTokenCookie } from "src/server/LOGIN_LUCIA_ACTION/session";
+import { google } from "src/server/LOGIN_LUCIA_ACTION/googleOauth";
 import { cookies } from "next/headers";
 import { decodeIdToken } from "arctic";
 
 import type { OAuth2Tokens } from "arctic";
 import { createUser, getUserFromGoogleId } from "~/app/dev/components/GetUser";
 
-import SaveToken from "~/server/GoogleTokenInteractions";
+import SaveToken from "~/server/DATABASE_ACTION/GoogleTokenInteractions";
 
 interface Claims {
     sub: string;

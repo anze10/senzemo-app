@@ -11,9 +11,9 @@ export interface Sensor {
 export async function GetArrayofDevices(): Promise<Sensor[]> {
     const devices = await prisma.senzor.findMany();
     return devices.map(device => ({
-        name: device.sensor_name,
-        product: device.Product_id,
-        familyId: device.family_id,
+        name: device.sensorName,
+        product: device.productId,
+        familyId: device.familyId,
     }));
 }
 
