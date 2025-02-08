@@ -16,7 +16,7 @@ export const connectToPort = async (): Promise<SerialPort> => {
   }
 };
 
-export const readDataFromPort = async (port: SerialPort) => {
+export async function readDataFromPort(port: SerialPort) {
   if (typeof port !== "object" || port === null) {
     console.error("Invalid port object");
     return;
@@ -31,8 +31,8 @@ export const readDataFromPort = async (port: SerialPort) => {
     return;
   }
 
-  const reader = port.readable.getReader();
-  let receivedData = "";
+  const uint8ArrayStream = port.readable as ReadableStream<Uint8Array>;
+  const reader = uint8ArrayStream.getReader();
 
   console.log("Reading data...");
   try {
@@ -43,7 +43,6 @@ export const readDataFromPort = async (port: SerialPort) => {
         break;
       }
       if (value) {
-        receivedData += value;
         console.log("Received data chunk:", value);
         return value;
       }
@@ -54,8 +53,4 @@ export const readDataFromPort = async (port: SerialPort) => {
     reader.releaseLock();
     console.log("Reader lock released.");
   }
-
-  console.log("Final received data:", receivedData);
-
-  return receivedData;
-};
+}

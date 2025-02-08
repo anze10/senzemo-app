@@ -16,7 +16,7 @@ interface SensorState {
   sensors: RatedSensorData[];
   reset: () => void;
   set_default_sensor_data: (data: Partial<SensorFormSchemaType>) => void;
-  add_new_sensor: (data: string | undefined) => void;
+  add_new_sensor: (data: Uint8Array) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
   set_sensor_data: (
@@ -44,11 +44,6 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     );
   },
   add_new_sensor: (data) => {
-    if (!data) {
-      console.error("No data received.");
-      return;
-    }
-
     const parsed_data = SMC30_parser(data);
 
     /* const { common_data, custom_data } =

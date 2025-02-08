@@ -1,10 +1,7 @@
-import {
-  sensor_form_schema,
-  SensorFormSchemaType,
-} from "src/app/dev/components/Reader";
+import { SensorFormSchemaType } from "src/app/dev/components/Reader";
 
 export default function SMC30_parser(input: Uint8Array) {
-  const store: SensorFormSchemaType = sensor_form_schema.parse({
+  const store: SensorFormSchemaType = {
     family_id: 0,
     product_id: 0,
     device: {
@@ -29,7 +26,7 @@ export default function SMC30_parser(input: Uint8Array) {
     temperature: 0,
     humidity: 0,
     company_name: "",
-  });
+  };
 
   console.log("Parse:", input);
   console.log("length:", input.length);
@@ -40,9 +37,15 @@ export default function SMC30_parser(input: Uint8Array) {
     store.device.hw_ver = input[4] / 10;
     store.device.fw_ver = input[5] / 10;
 
-    store.dev_eui = Array.from(input.slice(9, 17)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-    store.join_eui = Array.from(input.slice(17, 25)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-    store.app_key = Array.from(input.slice(25, 41)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+    store.dev_eui = Array.from(input.slice(9, 17))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    store.join_eui = Array.from(input.slice(17, 25))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    store.app_key = Array.from(input.slice(25, 41))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
 
     store.lora.dr_adr_en = input[41];
 

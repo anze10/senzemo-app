@@ -181,7 +181,9 @@ const SerialPortComponent = () => {
     sensor_form_api.reset();
 
     // set_current_sensor_index(current_sensor_index + 1);
-    add_new_sensor(await GetDataFromSensor());
+    const uint_array = await GetDataFromSensor();
+    if (!uint_array) return;
+    add_new_sensor(uint_array);
   };
 
   /* const updateForm = (data: string) => {
