@@ -224,12 +224,19 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
         const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
 
         // Kličemo obstoječo funkcijo za tisk
-        await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message) => {
-            console.log(message);
+        await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message: string) => {
+            if (message) {
+                console.log(message); // Log success/failure
+            } else {
+                console.log("No message received.");
+            }
+        }).catch(error => {
+            console.error("Error during printing:", error);
         });
     } catch (error) {
         console.error("Error handling print request:", error);
     }
+    return { success: true, message: 'Print job sent successfully' };
 }
 
 

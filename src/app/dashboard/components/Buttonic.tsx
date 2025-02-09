@@ -25,7 +25,7 @@ export default function Dashboard() {
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/paramets" passHref>
+                            <Link href="/parametrs" passHref>
                                 <Button fullWidth variant="contained">
                                     Začni sestavljanje
                                 </Button>
@@ -42,7 +42,7 @@ export default function Dashboard() {
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/narocila" passHref>
+                            <Link href="/orders" passHref>
                                 <Button fullWidth variant="contained">
                                     Odpri naročila
                                 </Button>
