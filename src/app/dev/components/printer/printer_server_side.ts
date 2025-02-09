@@ -4,6 +4,7 @@ import type { PrintJobRequest } from "ipp"
 
 
 import request from 'request';
+//import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface Tiskalnik {
     name: string;
@@ -178,17 +179,47 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
     try {
         // Ustvarimo ZPL kodo z vstavljenimi podatki
         const zplCode = `^XA
-        ^FO50,50
-        ^A0N,30,30
-        ^FDDevice EUI: ${dev_eui}^FS
-        ^FO50,90
-        ^A0N,30,30
-        ^FDFamily ID: ${family_id}^FS
-        ^FO50,130
-        ^A0N,30,30
-        ^FDProduct ID: ${product_id}^FS
-        ^PQ1
-        ^XZ`;
+~TA000
+~JSN
+^LT0
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR3,3
+~SD20
+^JUS
+^LRN
+^CI27
+^PA0,1,1,0
+^XZ
+^XA
+^MMT
+^PW320
+^LL160
+^LS0
+
+^FO12,65^GFA,209,252,12,:Z64:eJxjYCAN8LcxMzAfMLDhBxL2x5kZ2B8U1Mm3PygoeN7MwAckJc4VfEhIb5bgMfhw2IDHcEMC22EJBsMNILaBDVsyA4htzmNgIN9WzMCQbHDYvsfAgPmYMQPDMYPDFmcMDBjSpBkY2/8cNgCyE9L4GZjZIeyCZ/wMbAwGIPMN7I+xS/B/MADZCzSHGcQGu4dErzAAAN7eM/s=:AA35
+^FO12,91^GFA,241,420,20,:Z64:eJxjYKAu4G9nPPhBhr3BQP5nw+EDH2xAYvbHmw//sec/ABI7/vBHHUis4Hnzcb5kmQcGEowNZwx7DoPEEtKbj7ExSySAxYwZIGJsx84woInZgMT4gGLyHxuOPy4AmyffBhTjh4lB7GA+5nKGgXEGVC/EDoa0HCQxHogdaTnH2BJRxQqe5RznSZwDct9BmPvsj1lA/fHjfzvUH/JtFgc+yIH8+8OOGepfagMAilpYzQ==:5770
+^FO12,33^GFA,145,276,12,:Z64:eJxjYCAN2B9gYOD/cyAZzH6AYBsUMDDwMEDZBkhsiZqEM0A2D5j9D4l9zLD/B1SNZDMS+79hDwOcLQ03R7IBwTZEYhcc5uNhSDgMcc8/Pv4/9Yd5wO6sYeH/I8/MQ6L/QAAA2WUr/Q==:9C78
+^FO151,74^GFA,205,304,8,:Z64:eJx10DESAiEMBdAwW1ByBG4iNwNmvBidpVeIs8W27tikQCJ8Vm2U5hVMkp8Q/X5GG1y6iYmsNqMVWlXoVHO3Bk6FLFPKjofRne/Dmm7SNaICd9Tzsj4b3Pg0LR5eM42++pH+iH9eLodbCUe/ODSPOec9j0R3QZ6wIlckC0P2yOtFkX/uw2M11BkVSKF87/ICg9twLg==:FCC5
+^FO209,74^GFA,185,336,8,:Z64:eJyNkEEOhCAMRb9h0SVH4CZyNDiaR/EILlkYmccMjG6MkjTvh9L2F+npzMQmTYdkhYARBphghBWmTa4uaMntPCeMMkfKrxDtSRs65E46G3dRv1yb5PPJWPMrzpf60e/fv89r88Ny+hn+ml9DK634z999pnrZb+zb9vel/0e5/a0PnKFCLQ==:6CF5
+^FO269,74^GFA,237,416,8,:Z64:eJxjYEAFDkAsAMQKUCzA8AcsxsH//0ADkGaRsakE0Uz2/3+D1DPa//8G1jiBQQdMBzBYgGkDKC3AkAGmJRgqwLRM/QIwLVKvAKaFmCC0IIsDRH0HhJYogNAcClA6AEpD5Tmh6rmYIDQP4wGIPMMBqH0QWoPxAZj2YP4ApjuYf4Ddzf7/C4hmYv//CESzsDE+hmhnYGyAhkEDNAwcGCgH/P///z9ABg0A79w6QA==:109D
+^FO97,33^GFA,349,552,24,:Z64:eJy10bFqwzAQBuA7BMpyxasCAZM3kDd36qvYFDJ1yAMEJGNwF4Mfwc8SBJr6ABlTAumqbBpCVMkuafsAueXgG364/wAeOzk77kBvM3QKHS32YTiG0Xl4eXc31Nu89ar1lH2GwYXxcoWik5bpw7MRtRErKjSVCOseqo9lG11aqiztRHTB4JVPvtAHmPwNknMwsz81PVqqLVHy8u7LpmecVBd9HTJH2P66nb3+60Xc55RPsI/5grHZ6/YGG6o2RNhoorurr/DjDP/5mcnZeXLJo6d7sWPlSVQnEYM0rSTHfu6nx9F4ZTzllzD46Nepz+hD41TjJneSg3/wFwG+ATt7esc=:1118
+
+^FO50,130
+^A@N,50,30,E:MONTSERRAT.TTF
+^FDThis is Montserrat Font^FS
+
+^FO50,100
+^A@N,40,20,E:MONTSERRAT.TTF
+^FDDevice EUI: ${dev_eui}^FS   ; Injected Device EUI
+
+^PQ1,0,1,Y
+^XZ
+`;
 
         const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
 
@@ -202,4 +233,16 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
 }
 
 
+
+// function getZplfromDB(family_id: number, product_id: number) {
+//     // Get ZPL code from database
+//     return prisma.senzor.findFirst({
+//         where: {
+//             familyId: family_id,
+//             productId: product_id
+//         }
+//     }).then((data) => {
+//         return data ? data.zpl : null;
+//     });
+// }
 

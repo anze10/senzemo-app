@@ -58,6 +58,7 @@ model Senzor {
   payloadDecoder String?
   parameters     String?
   decoder        String?
+  zpl            String?
   description    String?
   stocks         Stock[]
   sales          Sale[]
