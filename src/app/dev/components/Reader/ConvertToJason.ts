@@ -25,6 +25,7 @@ export default function SMC30_parser(input: Uint8Array) {
     },
     temperature: 0,
     humidity: 0,
+    air_pressure: 0,
     company_name: "",
   };
 
@@ -71,7 +72,7 @@ export default function SMC30_parser(input: Uint8Array) {
     store.device.status = input[51];
     store.temperature = input[52];
     store.humidity = input[53];
-    // store.air_pressure = (input[56] << 8) | input[57];
+    store.air_pressure = (input[56] << 8) | input[57];
   } catch (error) {
     console.error("Error parsing data: ", error);
   }

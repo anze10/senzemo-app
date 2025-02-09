@@ -15,6 +15,9 @@ import { useSensorStore } from "./SensorStore";
 import { z } from "zod";
 // import type { Session } from "next-auth";
 import { parseZodSchema } from "zod-key-parser";
+import { PrintSticker } from "./printer/printer_server_side";
+
+import { usePrinterStore } from "./printer/printer_settinsgs_store";
 
 export const sensor_form_schema = z.object({
   dev_eui: z.string(),
@@ -22,6 +25,7 @@ export const sensor_form_schema = z.object({
   product_id: z.number(),
   temperature: z.number(),
   humidity: z.number(),
+  air_pressure: z.number(),
   join_eui: z.string(),
   app_key: z.string(),
   lora: z.object({
@@ -49,6 +53,10 @@ export type SensorFormSchemaType = z.infer<typeof sensor_form_schema>;
 
 const SerialPortComponent = () => {
   const portRef = useRef<SerialPort | null>(null);
+  const { selectedPrinter } = usePrinterStore();
+  const selected_printer = selectedPrinter;
+  console.log("selected_printer", selected_printer);
+
 
   const GetDataFromSensor = async () => {
     try {
@@ -137,7 +145,7 @@ const SerialPortComponent = () => {
       typeof current_sensor === "undefined" ||
       typeof default_sensor_data === "undefined"
     )
-      return "orange";
+      return "white"; /// hitor iskanje
 
     const is_equal = recursive_compare(
       default_sensor_data,
@@ -484,7 +492,10 @@ const SerialPortComponent = () => {
           <Box className="mt-4 flex justify-between">
             <Button
               onClick={sensor_form_api.handleSubmit(
-                (data: SensorFormSchemaType) => onSubmit(data, true)
+                async (data: SensorFormSchemaType) => {
+                  await onSubmit(data, true);
+                  PrintSticker(data.dev_eui, data.family_id, data.product_id, selected_printer);
+                }
               )}
               style={{
                 backgroundColor: "#4CAF50",
@@ -527,5 +538,7 @@ const SerialPortComponent = () => {
     </form>
   );
 };
+
+
 
 export default SerialPortComponent;

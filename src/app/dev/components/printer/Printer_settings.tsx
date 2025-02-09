@@ -53,7 +53,14 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
     });
   };
 
-  // Fetch printers from backend and update Zustand store on component mount
+
+
+  useEffect(() => {
+    setSelectedPrinter(selectedPrinter);
+    console.log("selectedPrinter", selectedPrinter);
+  }, [selectedPrinter, setSelectedPrinter]);
+
+
   useEffect(() => {
     const fetchPrinters = async () => {
       try {

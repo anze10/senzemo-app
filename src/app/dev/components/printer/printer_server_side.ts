@@ -2,12 +2,14 @@
 import ipp from "ipp";
 import type { PrintJobRequest } from "ipp"
 
+
 import request from 'request';
 
 export interface Tiskalnik {
     name: string;
     url: string;
 }
+
 // Define Printer interface
 
 //type GetPrinterUrlsCallback = (error: Error | null, printerUrls: string[]) => void;
@@ -172,6 +174,32 @@ export async function handlePrintRequest(printerUri: string) {
     return { success: true, message: 'Print job sent successfully' };
 }
 
+export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
+    try {
+        // Ustvarimo ZPL kodo z vstavljenimi podatki
+        const zplCode = `^XA
+        ^FO50,50
+        ^A0N,30,30
+        ^FDDevice EUI: ${dev_eui}^FS
+        ^FO50,90
+        ^A0N,30,30
+        ^FDFamily ID: ${family_id}^FS
+        ^FO50,130
+        ^A0N,30,30
+        ^FDProduct ID: ${product_id}^FS
+        ^PQ1
+        ^XZ`;
+
+        const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
+
+        // Kličemo obstoječo funkcijo za tisk
+        await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message) => {
+            console.log(message);
+        });
+    } catch (error) {
+        console.error("Error handling print request:", error);
+    }
+}
 
 
 
