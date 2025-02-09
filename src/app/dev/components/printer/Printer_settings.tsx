@@ -4,15 +4,12 @@ import { getPrinterUrls, handlePrintRequest } from "./printer_server_side";
 import type { Tiskalnik } from "./printer_server_side";
 import { usePrinterStore } from "./printer_settinsgs_store"; // Import the store
 
-import { ChevronsUpDown, Printer, TestTube } from "lucide-react";
+import { Printer, TestTube } from "lucide-react";
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
-  Menu,
-  MenuList,
-  MenuItem,
   TextField,
   Typography,
   Checkbox,
@@ -26,7 +23,7 @@ interface PrinterSettingsProps {
 const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
   const { printers, url_server, url_connection, setPrinters } =
     usePrinterStore();
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [manualUrlConnection, setManualUrlConnection] = useState(false);
   const [isPending, startTransition] = useTransition();
   const setSelectedPrinter = usePrinterStore(
@@ -71,6 +68,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
 
   // Update Zustand store when user selects a printer
   const handlePrinterSelect = (printerValue: string) => {
+    console.log("Selected printer:", printerValue);
     setSelectedPrinter(printerValue);
     if (!manualUrlConnection) {
       const updatedUrlConnection = `${url_server}printers/${printerValue}`;
@@ -110,7 +108,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
         <div className="grid w-full items-center gap-4">
           <div className="flex flex-col space-y-1.5">
             <Typography variant="body1">Printer</Typography>
-            <Button
+            {/* <Button
               variant="outlined"
               onClick={(e) => setAnchorEl(e.currentTarget)}
               endIcon={<ChevronsUpDown />}
@@ -118,25 +116,28 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             >
               {selectedPrinter
                 ? printers.find((printer) => printer.name === selectedPrinter)
-                    ?.name
+                  ?.name
                 : "Select printer..."}
-            </Button>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={() => setAnchorEl(null)}
+            </Button> */}
+            <TextField
+              select
+              label="Select Printer"
+              value={selectedPrinter || ""}
+              onChange={(e) => handlePrinterSelect(e.target.value)}
+              fullWidth
+              SelectProps={{
+                native: true,
+              }}
             >
-              <MenuList>
-                {printers.map((printer) => (
-                  <MenuItem
-                    key={printer.name}
-                    onClick={() => handlePrinterSelect(printer.url)}
-                  >
-                    {printer.name}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Menu>
+              <option value="" disabled>
+                Select printer...
+              </option>
+              {printers.map((printer) => (
+                <option key={printer.url} value={printer.url}>
+                  {printer.name}
+                </option>
+              ))}
+            </TextField>
           </div>
           <div className="flex flex-col space-y-1.5">
             <Typography variant="body1">Printer Server URI</Typography>

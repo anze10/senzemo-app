@@ -55,6 +55,11 @@ const SerialPortComponent = () => {
   const portRef = useRef<SerialPort | null>(null);
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
 
+  useEffect(() => {
+    console.log("selectedPrinter reader", selectedPrinter);
+  }, [selectedPrinter]);
+
+
   const GetDataFromSensor = async () => {
     try {
       if (!portRef.current) {
