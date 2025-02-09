@@ -17,7 +17,7 @@ import MenuItem from "@mui/material/MenuItem";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import Printer_settings from "./printer/Printer_settings";
 import { Modal } from "@mui/material";
-import { connectToPort } from "./Reader/HandleClick";
+import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
 import type { Session } from "lucia";
 
 //import { GetUseFromSession } from './GetUser';
@@ -29,7 +29,7 @@ const handleAccount = () => {
   console.log("Account clicked");
 };
 
-const ResponsiveAppBar: React.FC<{ session?: Session }> = ({}) => {
+const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
   const portRef = useRef<SerialPort | null>(null);
 
   const GetDataFromSensor = async () => {
@@ -39,8 +39,11 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({}) => {
       } else {
         console.log("Port is already connected.");
       }
+
+      console.log("Port:", portRef.current);
+      return readDataFromPort(portRef.current);
     } catch (error) {
-      console.error("Failed to connect to port:", error);
+      console.error("Failed to handle click:", error);
     }
   };
 

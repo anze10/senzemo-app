@@ -2,7 +2,8 @@ import { create, type StateCreator } from "zustand";
 import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { type SensorFormSchemaType } from "./Reader";
-import SMC30_parser from "./Reader/ConvertToJason";
+//import SMC30_parser from "./Reader/SMC30_Parser";
+import { Choose_parser } from "./Reader/Choose_parser";
 
 export type RatedSensorData = {
   data: SensorFormSchemaType;
@@ -44,7 +45,10 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     );
   },
   add_new_sensor: (data) => {
-    const parsed_data = SMC30_parser(data);
+    const parsed_data = Choose_parser(data);
+    if (!parsed_data) {
+      throw new Error("Failed to parse sensor data");
+    }
 
     /* const { common_data, custom_data } =
       split_common_custom_sensor_data(parsed_data);
