@@ -5,6 +5,7 @@ import { useSensorStore } from "../dev/components/SensorStore";
 import { useCallback } from "react";
 import { insert } from "~/server/GAPI_ACTION/create_folder";
 import { useGoogleIDSstore } from "../parametrs/components/Credentisal";
+import { Button, Card, CardContent, CardActions, Typography, Box, Paper, Divider } from "@mui/material"
 //import { string } from "zod";
 
 export function Konec() {
@@ -97,20 +98,80 @@ export function Konec() {
   }, [sensor_data, credentials?.fileId, credentials?.spreadsheetId]);
 
   return (
-    <div>
-      <h1>Konec</h1>
-      <pre>{JSON.stringify(sensor_data, null, 2)}</pre>
-      <pre>{JSON.stringify(credentials, null, 2)}</pre>
 
-      <button onClick={() => posli()}>Pošlji</button>
-      <button
-        onClick={() => {
-          resetStore();
-          router.push("/parametrs");
-        }}
-      >
-        test
-      </button>
-    </div>
-  );
+    <Card sx={{ maxWidth: 800, margin: "auto", mt: 4 }}>
+      <CardContent>
+        <Typography variant="h4" component="div" gutterBottom align="center">
+          Konec
+        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Sensor Data
+          </Typography>
+          <Paper
+            elevation={3}
+            sx={{
+              maxHeight: 200,
+              overflow: "auto",
+              p: 2,
+              backgroundColor: "#f5f5f5",
+            }}
+          >
+            <pre style={{ margin: 0 }}>{JSON.stringify(sensor_data, null, 2)}</pre>
+          </Paper>
+        </Box>
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Credentials
+          </Typography>
+          <Paper
+            elevation={3}
+            sx={{
+              maxHeight: 200,
+              overflow: "auto",
+              p: 2,
+              backgroundColor: "#f5f5f5",
+            }}
+          >
+            <pre style={{ margin: 0 }}>{JSON.stringify(credentials, null, 2)}</pre>
+          </Paper>
+        </Box>
+      </CardContent>
+      <CardActions sx={{ justifyContent: "space-between", p: 2 }}>
+        <Button variant="contained" color="primary" onClick={() => posli()}>
+          Pošlji
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={() => {
+            resetStore()
+            router.push("/parametrs")
+          }}
+        >
+          Reset and Go Back
+        </Button>
+        <Button variant="outlined" onClick={() => console.log("Test button clicked")}>
+          Test
+        </Button>
+      </CardActions>
+    </Card>
+  )
 }
+// <div>
+//   <h1>Konec</h1>
+//   <pre>{JSON.stringify(sensor_data, null, 2)}</pre>
+//   <pre>{JSON.stringify(credentials, null, 2)}</pre>
+
+//   <button onClick={() => posli()}>Pošlji</button>
+//   <button
+//     onClick={() => {
+//       resetStore();
+//       router.push("/parametrs");
+//     }}
+//   >
+//     test
+//   </button>
+// </div>
+//   );
