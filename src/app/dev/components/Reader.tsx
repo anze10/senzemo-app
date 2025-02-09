@@ -53,10 +53,7 @@ export type SensorFormSchemaType = z.infer<typeof sensor_form_schema>;
 
 const SerialPortComponent = () => {
   const portRef = useRef<SerialPort | null>(null);
-  const { selectedPrinter } = usePrinterStore();
-  const selected_printer = selectedPrinter;
-  console.log("selected_printer", selected_printer);
-
+  const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
 
   const GetDataFromSensor = async () => {
     try {
@@ -494,7 +491,12 @@ const SerialPortComponent = () => {
               onClick={sensor_form_api.handleSubmit(
                 async (data: SensorFormSchemaType) => {
                   await onSubmit(data, true);
-                  PrintSticker(data.dev_eui, data.family_id, data.product_id, selected_printer);
+                  PrintSticker(
+                    data.dev_eui,
+                    data.family_id,
+                    data.product_id,
+                    selectedPrinter
+                  );
                 }
               )}
               style={{
@@ -538,7 +540,5 @@ const SerialPortComponent = () => {
     </form>
   );
 };
-
-
 
 export default SerialPortComponent;

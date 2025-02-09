@@ -24,11 +24,15 @@ interface PrinterSettingsProps {
 }
 
 const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
-  const { printers, url_server, url_connection, setPrinters } = usePrinterStore();
+  const { printers, url_server, url_connection, setPrinters } =
+    usePrinterStore();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const [selectedPrinter, setSelectedPrinter] = useState<string>("");
   const [manualUrlConnection, setManualUrlConnection] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const setSelectedPrinter = usePrinterStore(
+    (state) => state.setSelectedPrinter
+  );
+  const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
 
   const handlePrintClick = async () => {
     if (!url_connection) {
@@ -52,14 +56,6 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
       }
     });
   };
-
-
-
-  useEffect(() => {
-    setSelectedPrinter(selectedPrinter);
-    console.log("selectedPrinter", selectedPrinter);
-  }, [selectedPrinter, setSelectedPrinter]);
-
 
   useEffect(() => {
     const fetchPrinters = async () => {
@@ -121,13 +117,21 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
               fullWidth
             >
               {selectedPrinter
-                ? printers.find((printer) => printer.name === selectedPrinter)?.name
+                ? printers.find((printer) => printer.name === selectedPrinter)
+                    ?.name
                 : "Select printer..."}
             </Button>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={() => setAnchorEl(null)}
+            >
               <MenuList>
                 {printers.map((printer) => (
-                  <MenuItem key={printer.name} onClick={() => handlePrinterSelect(printer.name)}>
+                  <MenuItem
+                    key={printer.name}
+                    onClick={() => handlePrinterSelect(printer.url)}
+                  >
                     {printer.name}
                   </MenuItem>
                 ))}
@@ -147,7 +151,9 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             control={
               <Checkbox
                 checked={manualUrlConnection}
-                onChange={(e) => handleManualUrlConnectionToggle(e.target.checked)}
+                onChange={(e) =>
+                  handleManualUrlConnectionToggle(e.target.checked)
+                }
               />
             }
             label="Manual URL Connection"
