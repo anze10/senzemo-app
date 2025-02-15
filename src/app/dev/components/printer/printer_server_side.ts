@@ -62,14 +62,15 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
 
 // Function to check printer status and print
 async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
+    console.log(printerUri);
 
     try {
 
         // Check printer status via IPP
         const printer = new ipp.Printer(printerUri);
-        // og   printer.execute("Get-Printer-Attributes" , null, (err: Error, res: unknown) => {
+        printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
 
-        printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
+            // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
             if (err) {
                 console.error("Error getting printer attributes:", err);
                 callback("Failed to get printer attributes");

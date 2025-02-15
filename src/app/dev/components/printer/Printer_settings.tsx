@@ -119,6 +119,21 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
                   ?.name
                 : "Select printer..."}
             </Button> */}
+
+            {/* printer.execute("Get-Printer-Attributes", { }, (err: Error, res: any) => {
+            if (err) {
+              console.error("Error getting printer attributes:", err);
+            callback("Failed to get printer attributes");
+            return;
+            }
+
+            const jobId = res?.["job-id"];
+            if (!jobId) {
+              console.error("No job-id found in response:", res);
+            callback("Failed to get job-id");
+            return;
+            } */}
+
             <TextField
               select
               label="Select Printer"
@@ -133,7 +148,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
                 Select printer...
               </option>
               {printers.map((printer) => (
-                <option key={printer.url} value={printer.url}>
+                <option key={printer.name} value={printer.name}>
                   {printer.name}
                 </option>
               ))}
