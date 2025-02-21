@@ -68,7 +68,8 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
     try {
         // Check printer status via IPP
         const printer = new ipp.Printer(printerUri);
-        printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
+        console.log("Printer object created:", printer);
+        printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
 
             // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
             if (err) {
@@ -177,7 +178,7 @@ export async function handlePrintRequest(printerUri: string) {
     }
     return { success: true, message: 'Print job sent successfully' };
 }
-
+// druga funkcija /////
 export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
     try {
         // Ustvarimo ZPL kodo z vstavljenimi podatki

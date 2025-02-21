@@ -70,9 +70,9 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
   // Update Zustand store when user selects a printer
   const handlePrinterSelect = (printerValue: string) => {
     console.log("Selected printer:", printerValue);
-    setSelectedPrinter(printerValue);
+    setSelectedPrinter(`${url_server}/printers/${printerValue}`);
     if (!manualUrlConnection) {
-      const updatedUrlConnection = `${url_server}printers/${printerValue}`;
+      const updatedUrlConnection = `${url_server}/printers/${printerValue}`;
       setPrinters(printers, url_server, updatedUrlConnection);
     }
     setAnchorEl(null);
