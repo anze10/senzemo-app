@@ -63,12 +63,12 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
 // Function to check printer status and print
 async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
     console.log(printerUri);
+    console.log("Checking printer status and sending print job...");
 
     try {
-
         // Check printer status via IPP
         const printer = new ipp.Printer(printerUri);
-        printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
+        printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
 
             // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
             if (err) {
@@ -78,6 +78,8 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
             }
 
             const printerStatus = (res as { 'printer-attributes-tag': { 'printer-state': string } })['printer-attributes-tag']['printer-state'];
+            console.log("Printer status:", printerStatus);
+            console.log(`res`, res);
             console.log(`Printer status: ${printerStatus}`); // Log the printer status
 
             if (printerStatus === 'idle') {

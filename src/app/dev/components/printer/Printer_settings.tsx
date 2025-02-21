@@ -39,8 +39,9 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
 
     startTransition(async () => {
       try {
+        console.log("Sending print job to:", url_connection);
         // Attempt the print request
-        const result = await handlePrintRequest(url_connection); // Use `url_connection` as the endpoint
+        const result = await handlePrintRequest(url_connection);
 
         if (result.success) {
           alert("Print job sent successfully: " + result.message);
