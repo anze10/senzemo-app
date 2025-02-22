@@ -3,27 +3,24 @@ import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { type SensorFormSchemaType } from "./Reader";
 //import SMC30_parser from "./Reader/SMC30_Parser";
-import { Choose_parser } from "./Reader/Choose_parser";
+import { ParsedSensorData, ParseSensorData } from "./Reader/Choose_parser";
 
 export type RatedSensorData = {
-  data: SensorFormSchemaType;
+  data: ParsedSensorData;
   okay?: boolean;
 };
 
-// current_sensor.data === default_sensor_data
+// current_sensor.data === target_sensor_data
 interface SensorState {
   current_sensor_index: number;
-  default_sensor_data?: Partial<SensorFormSchemaType>;
+  target_sensor_data?: Partial<SensorFormSchemaType>;
   sensors: RatedSensorData[];
   reset: () => void;
-  set_default_sensor_data: (data: Partial<SensorFormSchemaType>) => void;
+  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => void;
   add_new_sensor: (data: Uint8Array) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
-  set_sensor_data: (
-    sensor_number: number,
-    common_data: SensorFormSchemaType
-  ) => void;
+  set_sensor_data: (sensor_number: number, data: ParsedSensorData) => void;
 }
 
 const initial_state = {
@@ -33,22 +30,19 @@ const initial_state = {
 
 const sensor_callback: StateCreator<SensorState> = (set) => ({
   ...initial_state,
-  default_sensor_data: undefined,
+  target_sensor_data: undefined,
   reset: () => {
     set(() => initial_state);
   },
-  set_default_sensor_data: (data: Partial<SensorFormSchemaType>) => {
+  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => {
     set(
       produce((state: SensorState) => {
-        state.default_sensor_data = data;
+        state.target_sensor_data = data;
       })
     );
   },
   add_new_sensor: (data) => {
-    const parsed_data = Choose_parser(data);
-    if (!parsed_data) {
-      throw new Error("Failed to parse sensor data");
-    }
+    const parsed_data = ParseSensorData([], data);
 
     /* const { common_data, custom_data } =
       split_common_custom_sensor_data(parsed_data);
@@ -97,49 +91,3 @@ export const useSensorStore = create<SensorState>()(
     storage: createJSONStorage(() => localStorage),
   })
 );
-
-export enum SensorModel {
-  SMC30,
-  SSM40,
-  STO10,
-  STP40,
-  SLW10,
-  SRM10,
-  STF40,
-  KOU20,
-  SPU10,
-}
-
-/* export function split_common_custom_sensor_data(parsed_data: ParsedDataType): {
-  common_data: SensorFormSchemaType;
-  custom_data: Record<string, unknown>;
-} {
-  const parsed_data_keys = Object.keys(parsed_data);
-
-  const common_data: Partial<SensorFormSchemaType> = new Object();
-  const custom_data: Record<string, unknown> = {};
-
-  for (const key of parsed_data_keys) {
-    const value = parsed_data[key];
-    if (key in parsed_sensor_schema.keys) {
-      const hack = common_data as Record<string, unknown>;
-      hack[key] = value;
-    } else {
-      custom_data[key] = value;
-    }
-  }
-
-
-  console.log("Parsed data:", { parsed_data, common_data, custom_data });
-  for (const key of Object.keys(parsed_sensor_schema.keys)) {
-    if (!(key in common_data)) {
-      console.log(`Missing key ${key} in parsed data`);
-
-    }
-  }
-
-  return {
-    common_data: common_data as SensorFormSchemaType,
-    custom_data,
-  };
-} */

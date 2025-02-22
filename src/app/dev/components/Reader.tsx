@@ -18,6 +18,36 @@ import { parseZodSchema } from "zod-key-parser";
 import { PrintSticker } from "./printer/printer_server_side";
 
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
+import { ParsedSensorValue } from "./Reader/Choose_parser";
+
+// if values of a are undefined, don't compare them
+function recursive_compare(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>
+): boolean {
+  for (const key in a) {
+    if (!Object.keys(a).includes(key)) continue;
+
+    const a_value = a[key];
+    const b_value = b[key];
+    if (typeof a_value === "undefined") continue;
+
+    if (typeof a_value === "object") {
+      if (typeof b_value !== "object") {
+        return false;
+      }
+
+      return recursive_compare(
+        a_value as Record<string, unknown>,
+        b_value as Record<string, unknown>
+      );
+    } else {
+      if (a_value !== b_value) return false;
+    }
+  }
+
+  return true;
+}
 
 export const sensor_form_schema = z.object({
   dev_eui: z.string(),
@@ -28,23 +58,18 @@ export const sensor_form_schema = z.object({
   air_pressure: z.number(),
   join_eui: z.string(),
   app_key: z.string(),
-  lora: z.object({
-    ack: z.number(),
-    send_period: z.number(),
-    dr_adr_en: z.number(),
-    freq_reg: z.enum(["AS923", "EU868", "US915", ""]),
-    hyb_asoff_mask0_1: z.number(),
-    mask2_5: z.number(),
-  }),
-  device: z.object({
-    adc_delay: z.number(),
-    adc_en: z.number(),
-    fw_ver: z.number(),
-    hw_ver: z.number(),
-    mov_thr: z.number(),
-    status: z.number(),
-  }),
-
+  lora_ack: z.number(),
+  lora_send_period: z.number(),
+  lora_dr_adr_en: z.number(),
+  lora_freq_reg: z.enum(["AS923", "EU868", "US915", ""]),
+  lora_hyb_asoff_mask0_1: z.number(),
+  lora_mask2_5: z.number(),
+  device_adc_delay: z.number(),
+  device_adc_en: z.number(),
+  device_fw_ver: z.number(),
+  device_hw_ver: z.number(),
+  device_mov_thr: z.number(),
+  device_status: z.number(),
   company_name: z.string(),
 });
 
@@ -58,7 +83,6 @@ const SerialPortComponent = () => {
   useEffect(() => {
     console.log("selectedPrinter reader", selectedPrinter);
   }, [selectedPrinter]);
-
 
   const GetDataFromSensor = async () => {
     try {
@@ -83,7 +107,7 @@ const SerialPortComponent = () => {
   );
 
   const default_sensor_data = useSensorStore(
-    (state) => state.default_sensor_data
+    (state) => state.target_sensor_data
   );
   console.log("default_sensor_data", default_sensor_data);
 
@@ -112,36 +136,7 @@ const SerialPortComponent = () => {
     console.log(all_sensors);
   }, [all_sensors]); */
 
-  // if values of a are undefined, don't compare them
-  const recursive_compare = (
-    a: Record<string, unknown>,
-    b: Record<string, unknown>
-  ): boolean => {
-    for (const key in a) {
-      if (!Object.keys(a).includes(key)) continue;
-
-      const a_value = a[key];
-      const b_value = b[key];
-      if (typeof a_value === "undefined") continue;
-
-      if (typeof a_value === "object") {
-        if (typeof b_value !== "object") {
-          return false;
-        }
-
-        return recursive_compare(
-          a_value as Record<string, unknown>,
-          b_value as Record<string, unknown>
-        );
-      } else {
-        if (a_value !== b_value) return false;
-      }
-    }
-
-    return true;
-  };
-
-  const getStatusColor = (status: number | undefined) => {
+  const getStatusColor = (status: ParsedSensorValue) => {
     // const isEqual = is_equal(current_sensor?.data.common_data as SensorFormSchemaType, default_sensor_data);
     if (
       typeof current_sensor === "undefined" ||
@@ -159,10 +154,8 @@ const SerialPortComponent = () => {
       return "green";
     } else if (!is_equal && (status === 1 || status === 2)) {
       return "yellow";
-    } else if (!is_equal) {
-      return "red";
     } else {
-      return "white";
+      return "red";
     }
   };
 
@@ -253,7 +246,7 @@ const SerialPortComponent = () => {
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: getStatusColor(
-                current_sensor?.data.device.status
+                current_sensor?.data.device_status
               ),
               padding: "10px",
               borderRadius: "8px",
@@ -289,10 +282,10 @@ const SerialPortComponent = () => {
               {/* preveri črkovanje */}
               <Controller
                 control={sensor_form_api.control}
-                name="device.status"
+                name="device_status"
                 render={({ field }) => (
                   <>
-                    <InputLabel htmlFor="device.status">Status</InputLabel>
+                    <InputLabel htmlFor="device_status">Status</InputLabel>
                     <Input
                       disabled
                       style={{
@@ -317,11 +310,11 @@ const SerialPortComponent = () => {
                 Frequency Region
               </InputLabel>
               <Controller
-                name="lora.freq_reg"
+                name="lora_freq_reg"
                 control={sensor_form_api.control}
                 defaultValue=""
                 render={({ field }) => (
-                  <Select id="lora.freq_reg" {...field}>
+                  <Select id="lora_freq_reg" {...field}>
                     <MenuItem value="AS923">AS923</MenuItem>
                     <MenuItem value="EU868">EU868</MenuItem>
                     <MenuItem value="US915">US915</MenuItem>
@@ -409,10 +402,10 @@ const SerialPortComponent = () => {
                 <Box>
                   <Controller
                     control={sensor_form_api.control}
-                    name="lora.send_period"
+                    name="lora_send_period"
                     render={({ field }) => (
                       <>
-                        <InputLabel htmlFor="lora.send_period">
+                        <InputLabel htmlFor="lora_send_period">
                           Send Period
                         </InputLabel>
                         <Input {...field} />
@@ -423,7 +416,7 @@ const SerialPortComponent = () => {
                 <Box>
                   <Controller
                     control={sensor_form_api.control}
-                    name="lora.ack"
+                    name="lora_ack"
                     render={({ field }) => (
                       <>
                         <InputLabel htmlFor="ack">ACK</InputLabel>
@@ -437,10 +430,10 @@ const SerialPortComponent = () => {
                 <Box>
                   <Controller
                     control={sensor_form_api.control}
-                    name="device.mov_thr"
+                    name="device_mov_thr"
                     render={({ field }) => (
                       <>
-                        <InputLabel htmlFor="device.mov_thr">
+                        <InputLabel htmlFor="device_mov_thr">
                           MOV THR
                         </InputLabel>
                         <Input {...field} />
@@ -451,13 +444,13 @@ const SerialPortComponent = () => {
                 {/* <Box>
                   <Controller
                     control={sensor_form_api.control}
-                    name="device.adc_delay"
+                    name="device_adc_delay"
                     defaultValue={
-                      get_current_sensor_data("device.adc_delay") as number
+                      get_current_sensor_data("device_adc_delay") as number
                     }
                     render={({ field }) => (
                       <>
-                        <InputLabel htmlFor="device.adc_delay">ADC Delay</InputLabel>
+                        <InputLabel htmlFor="device_adc_delay">ADC Delay</InputLabel>
                         <Input {...field} />
                       </>
                     )}
@@ -468,7 +461,7 @@ const SerialPortComponent = () => {
                 {/*To dobimo iz  parameters strani sm je treba povezavo med strannema nardit */}
                 <Controller
                   control={sensor_form_api.control}
-                  name="device.mov_thr"
+                  name="device_mov_thr"
                   render={({ field }) => (
                     <Box>
                       <InputLabel htmlFor="company-name">
@@ -481,7 +474,7 @@ const SerialPortComponent = () => {
 
                 {/* <Box style={{ display: "flex", alignItems: "center" }}>
                   <Controller
-                    name="device.adc_en"
+                    name="device_adc_en"
                     control={sensor_form_api.control}
                     rules={{ required: true }}
                     render={({ field }) => <Checkbox {...field} />}

@@ -34,14 +34,13 @@ export default function Parameters() {
     for (const device of devices.data) {
       console.log(device);
     }
-  }
-  else {
+  } else {
     console.log("No data");
   }
 
   const router = useRouter();
   const set_default_sensor_data = useSensorStore(
-    (state) => state.set_default_sensor_data
+    (state) => state.set_target_sensor_data
   );
 
   const set_credentials = useGoogleIDSstore((state) => state.set_credentials);

@@ -57,7 +57,7 @@ model Senzor {
   photograph     String?
   payloadDecoder String?
   parameters     String?
-  decoder        String?
+  decoder        Json?
   zpl            String?
   description    String?
   stocks         Stock[]
