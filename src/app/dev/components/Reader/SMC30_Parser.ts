@@ -76,6 +76,6 @@ export default function SMC30_parser(input: Uint8Array) {
   } catch (error) {
     console.error("Error parsing data: ", error);
   }
-
-  return JSON.stringify(store);
+  console.log(JSON.stringify(store))
+  return store;
 }

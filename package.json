@@ -45,7 +45,7 @@
     "next": "canary",
     "node-fetch": "^3.3.2",
     "oslo": "^1.2.1",
-    "prisma": "^6.1.0",
+    "prisma": "latest",
     "prizma": "^0.0.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
