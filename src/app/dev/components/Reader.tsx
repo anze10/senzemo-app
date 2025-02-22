@@ -18,7 +18,7 @@ import { parseZodSchema } from "zod-key-parser";
 import { PrintSticker } from "./printer/printer_server_side";
 
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
-import { ParsedSensorValue } from "./Reader/Choose_parser";
+import { ParsedSensorValue } from "./Reader/ParseSensorData";
 
 // if values of a are undefined, don't compare them
 function recursive_compare(

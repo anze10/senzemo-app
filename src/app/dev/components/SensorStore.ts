@@ -3,7 +3,7 @@ import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { type SensorFormSchemaType } from "./Reader";
 //import SMC30_parser from "./Reader/SMC30_Parser";
-import { ParsedSensorData, ParseSensorData } from "./Reader/Choose_parser";
+import { ParsedSensorData, ParseSensorData } from "./Reader/ParseSensorData";
 
 export type RatedSensorData = {
   data: ParsedSensorData;

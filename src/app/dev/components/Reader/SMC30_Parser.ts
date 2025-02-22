@@ -1,4 +1,4 @@
-import { ParsedSensorData } from "./Choose_parser";
+import { ParsedSensorData } from "./ParseSensorData";
 
 export default function SMC30_parser(input: Uint8Array) {
   const result: ParsedSensorData = new Object() as ParsedSensorData;

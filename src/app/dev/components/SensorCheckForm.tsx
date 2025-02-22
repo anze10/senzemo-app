@@ -5,7 +5,7 @@ import {
   ParsedSensorData,
   ParsedSensorValue,
   SensorParserCombinator,
-} from "./Reader/Choose_parser";
+} from "./Reader/ParseSensorData";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { useForm } from "react-hook-form";

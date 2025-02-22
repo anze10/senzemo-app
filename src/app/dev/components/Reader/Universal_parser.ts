@@ -1,4 +1,4 @@
-import { ParsedSensorData } from "./Choose_parser";
+import { ParsedSensorData } from "./ParseSensorData";
 
 interface InputConfig {
   pozicija_bita: number;
