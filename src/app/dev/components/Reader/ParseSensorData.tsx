@@ -97,7 +97,7 @@ export function ParseSensorData(
       result[name] = defaultValue;
     }
   }
-
+  console.log("Parsed data:", result);
   return result;
 }
 

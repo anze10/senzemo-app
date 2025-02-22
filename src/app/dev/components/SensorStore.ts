@@ -3,7 +3,8 @@ import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { type SensorFormSchemaType } from "./Reader";
 //import SMC30_parser from "./Reader/SMC30_Parser";
-import { ParsedSensorData, ParseSensorData } from "./Reader/ParseSensorData";
+import { ParsedSensorData, ParseSensorData, SensorParserCombinator } from "./Reader/ParseSensorData";
+import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 
 export type RatedSensorData = {
   data: ParsedSensorData;
@@ -12,11 +13,12 @@ export type RatedSensorData = {
 
 // current_sensor.data === target_sensor_data
 interface SensorState {
+  current_decoder: SensorParserCombinator;
   current_sensor_index: number;
-  target_sensor_data?: Partial<SensorFormSchemaType>;
+  target_sensor_data?: Partial<SensorFormSchemaType>;/// tole je narobe
   sensors: RatedSensorData[];
   reset: () => void;
-  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => void;
+  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => void; // tole je narobe
   add_new_sensor: (data: Uint8Array) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
@@ -31,6 +33,7 @@ const initial_state = {
 const sensor_callback: StateCreator<SensorState> = (set) => ({
   ...initial_state,
   target_sensor_data: undefined,
+  current_decoder: [],
   reset: () => {
     set(() => initial_state);
   },
@@ -41,8 +44,10 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
       })
     );
   },
-  add_new_sensor: (data) => {
-    const parsed_data = ParseSensorData([], data);
+  add_new_sensor: async (data) => {
+    const decoder = await RightDecoder(data);
+    if (!decoder) return;
+    const parsed_data = ParseSensorData(decoder, data);
 
     /* const { common_data, custom_data } =
       split_common_custom_sensor_data(parsed_data);
@@ -52,10 +57,12 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
       custom_data,
     }; */
 
+
     console.log("Adding new sensor:", parsed_data);
     set(
       produce((state: SensorState) => {
         state.sensors.push({ data: parsed_data });
+        state.current_decoder = decoder;
 
         state.current_sensor_index = state.sensors.length - 1;
       })

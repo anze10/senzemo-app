@@ -16,14 +16,14 @@ import { PrintSticker } from "./printer/printer_server_side";
 
 export function SensorCheckForm({
   // parsed_sensor_data,
-  sensor_parsers,
+  //sensor_parsers, sensor parser se lahko spreminja in  app
 }: {
   // parsed_sensor_data: ParsedSensorData;
   sensor_parsers: SensorParserCombinator;
 }) {
   const portRef = useRef<SerialPort | null>(null);
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
-
+  const sensor_parsers = useSensorStore((state) => state.current_decoder);
   const [showUnimportantParameters, setShowUnimportantParameters] =
     useState<boolean>(false);
 
@@ -94,14 +94,15 @@ export function SensorCheckForm({
   const [important_sensor_data, unimportant_sensor_data] = useMemo(() => {
     const important: Record<string, ParsedSensorValue> = {};
     const unimportant: Record<string, ParsedSensorValue> = {};
-
+    console.log("sensor_parsers", sensor_parsers);
+    console.log("current_sensor", current_sensor);
     if (!current_sensor) return [important, unimportant];
     Object.entries(current_sensor.data).forEach(([key, value]) => {
       const parser = sensor_parsers.find(
         (parser) => parser.output.name === key
       );
 
-      if (!parser) {
+      if (!parser?.output) {
         console.error("Parser not found for key", key);
         return;
       }
