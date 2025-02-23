@@ -56,7 +56,6 @@ model Senzor {
   productId      Int
   photograph     String?
   payloadDecoder String?
-  parameters     String?
   decoder        Json?
   zpl            String?
   description    String?

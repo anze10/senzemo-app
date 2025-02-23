@@ -1,5 +1,10 @@
 export type ParsedSensorEnum = string[];
-export type ParsedSensorValue = string | number | boolean | ParsedSensorEnum;
+export type ParsedSensorValue =
+  | string
+  | number
+  | boolean
+  | ParsedSensorEnum
+  | undefined;
 export type ParsedSensorData = Record<string, ParsedSensorValue>;
 
 type SensorParserInput = {
@@ -14,7 +19,7 @@ type SensorParserOutput = {
   default: ParsedSensorValue;
   important?: boolean;
   format?: "hex";
-  enum_values?: Array<{ value: number; mapped: string }>;
+  enum_values?: { value: number; mapped: string }[];
   scale?: number;
 };
 

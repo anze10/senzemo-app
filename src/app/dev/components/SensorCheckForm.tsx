@@ -8,35 +8,41 @@ import {
 } from "./Reader/ParseSensorData";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
-import { useForm } from "react-hook-form";
+import { Control, Controller, useFormContext } from "react-hook-form";
 import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
 
-import { Divider } from "@mui/material";
+import { Divider, Grid2 } from "@mui/material";
 import { PrintSticker } from "./printer/printer_server_side";
 import {
   Box,
   Button,
   Collapse,
-  Grid,
   Typography,
   TextField,
   Checkbox,
-  FormControlLabel,
   Select,
   MenuItem,
-  Paper
+  Paper,
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import deepEqual from "deep-equal";
+import { useQuery } from "@tanstack/react-query";
+import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
+import { GetSensors } from "~/app/sensors/components/backend";
 
-export function SensorCheckForm(//{
-  // parsed_sensor_data,
-  //sensor_parsers, sensor parser se lahko spreminja in  app
-  // }: {
-  //   // parsed_sensor_data: ParsedSensorData;
-  //   sensor_parsers: SensorParserCombinator;
-  // }
-) {
+type ImportantSensorData = Record<
+  string,
+  {
+    value: ParsedSensorValue;
+    my_type: string;
+    enum_values?: { value: number; mapped: string }[];
+  }
+>;
+
+export function SensorCheckForm() {
+  // Remove separate useForm; use the context instead.
+  const { control, setValue } = useFormContext<ParsedSensorData>();
   const portRef = useRef<SerialPort | null>(null);
 
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
@@ -66,7 +72,10 @@ export function SensorCheckForm(//{
     (state) => state.set_current_sensor_index
   );
 
-  const sensor_form_api = useForm<ParsedSensorData>();
+  const { data: sensors } = useQuery({
+    queryKey: ["sensors"],
+    queryFn: () => GetSensors(),
+  });
 
   const onSubmit = async (data: ParsedSensorData, okay: boolean) => {
     console.log("onSubmit before", {
@@ -85,12 +94,14 @@ export function SensorCheckForm(//{
       current_sensor,
     });
 
-    sensor_form_api.reset();
-
     // set_current_sensor_index(current_sensor_index + 1);
     const uint_array = await GetDataFromSensor();
-    if (!uint_array) return;
-    add_new_sensor(uint_array);
+    if (!uint_array || !sensors) return;
+
+    const decoder = RightDecoder(uint_array, sensors);
+    if (!decoder) return;
+
+    add_new_sensor(decoder, uint_array);
   };
 
   const GetDataFromSensor = async () => {
@@ -109,11 +120,10 @@ export function SensorCheckForm(//{
   };
 
   const [important_sensor_data, unimportant_sensor_data] = useMemo(() => {
-    const important: Record<string, ParsedSensorValue> = {};
-    const unimportant: Record<string, ParsedSensorValue> = {};
+    const important: ImportantSensorData = {};
+    const unimportant: ImportantSensorData = {};
     console.log("sensor_parsers", sensor_parsers);
     console.log("current_sensor", current_sensor);
-
 
     if (!current_sensor) return [important, unimportant];
     Object.entries(current_sensor.data).forEach(([key, value]) => {
@@ -127,9 +137,17 @@ export function SensorCheckForm(//{
       }
 
       if (parser.output.important) {
-        important[key] = value;
+        important[key] = {
+          value,
+          my_type: parser.output.type,
+          enum_values: parser.output.enum_values,
+        };
       } else {
-        unimportant[key] = value;
+        unimportant[key] = {
+          value,
+          my_type: parser.output.type,
+          enum_values: parser.output.enum_values,
+        };
       }
     });
 
@@ -139,9 +157,9 @@ export function SensorCheckForm(//{
   useEffect(() => {
     if (!current_sensor) return;
     Object.entries(current_sensor.data).forEach(([key, value]) => {
-      sensor_form_api.setValue(key, value);
+      setValue(key, value);
     });
-  }, [current_sensor, sensor_form_api]);
+  }, [current_sensor, setValue]);
 
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
@@ -151,13 +169,15 @@ export function SensorCheckForm(//{
             mb: 2,
             p: 3,
             borderRadius: 2,
-            backgroundColor: current_sensor ? getStatusColor(current_sensor.data.status, current_sensor.data) : "white",
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center', // Center content horizontally
-            justifyContent: 'center', // Center content vertically
-            minHeight: '200px', // Set a minimum height for the main box
-            width: '100%', // Take full width
+            backgroundColor: current_sensor
+              ? getStatusColor(current_sensor.data.status, current_sensor.data)
+              : "white",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center", // Center content horizontally
+            justifyContent: "center", // Center content vertically
+            minHeight: "200px", // Set a minimum height for the main box
+            width: "100%", // Take full width
             boxShadow: 3, // Add shadow for better visual appearance
           }}
         >
@@ -166,12 +186,12 @@ export function SensorCheckForm(//{
           </Typography>
           <Box
             sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
+              display: "flex",
+              flexWrap: "wrap",
               gap: 3, // Spacing between parameter boxes
-              justifyContent: 'center', // Center parameter boxes horizontally
+              justifyContent: "center", // Center parameter boxes horizontally
               //maxWidth: '1200px', // Limit maximum width for better centering
-              width: '100%', // Take full width of the parent
+              width: "100%", // Take full width of the parent
             }}
           >
             {Object.entries(important_sensor_data).map(([key, value]) => (
@@ -180,20 +200,26 @@ export function SensorCheckForm(//{
                 sx={{
                   p: 2,
                   borderRadius: 2,
-                  backgroundColor: 'background.paper',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  minWidth: '200px', // Minimum width for each parameter box
-                  textAlign: 'center', // Center text inside the box
+                  backgroundColor: "background.paper",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  minWidth: "200px", // Minimum width for each parameter box
+                  textAlign: "center", // Center text inside the box
                   boxShadow: 1, // Subtle shadow for each parameter box
-                  '&:hover': {
+                  "&:hover": {
                     boxShadow: 3, // Enhance shadow on hover
-                    transform: 'scale(1.05)', // Slightly enlarge on hover
-                    transition: 'all 0.3s ease', // Smooth transition
+                    transform: "scale(1.05)", // Slightly enlarge on hover
+                    transition: "all 0.3s ease", // Smooth transition
                   },
                 }}
               >
-                <DynamicFormComponent my_key={key} value={value} />
+                <DynamicFormComponent
+                  my_key={key}
+                  my_type={value.my_type}
+                  value={value.value}
+                  sensor_form_api_control={control}
+                  enum_values={value.enum_values}
+                />
               </Box>
             ))}
           </Box>
@@ -203,26 +229,40 @@ export function SensorCheckForm(//{
           <Button
             variant="text"
             size="small"
-            endIcon={showUnimportantParameters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            onClick={() => setShowUnimportantParameters(!showUnimportantParameters)}
+            endIcon={
+              showUnimportantParameters ? (
+                <ExpandLessIcon />
+              ) : (
+                <ExpandMoreIcon />
+              )
+            }
+            onClick={() =>
+              setShowUnimportantParameters(!showUnimportantParameters)
+            }
           >
-            {showUnimportantParameters ? 'Hide Details' : 'Show Details'}
+            {showUnimportantParameters ? "Hide Details" : "Show Details"}
           </Button>
 
           <Collapse in={showUnimportantParameters}>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid2 container spacing={2} sx={{ mt: 1 }}>
               {Object.entries(unimportant_sensor_data).map(([key, value]) => (
-                <Grid item xs={12} sm={6} md={4} key={key}>
-                  <DynamicFormComponent my_key={key} value={value} />
-                </Grid>
+                <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={key}>
+                  <DynamicFormComponent
+                    my_key={key}
+                    my_type={value.my_type}
+                    value={value.value}
+                    sensor_form_api_control={control}
+                    enum_values={value.enum_values}
+                  />
+                </Grid2>
               ))}
-            </Grid>
+            </Grid2>
           </Collapse>
         </Box>
 
         <Divider sx={{ my: 3 }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
           <Button
             variant="contained"
             color="success"
@@ -236,7 +276,12 @@ export function SensorCheckForm(//{
                   typeof data.product_id !== "number"
                 ) {
                   console.error("Invalid data type while printing sticker");
-                  console.error(data, typeof data.dev_eui, typeof data.family_id, typeof data.product_id);
+                  console.error(
+                    data,
+                    typeof data.dev_eui,
+                    typeof data.family_id,
+                    typeof data.product_id
+                  );
                   return;
                 }
 
@@ -284,60 +329,72 @@ export function SensorCheckForm(//{
 
 export function DynamicFormComponent({
   my_key,
+  my_type,
   value,
+  sensor_form_api_control,
+  enum_values,
 }: {
   my_key: string;
+  my_type: string;
   value: ParsedSensorValue;
+  sensor_form_api_control: any;
+  enum_values?: { value: number; mapped: string }[];
 }) {
   return (
-    <Box sx={{ width: '100%' }}>
-      {typeof value === 'boolean' ? (
-        <FormControlLabel
-          control={<Checkbox checked={value} />}
-          label={my_key}
-          labelPlacement="start"
-          sx={{
-            justifyContent: 'space-between',
-            marginLeft: 0,
-            '& .MuiFormControlLabel-label': { fontWeight: 500 }
-          }}
-        />
-      ) : typeof value === 'number' ? (
-        <TextField
-          fullWidth
-          label={my_key}
-          type="number"
-          value={value}
-          variant="outlined"
-          InputLabelProps={{ shrink: true }}
-        />
-      ) : typeof value === 'string' ? (
-        <TextField
-          fullWidth
-          label={my_key}
-          value={value}
-          variant="outlined"
-          InputLabelProps={{ shrink: true }}
-        />
-      ) : Array.isArray(value) ? (
-        <Select
-          fullWidth
-          label={my_key}
-          value={value[0]}
-          variant="outlined"
-        >
-          {value.map((item, index) => (
-            <MenuItem key={index} value={item}>
-              {item}
-            </MenuItem>
-          ))}
-        </Select>
-      ) : (
-        <Typography color="error">Invalid value type</Typography>
-      )}
-    </Box>
+    <Controller
+      name={my_key}
+      control={sensor_form_api_control}
+      render={({ field }) => {
+        console.log("field", my_key, field);
+        return (
+          <Box sx={{ width: "100%" }}>
+            {my_type === "boolean" && typeof value === "boolean" ? (
+              <Checkbox
+                {...field}
+                color="primary"
+                inputProps={{ "aria-label": my_key }}
+              />
+            ) : my_type === "number" && typeof value === "number" ? (
+              <TextField
+                {...field}
+                fullWidth
+                label={my_key}
+                type="number"
+                variant="outlined"
+              />
+            ) : my_type === "string" && typeof value === "string" ? (
+              <TextField
+                {...field}
+                fullWidth
+                label={my_key}
+                variant="outlined"
+              />
+            ) : my_type === "enum" && enum_values ? (
+              <Select
+                labelId={`select-${my_key}`}
+                value={field.value ?? value}
+                onChange={(e) => field.onChange(e.target.value)}
+                fullWidth
+                variant="outlined"
+              >
+                {enum_values.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.mapped}
+                  </MenuItem>
+                ))}
+              </Select>
+            ) : (
+              <Typography color="error">
+                Invalid value type, {my_type}
+              </Typography>
+            )}
+          </Box>
+        );
+      }}
+    />
   );
 }
+
 function getStatusColor(
   status: ParsedSensorValue,
   current_sensor: ParsedSensorData
@@ -346,7 +403,7 @@ function getStatusColor(
   if (typeof current_sensor === "undefined" || typeof target === "undefined")
     return "white"; /// hitor iskanje
 
-  const is_equal = target === current_sensor?.data;
+  const is_equal = deepEqual(target, current_sensor);
 
   if (is_equal) {
     // TODO: return {color:"green", message: "OK"};
