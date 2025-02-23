@@ -10,9 +10,24 @@ import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { useForm } from "react-hook-form";
 import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
-import { Box } from "@mui/system";
-import { Button, Divider } from "@mui/material";
+
+import { Divider } from "@mui/material";
 import { PrintSticker } from "./printer/printer_server_side";
+import {
+  Box,
+  Button,
+  Collapse,
+  Grid,
+  Typography,
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Select,
+  MenuItem,
+  Paper
+} from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 export function SensorCheckForm({
   // parsed_sensor_data,
@@ -22,6 +37,7 @@ export function SensorCheckForm({
   sensor_parsers: SensorParserCombinator;
 }) {
   const portRef = useRef<SerialPort | null>(null);
+
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
   const sensor_parsers = useSensorStore((state) => state.current_decoder);
   const [showUnimportantParameters, setShowUnimportantParameters] =
@@ -125,19 +141,88 @@ export function SensorCheckForm({
   }, [current_sensor, sensor_form_api]);
 
   return (
-    <>
+    <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
       <form>
-        <p>Important</p>
-        {Object.entries(important_sensor_data).map(([key, value]) => (
-          <DynamicFormComponent key={key} my_key={key} value={value} />
-        ))}
-        <Divider />
-        <p>Unimportant</p>
-        {Object.entries(unimportant_sensor_data).map(([key, value]) => (
-          <DynamicFormComponent key={key} my_key={key} value={value} />
-        ))}
-        <Box className="mt-4 flex justify-between">
+        <Box
+          sx={{
+            mb: 2,
+            p: 3,
+            borderRadius: 2,
+            backgroundColor: current_sensor ? getStatusColor(current_sensor.data.status, current_sensor.data) : "white",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center', // Center content horizontally
+            justifyContent: 'center', // Center content vertically
+            minHeight: '200px', // Set a minimum height for the main box
+            width: '100%', // Take full width
+            boxShadow: 3, // Add shadow for better visual appearance
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+            Key Parameters
+          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 3, // Spacing between parameter boxes
+              justifyContent: 'center', // Center parameter boxes horizontally
+              //maxWidth: '1200px', // Limit maximum width for better centering
+              width: '100%', // Take full width of the parent
+            }}
+          >
+            {Object.entries(important_sensor_data).map(([key, value]) => (
+              <Box
+                key={key}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  backgroundColor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  minWidth: '200px', // Minimum width for each parameter box
+                  textAlign: 'center', // Center text inside the box
+                  boxShadow: 1, // Subtle shadow for each parameter box
+                  '&:hover': {
+                    boxShadow: 3, // Enhance shadow on hover
+                    transform: 'scale(1.05)', // Slightly enlarge on hover
+                    transition: 'all 0.3s ease', // Smooth transition
+                  },
+                }}
+              >
+                <DynamicFormComponent my_key={key} value={value} />
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
           <Button
+            variant="text"
+            size="small"
+            endIcon={showUnimportantParameters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            onClick={() => setShowUnimportantParameters(!showUnimportantParameters)}
+          >
+            {showUnimportantParameters ? 'Hide Details' : 'Show Details'}
+          </Button>
+
+          <Collapse in={showUnimportantParameters}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {Object.entries(unimportant_sensor_data).map(([key, value]) => (
+                <Grid item xs={12} sm={6} md={4} key={key}>
+                  <DynamicFormComponent my_key={key} value={value} />
+                </Grid>
+              ))}
+            </Grid>
+          </Collapse>
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="success"
             onClick={sensor_form_api.handleSubmit(
               async (data: ParsedSensorData) => {
                 await onSubmit(data, true);
@@ -148,6 +233,7 @@ export function SensorCheckForm({
                   typeof data.product_id !== "number"
                 ) {
                   console.error("Invalid data type while printing sticker");
+                  console.error(data, typeof data.dev_eui, typeof data.family_id, typeof data.product_id);
                   return;
                 }
 
@@ -159,43 +245,37 @@ export function SensorCheckForm({
                 );
               }
             )}
-            style={{
-              backgroundColor: "#4CAF50",
-              color: "white",
-              padding: "10px 20px",
-            }}
+            sx={{ flex: 1 }}
           >
             Accept
           </Button>
+
           <Button
+            variant="contained"
+            color="error"
             href="/konec"
             onClick={async () => {
-              // await createFolderAndSpreadsheet();
+              //await createFolderAndSpreadsheet();
               set_current_sensor_index(0);
             }}
-            style={{
-              backgroundColor: "#f44336",
-              color: "white",
-              padding: "10px 20px",
-            }}
+            sx={{ flex: 1 }}
           >
             Finish
           </Button>
+
           <Button
+            variant="outlined"
+            color="warning"
             onClick={sensor_form_api.handleSubmit((data: ParsedSensorData) =>
               onSubmit(data, false)
             )}
-            style={{
-              backgroundColor: "#4CAF50",
-              color: "white",
-              padding: "10px 20px",
-            }}
+            sx={{ flex: 1 }}
           >
-            not Accept
+            Reject
           </Button>
         </Box>
       </form>
-    </>
+    </Paper>
   );
 }
 
@@ -206,45 +286,55 @@ export function DynamicFormComponent({
   my_key: string;
   value: ParsedSensorValue;
 }) {
-  if (typeof value === "boolean") {
-    return (
-      <div key={my_key}>
-        <label>{my_key}</label>
-        <input type="checkbox" checked={value} />
-      </div>
-    );
-  } else if (typeof value === "number") {
-    return (
-      <div key={my_key}>
-        <label>{my_key}</label>
-        <input type="number" value={value} />
-      </div>
-    );
-  } else if (typeof value === "string") {
-    return (
-      <div key={my_key}>
-        <label>{my_key}</label>
-        <input type="text" value={value} />
-      </div>
-    );
-  } else if (Array.isArray(value)) {
-    return (
-      <div key={my_key}>
-        <label>{my_key}</label>
-        <select>
+  return (
+    <Box sx={{ width: '100%' }}>
+      {typeof value === 'boolean' ? (
+        <FormControlLabel
+          control={<Checkbox checked={value} />}
+          label={my_key}
+          labelPlacement="start"
+          sx={{
+            justifyContent: 'space-between',
+            marginLeft: 0,
+            '& .MuiFormControlLabel-label': { fontWeight: 500 }
+          }}
+        />
+      ) : typeof value === 'number' ? (
+        <TextField
+          fullWidth
+          label={my_key}
+          type="number"
+          value={value}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+      ) : typeof value === 'string' ? (
+        <TextField
+          fullWidth
+          label={my_key}
+          value={value}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+      ) : Array.isArray(value) ? (
+        <Select
+          fullWidth
+          label={my_key}
+          value={value[0]}
+          variant="outlined"
+        >
           {value.map((item, index) => (
-            <option key={index} value={item}>
+            <MenuItem key={index} value={item}>
               {item}
-            </option>
+            </MenuItem>
           ))}
-        </select>
-      </div>
-    );
-  } else {
-    throw new Error("Invalid value type");
-  }
+        </Select>
+      ) : (
+        <Typography color="error">Invalid value type</Typography>
+      )}
+    </Box>
+  );
 }
-
 function getStatusColor(
   status: ParsedSensorValue,
   current_sensor: ParsedSensorData
