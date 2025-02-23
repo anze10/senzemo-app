@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ParsedSensorData,
   ParsedSensorValue,
-  SensorParserCombinator,
+  // SensorParserCombinator,
 } from "./Reader/ParseSensorData";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
@@ -29,13 +29,14 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
-export function SensorCheckForm({
+export function SensorCheckForm(//{
   // parsed_sensor_data,
   //sensor_parsers, sensor parser se lahko spreminja in  app
-}: {
-  // parsed_sensor_data: ParsedSensorData;
-  sensor_parsers: SensorParserCombinator;
-}) {
+  // }: {
+  //   // parsed_sensor_data: ParsedSensorData;
+  //   sensor_parsers: SensorParserCombinator;
+  // }
+) {
   const portRef = useRef<SerialPort | null>(null);
 
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
@@ -112,6 +113,8 @@ export function SensorCheckForm({
     const unimportant: Record<string, ParsedSensorValue> = {};
     console.log("sensor_parsers", sensor_parsers);
     console.log("current_sensor", current_sensor);
+
+
     if (!current_sensor) return [important, unimportant];
     Object.entries(current_sensor.data).forEach(([key, value]) => {
       const parser = sensor_parsers.find(

@@ -15,10 +15,10 @@ export type RatedSensorData = {
 interface SensorState {
   current_decoder: SensorParserCombinator;
   current_sensor_index: number;
-  target_sensor_data?: Partial<SensorFormSchemaType>;/// tole je narobe
+  target_sensor_data?: Partial<ParsedSensorData>;
   sensors: RatedSensorData[];
   reset: () => void;
-  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => void; // tole je narobe
+  set_target_sensor_data: (data: Partial<ParsedSensorData>) => void;
   add_new_sensor: (data: Uint8Array) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
@@ -37,7 +37,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
   reset: () => {
     set(() => initial_state);
   },
-  set_target_sensor_data: (data: Partial<SensorFormSchemaType>) => {
+  set_target_sensor_data: (data: Partial<ParsedSensorData>) => {
     set(
       produce((state: SensorState) => {
         state.target_sensor_data = data;

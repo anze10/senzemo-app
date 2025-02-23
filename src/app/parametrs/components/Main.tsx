@@ -8,7 +8,11 @@ import {
   Select,
   Box,
   Typography,
+  TextField,
+  FormControlLabel,
+  Checkbox
 } from "@mui/material";
+
 import { createFolderAndSpreadsheet } from "~/server/GAPI_ACTION/create_folder";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +23,7 @@ import { useGoogleIDSstore } from "./Credentisal";
 import { GetArrayofDevices } from "./functions";
 import { useQuery } from "@tanstack/react-query";
 import { Sensor } from "./functions";
+import { ParsedSensorValue } from "~/app/dev/components/Reader/ParseSensorData";
 
 export default function Parameters() {
   const sensor_form_api = useForm<SensorFormSchemaType>();
@@ -43,6 +48,11 @@ export default function Parameters() {
     (state) => state.set_target_sensor_data
   );
 
+
+
+
+
+
   const set_credentials = useGoogleIDSstore((state) => state.set_credentials);
   return (
     <form>
@@ -63,11 +73,7 @@ export default function Parameters() {
                 defaultValue={1}
                 render={({ field }) => (
                   <Select id="family_id" {...field} fullWidth>
-                    {/* <MenuItem value="1-5">SMC30</MenuItem>
-                    <MenuItem value="2-6">SSM40</MenuItem>
-                    <MenuItem value="3-7">SXX3.6</MenuItem>
-                    <MenuItem value="2-8">SSM40</MenuItem>
-                    <MenuItem value="3-9">SXX3.6</MenuItem> */}
+
                     {devices.data?.map((device) => (
                       <MenuItem key={device.familyId} value={device.product}>
                         {device.name}
@@ -77,254 +83,126 @@ export default function Parameters() {
                 )}
               />
             </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="join_eui"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="join_eui">Join EUI</InputLabel>
-                    <Input {...field} fullWidth placeholder="Enter Join EUI" />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="app_key"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="app-key">App Key</InputLabel>
-                    <Input {...field} fullWidth placeholder="Enter App Key" />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="device.status"
-                defaultValue={0}
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="device.status">Status</InputLabel>
-                    <Input
-                      disabled
-                      {...field}
-                      fullWidth
-                      placeholder="Status"
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="lora.dr_adr_en"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="lora.dr_adr_en">Data Rate</InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder="Data Rate"
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <InputLabel htmlFor="frequency-region">
-                Frequency Region
-              </InputLabel>
-              <Controller
-                name="lora.freq_reg"
-                control={sensor_form_api.control}
-                defaultValue=""
-                render={({ field }) => (
-                  <Select id="lora.freq_reg" {...field} fullWidth>
-                    <MenuItem value="AS923">AS923</MenuItem>
-                    <MenuItem value="EU868">EU868</MenuItem>
-                    <MenuItem value="US915">US915</MenuItem>
-                  </Select>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="lora.hyb_asoff_mask0_1"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="lora.hyb_asoff_mask0_1">
-                      Hybrid Enable + AS923 Offset + Mask0-1
-                    </InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder="Hybrid Enable + AS923 Offset + Mask0-1"
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="lora.mask2_5"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="lora.mask2_5">
-                      Hybrid Mask 2-5
-                    </InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder="Hybrid Mask 2-5"
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="lora.send_period"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="lora.send_period">
-                      Send Period
-                    </InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder=""
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="lora.ack"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="lora.ack">ACK</InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder=""
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="device.mov_thr"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="device.mov_thr">MOV THR</InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder=""
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <Controller
-                control={sensor_form_api.control}
-                name="company_name"
-                defaultValue="Ni definirano"
-                render={({ field }) => (
-                  <>
-                    <InputLabel htmlFor="Company_name">Company Name</InputLabel>
-                    <Input
-                      {...field}
-                      fullWidth
-                      placeholder=""
-                      style={{
-                        fontSize: "1.25rem",
-                        padding: "0.75rem",
-                      }}
-                      required
-                    />
-                  </>
-                )}
-              />
-            </Box>
-            <Box className="min-w-[200px] flex-1">
-              <InputLabel htmlFor="serial-number">Order Number</InputLabel>
-              <Input
-                id="serial-number"
-                placeholder="Enter Serial Number"
-                fullWidth
-                value={order_number}
-                onChange={(e) => set_order_number(e.target.value)}
-                required
-              />
-            </Box>
-          </Box>
-          <Box className="mt-8 flex justify-center">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={async () => {
-                const formData = sensor_form_api.getValues(); // Get the current form values
-                set_default_sensor_data(formData); // Update the store with form data
+            {/* tuki koda za prikazovanje deafult data */}
 
-                // Log the data that was just stored in the store
-                console.log("Data stored in default_sensor_data:", formData);
-                const custome_name = formData.company_name;
-                const result = await createFolderAndSpreadsheet(
-                  custome_name,
-                  order_number
-                );
-                console.log(result);
-                set_credentials(result);
-                router.push("/dev");
-              }}
-            >
-              Start Scan
-            </Button>
+          </Box>
+          <Box className="min-w-[200px] flex-1">
+            <Controller
+              control={sensor_form_api.control}
+              name="company_name"
+              defaultValue="Ni definirano"
+              render={({ field }) => (
+                <>
+                  <InputLabel htmlFor="Company_name">Company Name</InputLabel>
+                  <Input
+                    {...field}
+                    fullWidth
+                    placeholder=""
+                    style={{
+                      fontSize: "1.25rem",
+                      padding: "0.75rem",
+                    }}
+                    required
+                  />
+                </>
+              )}
+            />
+          </Box>
+          <Box className="min-w-[200px] flex-1">
+            <InputLabel htmlFor="serial-number">Order Number</InputLabel>
+            <Input
+              id="serial-number"
+              placeholder="Enter Serial Number"
+              fullWidth
+              value={order_number}
+              onChange={(e) => set_order_number(e.target.value)}
+              required
+            />
           </Box>
         </Box>
+        <Box className="mt-8 flex justify-center">
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              const formData = sensor_form_api.getValues(); // Get the current form values
+              set_default_sensor_data(formData); // Update the store with form data
+
+              // Log the data that was just stored in the store
+              console.log("Data stored in default_sensor_data:", formData);
+              const custome_name = formData.company_name;
+              const result = await createFolderAndSpreadsheet(
+                custome_name,
+                order_number
+              );
+              console.log(result);
+              set_credentials(result);
+              router.push("/dev");
+            }}
+          >
+            Start Scan
+          </Button>
+        </Box>
       </Box>
-    </form>
+
+    </form >
+  );
+}
+
+
+export function DynamicFormComponent({
+  my_key,
+  value,
+}: {
+  my_key: string;
+  value: ParsedSensorValue;
+}) {
+  return (
+    <Box sx={{ width: '100%' }}>
+      {typeof value === 'boolean' ? (
+        <FormControlLabel
+          control={<Checkbox checked={value} />}
+          label={my_key}
+          labelPlacement="start"
+          sx={{
+            justifyContent: 'space-between',
+            marginLeft: 0,
+            '& .MuiFormControlLabel-label': { fontWeight: 500 }
+          }}
+        />
+      ) : typeof value === 'number' ? (
+        <TextField
+          fullWidth
+          label={my_key}
+          type="number"
+          value={value}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+      ) : typeof value === 'string' ? (
+        <TextField
+          fullWidth
+          label={my_key}
+          value={value}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+      ) : Array.isArray(value) ? (
+        <Select
+          fullWidth
+          label={my_key}
+          value={value[0]}
+          variant="outlined"
+        >
+          {value.map((item, index) => (
+            <MenuItem key={index} value={item}>
+              {item}
+            </MenuItem>
+          ))}
+        </Select>
+      ) : (
+        <Typography color="error">Invalid value type</Typography>
+      )}
+    </Box>
   );
 }
