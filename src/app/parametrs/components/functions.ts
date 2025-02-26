@@ -18,7 +18,7 @@ export async function GetArrayofDevices(): Promise<Sensor[]> {
       name: device.sensorName,
       product: device.productId,
       familyId: device.familyId,
-      deafult_data: device.parameters ?? "",
+      deafult_data: device.description ?? "",
     }));
 
     console.log("Oblikovan seznam senzorjev:", seznam);

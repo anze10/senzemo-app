@@ -167,12 +167,43 @@ export function SensorCheckForm() {
 
 
 
-  function handleSubmit(dataHandler: (data: ParsedSensorData) => Promise<void>): void {
-    if (!current_sensor) return;
+  async function handleSubmit(dataHandler: (data: ParsedSensorData) => Promise<void>): Promise<void> {
+    if (!current_sensor) {
+      console.log("No current sensor", sensors);
+      const uint_array = await GetDataFromSensor();
+      if (!uint_array || !sensors) return;
+      const decoder = RightDecoder(uint_array, sensors);
+      console.log("Decoder", decoder);
+      if (!decoder) return;
+
+      add_new_sensor(decoder, uint_array);
+      return;
+    }
     dataHandler(current_sensor.data as ParsedSensorData)
       .then(async () => {
-        // Use functional update to get the latest index
-        set_current_sensor_index(current_sensor_index + 1);
+        console.log("onSubmit before", {
+          all_sensors,
+          current_sensor_index,
+          current_sensor,
+        });
+
+        set_sensor_status(current_sensor_index, true);
+
+        set_sensor_data(current_sensor_index, current_sensor.data as ParsedSensorData);
+
+        console.log("onSubmit after", {
+          all_sensors,
+          current_sensor_index,
+          current_sensor,
+        });
+
+        const uint_array = await GetDataFromSensor();
+        if (!uint_array || !sensors) return;
+
+        const decoder = RightDecoder(uint_array, sensors);
+        if (!decoder) return;
+
+        add_new_sensor(decoder, uint_array);
       })
       .catch((error) => {
         console.error("Error in data handler:", error);
@@ -284,13 +315,17 @@ export function SensorCheckForm() {
           <Button
             variant="contained"
             color="success"
-            onClick={() => {
+            onClick={async () => {
+
               handleSubmit(async (data: ParsedSensorData) => {
+
+                console.log("funtion called");
                 try {
+                  console.log("Tole ne dela");
                   // Update sensor status and data first
                   set_sensor_status(current_sensor_index, true);
                   set_sensor_data(current_sensor_index, data);
-
+                  console.log("Data submitted:");
                   // Proceed to print and read new data
                   await PrintSticker(
                     data.dev_eui as string,
@@ -308,7 +343,7 @@ export function SensorCheckForm() {
                   add_new_sensor(decoder, uint_array);
                 } catch (error) {
                   console.error("Error in submission:", error);
-                  throw error; // Propagate error to handleSubmit's catch
+                  throw error;
                 }
               });
             }}
@@ -400,17 +435,22 @@ export function DynamicFormComponent({
           onChange={handleChange}
         />
       ) : my_type === "enum" && enum_values ? (
-        <Select
-          label={my_key}
-          value={value}
-          onChange={handleChange}
-        >
-          {enum_values.map((item) => (
-            <MenuItem key={item.value} value={item.value}>
-              {item.mapped}
-            </MenuItem>
-          ))}
-        </Select>
+        console.log(my_key, value),
+
+        <FormControl fullWidth>
+          <InputLabel>{my_key}</InputLabel>
+          <Select
+            label={my_key}
+            value={value}
+            onChange={handleChange}
+          >
+            {enum_values.map((item) => (
+              <MenuItem key={item.value} value={item.value}>
+                {item.mapped}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}

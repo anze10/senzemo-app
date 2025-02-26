@@ -518,7 +518,7 @@ export async function insert(
 
   //const tokenInfo = await client.getTokenInfo(session?.user.token);
   //console.log(tokenInfo);
-
+  console.log("Inserting new row into the spreadsheet...");
   try {
     await insertIntoCsvFile(client, fileId, newRow);
     await insertIntoSpreadsheet(client, spreadsheetId, nerEXE);

@@ -61,6 +61,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     set(
       produce((state: SensorState) => {
         state.sensors.push({ data: parsed_data });
+        state.current_decoder = decoder;
 
         state.current_sensor_index = state.sensors.length - 1;
       })

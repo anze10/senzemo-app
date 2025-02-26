@@ -23,7 +23,7 @@ export async function UpdateorAddSenor(params: Sensor) {
             productId: params.Product_id,
             photograph: params.fotografija,
             payloadDecoder: params.payloadDecoder,
-            parameters: params.parametri,
+
             description: params.string,
             decoder: params.decoder,
 
@@ -36,7 +36,7 @@ export async function UpdateorAddSenor(params: Sensor) {
             productId: params.Product_id,
             photograph: params.fotografija,
             payloadDecoder: params.payloadDecoder,
-            parameters: params.parametri,
+
             description: params.string,
             decoder: params.decoder,
 

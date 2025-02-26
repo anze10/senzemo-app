@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { insert } from "~/server/GAPI_ACTION/create_folder";
 import { useGoogleIDSstore } from "../parametrs/components/Credentisal";
 import { Button, Card, CardContent, CardActions, Typography, Box, Paper, Divider } from "@mui/material"
+
 //import { string } from "zod";
 
 export function Konec() {
@@ -19,83 +20,97 @@ export function Konec() {
   const router = useRouter();
 
   const posli = useCallback(async () => {
+    console.log("Pošiljam");
+    console.log(sensor_data);
     let newRowCSV = [];
     let newROWEXE = [];
     for (const element of sensor_data) {
-      if (element.okay) {
-        let model_id = "";
-        let device_name = "";
-        let frequancy_plan_id = "";
-        let band_id = "";
-        switch (element?.data.family_id) {
-          case 1:
-            model_id = "SMC30";
-            device_name = "Senstick Microclimate";
+      for (const key in element) {
+        console.log("Key", key);
+        console.log("Value", element[key] as unknown as string);
+        console.log("Status", element.okay);
+        console.log("Element", element.data);
+        if (element.okay) {
+          let model_id = "";
+          let device_name = "";
+          let frequancy_plan_id = "";
+          let band_id = "";
+          switch (element?.data.family_id) {
+            case 1:
+              model_id = "SMC30";
+              device_name = "Senstick Microclimate";
 
-            break;
-          case 2:
-            model_id = "SSM40";
-            break;
-          case 3:
-            model_id = "SXX3.6";
+              break;
+            case 2:
+              model_id = "SSM40";
+              break;
+            case 3:
+              model_id = "SXX3.6";
 
-            break;
+              break;
+          }
+          if (typeof element?.data.lora === 'object' && 'freq_reg' in element.data.lora) {
+            switch (element?.data.lora.freq_reg) {
+              case "AS923":
+                frequancy_plan_id = "AS_920_923_TTN_AU";
+                band_id = "AS_923";
+                break;
+              case "EU868":
+                frequancy_plan_id = "EU_863_870_TTN";
+                band_id = "EU_863_870";
+                break;
+              case "US915":
+                frequancy_plan_id = "US_902_928_FSB_2";
+                band_id = "US_902_928";
+                break;
+            }
+
+            newRowCSV = [
+              model_id + "-" + element?.data.dev_eui,
+              element?.data.dev_eui,
+              element?.data.join_eui,
+              device_name,
+              frequancy_plan_id,
+              lorawan_version,
+              "unknown",
+              element?.data.app_key,
+              "Senzemo",
+              model_id,
+              typeof element?.data.device === 'object' && 'hw_ver' in element.data.device ? element.data.device.hw_ver : "Nisem našel podatka vnesi ročno",
+              typeof element?.data.device === 'object' && 'fw_ver' in element.data.device ? element.data.device.fw_ver : "N/A",
+              band_id,
+            ];
+
+            newROWEXE = [
+              model_id,
+              element?.data.dev_eui,
+              element?.data.app_key,
+              element?.data.join_eui,
+              element?.data.lora.freq_reg,
+              "FSB2",
+              typeof element?.data.device === 'object' && 'hw_ver' in element.data.device ? element.data.device.hw_ver : "N/A",
+              typeof element?.data.device === 'object' && 'fw_ver' in element.data.device ? element.data.device.fw_ver : "N/A",
+              custom_FW,
+              typeof element?.data.lora === 'object' && 'send_period' in element.data.lora ? element.data.lora.send_period : "N/A",
+              typeof element?.data.device === 'object' && 'adc_delay' in element.data.device ? element.data.device.adc_delay : "N/A",
+              typeof element?.data.device === 'object' && 'mov_thr' in element.data.device ? element.data.device.mov_thr : "N/A",
+            ];
+            if (!credentials?.fileId) {
+              throw new Error("No credentials");
+            }
+
+            console.log(newROWEXE);
+            void insert(
+              credentials?.fileId,
+              newRowCSV as string[],
+              credentials?.spreadsheetId,
+              newROWEXE as string[]
+            );
+            console.log("Pošiljam");
+          }
         }
-        switch (element?.data.lora.freq_reg) {
-          case "AS923":
-            frequancy_plan_id = "AS_920_923_TTN_AU";
-            band_id = "AS_923";
-            break;
-          case "EU868":
-            frequancy_plan_id = "EU_863_870_TTN";
-            band_id = "EU_863_870";
-            break;
-          case "US915":
-            frequancy_plan_id = "US_902_928_FSB_2";
-            band_id = "US_902_928";
-            break;
-        }
-        newRowCSV = [
-          model_id + "-" + element?.data.dev_eui,
-          element?.data.dev_eui,
-          element?.data.join_eui,
-          device_name,
-          frequancy_plan_id,
-          lorawan_version,
-          "unknown",
-          element?.data.app_key,
-          "Senzemo",
-          model_id,
-          element?.data.device.hw_ver,
-          element?.data.device.fw_ver,
-          band_id,
-        ];
-        newROWEXE = [
-          model_id,
-          element?.data.dev_eui,
-          element?.data.app_key,
-          element?.data.join_eui,
-          element?.data.lora.freq_reg,
-          "FSB2",
-          element?.data.device.hw_ver,
-          element?.data.device.fw_ver,
-          custom_FW,
-          element?.data.lora.send_period,
-          element?.data.device.adc_delay,
-          element?.data.device.mov_thr,
-        ];
-        if (!credentials?.fileId) {
-          throw new Error("No credentials");
-        }
-        void insert(
-          credentials?.fileId,
-          newRowCSV as string[],
-          credentials?.spreadsheetId,
-          newROWEXE as string[]
-        );
       }
-    }
-  }, [sensor_data, credentials?.fileId, credentials?.spreadsheetId]);
+    }, [sensor_data, credentials?.fileId, credentials?.spreadsheetId]);
 
   return (
 
@@ -152,7 +167,10 @@ export function Konec() {
         >
           Reset and Go Back
         </Button>
-        <Button variant="outlined" onClick={() => console.log("Test button clicked")}>
+        <Button variant="outlined" onClick={async () => {
+          console.log("Test");
+          posli();
+        }}>
           Test
         </Button>
       </CardActions>

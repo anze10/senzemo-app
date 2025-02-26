@@ -22,7 +22,7 @@ export function AddOrUpdateSenzor(Senzor: Senzor) {
             productId: Senzor.productId,
             photograph: Senzor.photograph,
             payloadDecoder: Senzor.payloadDecoder,
-            parameters: Senzor.parameters,
+
             decoder: Senzor.decoder,
             description: Senzor.description
         },
@@ -32,7 +32,7 @@ export function AddOrUpdateSenzor(Senzor: Senzor) {
             productId: Senzor.productId,
             photograph: Senzor.photograph,
             payloadDecoder: Senzor.payloadDecoder,
-            parameters: Senzor.parameters,
+
             decoder: Senzor.decoder,
             description: Senzor.description
         }
