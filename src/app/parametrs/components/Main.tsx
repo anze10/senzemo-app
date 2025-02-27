@@ -141,22 +141,23 @@ export default function Parameters() {
                 required
               />
             </FormControl>
+            <Grid2 container spacing={2} sx={{ mt: 1 }}>
+              {decoder?.map((parser) => (
+                <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={parser.output.name}>
+                  <DynamicFormComponent
+                    my_key={parser.output.name}
+                    my_type={parser.output.type}
+                    value={formValues[parser.output.name] ?? parser.output.default}
+                    enum_values={parser.output.enum_values}
+                    onValueChange={handleValueChange}
+                  />
+                </Grid2>
+              ))}
+            </Grid2>
           </Box>
         </Box>
 
-        <Grid2 container spacing={2} sx={{ mt: 1 }}>
-          {decoder?.map((parser) => (
-            <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={parser.output.name}>
-              <DynamicFormComponent
-                my_key={parser.output.name}
-                my_type={parser.output.type}
-                value={formValues[parser.output.name] ?? parser.output.default}
-                enum_values={parser.output.enum_values}
-                onValueChange={handleValueChange}
-              />
-            </Grid2>
-          ))}
-        </Grid2>
+
 
         <Box className="mt-8 flex justify-center">
           <Button
