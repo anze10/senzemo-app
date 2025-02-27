@@ -9,26 +9,7 @@ import { GetSensors } from "../sensors/components/backend";
 import { Senzor } from "@prisma/client";
 import { insert } from "~/server/GAPI_ACTION/create_folder";
 
-type SensorDataforSpreadsheet = {
-  Device_name: string;
-  Device_Type: string;
-  dev_eui: string;
-  app_key: string;
-  join_eui: string;
-  family_id: number;
-  lora: {
-    freq_reg: string;
-    Sub_band: string;
-    send_period: number;
-  };
-  device: {
-    hw_ver: string;
-    fw_ver: string;
-    custom_FW: string;
-    adc_delay: number;
-    mov_thr: number;
-  };
-};
+
 
 export function Konec() {
   const { data: sensors } = useQuery({
@@ -44,83 +25,84 @@ export function Konec() {
     console.log("Pošiljam");
     console.log(sensor_data);
 
-    // Create array of good sensors and map to required format
-    const goodSensors: SensorDataforSpreadsheet[] = sensor_data
-      .filter(element => element.okay)
-      .map(element => {
-        const sensorData = element.data;
-        const custom_FW = "N/A";
-        let freq_reg = "";
-        let Sub_band = "";
-        let Device_Type = "";
-        let model_id = "";
-
-        (sensors ?? []).forEach((sensor: Senzor) => {
-          if (sensor.productId === sensorData.product_id && sensor.familyId === sensorData.family_id) {
-            Device_Type = sensor.description ?? "We don't know";
-            model_id = sensor.sensorName ?? "We don't know";
-          }
-        });
-
-        switch (sensorData.lora_freq_reg) {
-          case "AS923":
-            freq_reg = "AS_920_923_TTN_AU";
-            Sub_band = "AS_923";
-            break;
-          case "EU868":
-            freq_reg = "EU_863_870_TTN";
-            Sub_band = "EU_863_870";
-            break;
-          case "US915":
-            freq_reg = "US_902_928_FSB_2";
-            Sub_band = "US_902_928";
-            break;
-        }
-
-        return {
-          Device_name: `${model_id}-${element?.data.dev_eui}`,
-          Device_Type: Device_Type,
-          dev_eui: String(sensorData.dev_eui),
-          app_key: String(sensorData.app_key),
-          join_eui: String(sensorData.join_eui),
-          family_id: Number(sensorData.family_id),
-          lora: {
-            freq_reg: freq_reg,
-            Sub_band: Sub_band,
-            send_period: Number(sensorData.lora_send_period),
-          },
-          device: {
-            hw_ver: String(sensorData.device_device_hw_ver),
-            fw_ver: String(sensorData.device_fw_ver),
-            custom_FW: custom_FW,
-            adc_delay: Number(sensorData.device_adc_delay),
-            mov_thr: Number(sensorData.device_mov_thr),
-          },
-        };
-      });
-
-    console.log("Processed good sensors:", goodSensors);
-
-    // Placeholder for newRowCSV and newROWEXE
-    const newRowCSV: string[] = [];
-    const newROWEXE: string[] = goodSensors.map((sensor) => {
-      return [  // CSV
-        sensor.Device_name, sensor.Device_Type, sensor.dev_eui, sensor.app_key, sensor.join_eui,
-        sensor.family_id.toString(), sensor.lora.freq_reg, sensor.lora.Sub_band, sensor.lora.send_period.toString(),  // lora
-        sensor.device.hw_ver, sensor.device.fw_ver, sensor.device.custom_FW, sensor.device.adc_delay.toString(), sensor.device.mov_thr.toString()  // device  ;
-      ].join(",");
-    });
-
     if (!credentials?.fileId || !credentials?.spreadsheetId) {
       throw new Error("No credentials");
     }
 
-    await insert(
-      credentials.fileId,
-      newRowCSV,
-      credentials.spreadsheetId,
-      newROWEXE
-    );
+    // Process each sensor individually
+    for (const element of sensor_data.filter(el => el.okay)) {
+      const sensorData = element.data;
+      const custom_FW = "N/A";
+      let freq_reg = "";
+      let band_id = "";
+      let Device_Type = "";
+      let model_id = "";
+      const lorawan_version = "RP001_V1_0_3_REV_A";
+
+      // Find matching sensor details
+      (sensors ?? []).forEach((sensor: Senzor) => {
+        if (sensor.productId === sensorData.product_id && sensor.familyId === sensorData.family_id) {
+          Device_Type = sensor.description ?? "We don't know";
+          model_id = sensor.sensorName ?? "We don't know";
+        }
+      });
+
+      // Determine frequency and band
+      switch (sensorData.lora_freq_reg) {
+        case "AS923":
+          freq_reg = "AS_920_923_TTN_AU";
+          band_id = "AS_923";
+          break;
+        case "EU868":
+          freq_reg = "EU_863_870_TTN";
+          band_id = "EU_863_870";
+          break;
+        case "US915":
+          freq_reg = "US_902_928_FSB_2";
+          band_id = "US_902_928";
+          break;
+      }
+
+      // Build EXE and CSV rows for this sensor
+      const newROWEXE: string[] = [
+        model_id,
+        String(sensorData.dev_eui),
+        String(sensorData.app_key),
+        String(sensorData.join_eui),
+        freq_reg,
+        "FSB2",
+        String(sensorData.device_device_hw_ver),
+        String(sensorData.device_fw_ver),
+        custom_FW,
+        String(sensorData.lora_send_period),
+        String(sensorData.device_adc_delay),
+        String(sensorData.device_mov_thr), // Fix typo if necessary
+      ];
+
+      const newRowCSV: string[] = [
+        `${model_id}-${sensorData.dev_eui}`,
+        String(sensorData.dev_eui),
+        String(sensorData.join_eui),
+        Device_Type,
+        freq_reg,
+        lorawan_version,
+        "unknown",
+        String(sensorData.app_key),
+        "Senzemo",
+        model_id,
+        String(sensorData.device_device_hw_ver),
+        String(sensorData.device_fw_ver),
+        band_id,
+      ];
+
+      // Insert the row for this sensor
+      await insert(
+        credentials.fileId,
+        newRowCSV,
+        credentials.spreadsheetId,
+        newROWEXE
+      );
+    }
   }
 
   return (
