@@ -1,67 +1,57 @@
-"use server"
+'use server';
 
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
-interface Sensor {
-    id_senzorja: number;
-    sensor_name: string;
-    family_id: number;
-    Product_id: number;
-    fotografija?: string;
-    payloadDecoder?: string;
-    parametri?: string;
-    string?: string;
-    decoder?: string;
-    frekvenca?: string;
-}
-export async function UpdateorAddSenor(params: Sensor) {
+import { Senzor } from "@prisma/client";
+import { JsonValue } from "@prisma/client/runtime/library";
+
+export async function UpdateorAddSenor(params: Senzor) {
     return prisma.senzor.upsert({
-        where: { id: params.id_senzorja },
+        where: { id: params.id },
         update: {
-            sensorName: params.sensor_name,
-            familyId: params.family_id,
-            productId: params.Product_id,
-            photograph: params.fotografija,
+            sensorName: params.sensorName,
+            familyId: params.familyId,
+            productId: params.productId,
+            photograph: params.photograph,
             payloadDecoder: params.payloadDecoder,
-
-            description: params.string,
-            decoder: params.decoder,
-
-
+            description: params.description,
+            decoder: params.decoder ? params.decoder : undefined,
         },
         create: {
-            id: params.id_senzorja,
-            sensorName: params.sensor_name,
-            familyId: params.family_id,
-            productId: params.Product_id,
-            photograph: params.fotografija,
+            sensorName: params.sensorName,
+            familyId: params.familyId,
+            productId: params.productId,
+            photograph: params.photograph,
             payloadDecoder: params.payloadDecoder,
-
-            description: params.string,
-            decoder: params.decoder,
-
+            description: params.description,
+            decoder: params.decoder ? params.decoder : undefined,
         },
     });
-
-
 }
 
+export async function InsertSensor(params: Omit<Senzor, 'id'>) {
+    console.log("Decoder type:", typeof params.decoder); // Should log "object"
+
+    console.log("Decoder value:", params.decoder); // Should show parsed JSON object
+    return prisma.senzor.create({
+        data: {
+            sensorName: params.sensorName,
+            familyId: params.familyId,
+            productId: params.productId,
+            photograph: params.photograph,
+            payloadDecoder: params.payloadDecoder,
+            description: params.description,
+            decoder: params.decoder as JsonValue ?? undefined,
+        },
+    });
+}
 
 export async function DeleteSensor(id: number) {
     return prisma.senzor.delete({
-        where: {
-            id: id
-        }
+        where: { id }
     });
 }
-export async function GetSensor(id: number) {
-    return prisma.senzor.findUnique({
-        where: {
-            id: id
-        }
-    });
-}
+
 export async function GetSensors() {
     return prisma.senzor.findMany();
 }
-

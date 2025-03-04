@@ -25,7 +25,7 @@ import {
   SensorParserCombinator,
 } from "~/app/dev/components/Reader/ParseSensorData";
 import { useQuery } from "@tanstack/react-query";
-import { GetSensors } from "~/app/sensors/components/backend";
+import { GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
 
 type DeviceType = {
