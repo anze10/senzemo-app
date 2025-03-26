@@ -26,9 +26,10 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import deepEqual from "deep-equal";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
+import { InsertintoDB, ProductionList } from "./PrismaCode";
 
 type ImportantSensorData = Record<
   string,
@@ -57,7 +58,22 @@ export function SensorCheckForm() {
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
+  const dataforDB: ProductionList = {
+    DeviceType: "string",
+    DevEUI: "string",
+    AppEUI: "string",
+    AppKey: "string",
+    FrequencyRegion: "string",
+    SubBands: "string",
+    HWVersion: "string",
+    FWVersion: "string",
+    CustomFWVersion: "string",
+    SendPeriod: "string",
+    ACK: "string",
+    MovementThreshold: "string",
+    order: 0,
 
+  };
   const all_sensors = useSensorStore((state) => state.sensors);
 
   const add_new_sensor = useSensorStore((state) => state.add_new_sensor);
@@ -117,6 +133,19 @@ export function SensorCheckForm() {
     }
   };
 
+  useMutation({
+    mutationKey: ["InsertintoDatabase"],
+    mutationFn: () => InsertintoDB(dataforDB),
+    onMutate: async () => {
+      console.log("onMutate");
+    },
+    onError: (error) => {
+      console.error("Error in GetDataFromSensor:", error);
+    },
+    onSuccess: (data) => {
+      console.log("onSuccess", data);
+    },
+  });
   const [important_sensor_data, unimportant_sensor_data] = useMemo(() => {
     const important: ImportantSensorData = {};
     const unimportant: ImportantSensorData = {};
@@ -352,18 +381,17 @@ export function SensorCheckForm() {
             Accept
           </Button>
 
+
           <Button
             variant="contained"
             color="error"
             href="/konec"
-            onClick={async () => {
-              //await createFolderAndSpreadsheet();
-              set_current_sensor_index(0);
-            }}
+            onClick={async () => { console.log("Reprograme") }}
             sx={{ flex: 1 }}
           >
-            Finish
+            Reprograme
           </Button>
+
 
           <Button
             variant="outlined"
@@ -377,6 +405,20 @@ export function SensorCheckForm() {
           </Button>
         </Box>
       </form>
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+        <Button
+          variant="contained"
+          color="error"
+          href="/konec"
+          onClick={async () => {
+            //await createFolderAndSpreadsheet();
+            set_current_sensor_index(0);
+          }}
+          sx={{ flex: 1, maxWidth: "200px" }}
+        >
+          Finish
+        </Button>
+      </Box>
     </Paper>
   );
 }
@@ -466,7 +508,7 @@ function getStatusColor(
   if (typeof current_sensor === "undefined" || typeof target === "undefined")
     return "white"; /// hitor iskanje
 
-  const is_equal = deepEqual(target, current_sensor);
+  const is_equal = deepEqual(target, current_sensor); // tple bo treba spremenit
 
   if (is_equal) {
     // TODO: return {color:"green", message: "OK"};

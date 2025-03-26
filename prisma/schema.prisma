@@ -109,7 +109,7 @@ model Sale {
 }
 
 model Order {
-  id              Int              @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   customerName    String
   assemblerName   String
   sensorId        Int
@@ -117,8 +117,8 @@ model Order {
   frequency       String
   orderDate       DateTime
   otherParameters String?
-  sensor          Senzor           @relation(fields: [sensorId], references: [id])
-  productionLists ProductionList[]
+  sensor          Senzor   @relation(fields: [sensorId], references: [id])
+  // productionLists ProductionList[]
 }
 
 model ProductionList {
@@ -136,5 +136,5 @@ model ProductionList {
   ACK               String
   MovementThreshold String
   orderNumber       Int
-  order             Order  @relation(fields: [orderNumber], references: [id])
+  // order             Order  @relation(fields: [orderNumber], references: [id])
 }

@@ -19,16 +19,19 @@ interface SensorState {
   current_sensor_index: number;
   target_sensor_data?: ParsedSensorData;
   sensors: RatedSensorData[];
+  time: number; // Time in milliseconds
   reset: () => void;
   set_target_sensor_data: (data: ParsedSensorData) => void;
   add_new_sensor: (decoder: SensorParserCombinator, data: Uint8Array) => void;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
   set_sensor_data: (sensor_number: number, data: ParsedSensorData) => void;
+  set_time: (time: number) => void;
 }
 
 const initial_state = {
   current_sensor_index: 0,
+  time: 0,
   sensors: [],
 };
 
@@ -89,6 +92,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
       })
     );
   },
+  set_time: (time: number) => set({ time }),
 });
 
 export const useSensorStore = create<SensorState>()(

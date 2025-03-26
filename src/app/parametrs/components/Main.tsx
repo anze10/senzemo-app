@@ -40,7 +40,7 @@ export default function Parameters() {
   const [decoder, setDecoder] = useState<SensorParserCombinator | undefined>();
   const [formValues, setFormValues] = useState<ParsedSensorData>({});
   const [family_id, set_family_id] = useState<number>(1);
-  const [company_name, set_company_name] = useState<string>("Ni definirano");
+  const [company_name, set_company_name] = useState<string>("");
 
   const router = useRouter();
   const set_target_sensor_data = useSensorStore(
@@ -126,8 +126,7 @@ export default function Parameters() {
                 id="Company_name"
                 value={company_name}
                 onChange={(e) => set_company_name(e.target.value)}
-                fullWidth
-                style={{ fontSize: "1.25rem", padding: "0.75rem" }}
+
                 required
               />
             </FormControl>
@@ -164,6 +163,10 @@ export default function Parameters() {
             variant="contained"
             color="primary"
             onClick={async () => {
+              if (company_name.trim() === "") {
+                alert("Company name must not be empty.");
+                return;
+              }
               const formData = {
                 family_id,
                 company_name,
