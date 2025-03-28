@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ParsedSensorData,
   ParsedSensorValue,
@@ -10,7 +10,13 @@ import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
 
-import { Divider, FormControl, Grid2, InputLabel, SelectChangeEvent } from "@mui/material";
+import {
+  Divider,
+  FormControl,
+  Grid2,
+  InputLabel,
+  SelectChangeEvent,
+} from "@mui/material";
 import { PrintSticker } from "./printer/printer_server_side";
 import {
   Box,
@@ -29,7 +35,7 @@ import deepEqual from "deep-equal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
-import { InsertintoDB, ProductionList } from "./PrismaCode";
+import { InsertintoDB, ProductionListWithoutId } from "./PrismaCode";
 
 type ImportantSensorData = Record<
   string,
@@ -58,7 +64,8 @@ export function SensorCheckForm() {
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
-  const dataforDB: ProductionList = {
+
+  const dataforDB = {
     DeviceType: "string",
     DevEUI: "string",
     AppEUI: "string",
@@ -71,9 +78,8 @@ export function SensorCheckForm() {
     SendPeriod: "string",
     ACK: "string",
     MovementThreshold: "string",
-    order: 0,
-
-  };
+    orderNumber: 0,
+  } satisfies ProductionListWithoutId;
   const all_sensors = useSensorStore((state) => state.sensors);
 
   const add_new_sensor = useSensorStore((state) => state.add_new_sensor);
@@ -133,6 +139,10 @@ export function SensorCheckForm() {
     }
   };
 
+  useEffect(() => {
+    useSensorStore.setState({ start_time: Date.now() });
+  }, []);
+
   useMutation({
     mutationKey: ["InsertintoDatabase"],
     mutationFn: () => InsertintoDB(dataforDB),
@@ -151,7 +161,7 @@ export function SensorCheckForm() {
     const unimportant: ImportantSensorData = {};
     console.log("sensor_parsers", sensor_parsers);
     console.log("current_sensor", current_sensor);
-    console.log("Sensor parser: ", sensor_parsers)
+    console.log("Sensor parser: ", sensor_parsers);
     if (!current_sensor) return [important, unimportant];
     Object.entries(current_sensor.data).forEach(([key, value]) => {
       const parser = sensor_parsers.find(
@@ -194,9 +204,9 @@ export function SensorCheckForm() {
     set_sensor_data(current_sensor_index, new_data);
   }
 
-
-
-  async function handleSubmit(dataHandler: (data: ParsedSensorData) => Promise<void>): Promise<void> {
+  async function handleSubmit(
+    dataHandler: (data: ParsedSensorData) => Promise<void>
+  ): Promise<void> {
     if (!current_sensor) {
       console.log("No current sensor", sensors);
       const uint_array = await GetDataFromSensor();
@@ -218,7 +228,10 @@ export function SensorCheckForm() {
 
         set_sensor_status(current_sensor_index, true);
 
-        set_sensor_data(current_sensor_index, current_sensor.data as ParsedSensorData);
+        set_sensor_data(
+          current_sensor_index,
+          current_sensor.data as ParsedSensorData
+        );
 
         console.log("onSubmit after", {
           all_sensors,
@@ -345,9 +358,7 @@ export function SensorCheckForm() {
             variant="contained"
             color="success"
             onClick={async () => {
-
               handleSubmit(async (data: ParsedSensorData) => {
-
                 console.log("funtion called");
                 try {
                   console.log("Tole ne dela");
@@ -381,24 +392,24 @@ export function SensorCheckForm() {
             Accept
           </Button>
 
-
           <Button
             variant="contained"
             color="error"
             href="/konec"
-            onClick={async () => { console.log("Reprograme") }}
+            onClick={async () => {
+              console.log("Reprograme");
+            }}
             sx={{ flex: 1 }}
           >
             Reprograme
           </Button>
 
-
           <Button
             variant="outlined"
             color="warning"
-            onClick={() => handleSubmit((data: ParsedSensorData) =>
-              onSubmit(data, false)
-            )}
+            onClick={() =>
+              handleSubmit((data: ParsedSensorData) => onSubmit(data, false))
+            }
             sx={{ flex: 1 }}
           >
             Reject
@@ -412,6 +423,7 @@ export function SensorCheckForm() {
           href="/konec"
           onClick={async () => {
             //await createFolderAndSpreadsheet();
+            useSensorStore.setState({ end_time: Date.now() });
             set_current_sensor_index(0);
           }}
           sx={{ flex: 1, maxWidth: "200px" }}
@@ -422,8 +434,6 @@ export function SensorCheckForm() {
     </Paper>
   );
 }
-
-
 
 export function DynamicFormComponent({
   my_key,
@@ -439,7 +449,9 @@ export function DynamicFormComponent({
   onValueChange: (name: string, value: ParsedSensorValue) => void;
 }) {
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<unknown>
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | SelectChangeEvent<unknown>
   ) => {
     let value: ParsedSensorValue = e.target.value as ParsedSensorValue;
 
@@ -471,28 +483,21 @@ export function DynamicFormComponent({
           onChange={handleChange}
         />
       ) : my_type === "string" ? (
-        <TextField
-          label={my_key}
-          value={value}
-          onChange={handleChange}
-        />
+        <TextField label={my_key} value={value} onChange={handleChange} />
       ) : my_type === "enum" && enum_values ? (
-        console.log(my_key, value),
-
-        <FormControl fullWidth>
-          <InputLabel>{my_key}</InputLabel>
-          <Select
-            label={my_key}
-            value={value}
-            onChange={handleChange}
-          >
-            {enum_values.map((item) => (
-              <MenuItem key={item.value} value={item.value}>
-                {item.mapped}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        (console.log(my_key, value),
+        (
+          <FormControl fullWidth>
+            <InputLabel>{my_key}</InputLabel>
+            <Select label={my_key} value={value} onChange={handleChange}>
+              {enum_values.map((item) => (
+                <MenuItem key={item.value} value={item.value}>
+                  {item.mapped}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ))
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}
