@@ -33,7 +33,7 @@ import dynamic from "next/dynamic";
 const UsedTime = dynamic(
   () =>
     import("./used_time").then(
-      (mod: typeof import("d:/dev/js/anze/autizem/src/app/konec/used_time")) =>
+      (mod: typeof import("src/app/konec/used_time")) =>
         mod.get_used_time
     ),
   { ssr: false }
