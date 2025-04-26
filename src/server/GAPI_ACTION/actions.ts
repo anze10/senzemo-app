@@ -2,7 +2,7 @@
 // pages/api/createSpreadsheet.js
 
 //import { lucia } from "src/server/lucia"; 
-import { validateSessionToken } from "src/server/validate_session";
+import { validateSessionToken } from "src/server/LOGIN_LUCIA_ACTION/validate_session";
 import { google } from "googleapis";
 
 import { NextApiRequest, NextApiResponse } from 'next';

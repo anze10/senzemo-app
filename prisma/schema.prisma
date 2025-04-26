@@ -50,57 +50,91 @@ model GoogleTokens {
 
 ////  ferma
 model Senzor {
-  id_senzorja    Int         @id @default(autoincrement())
-  sensor_name    String
-  family_id      Int
-  Product_id     Int
-  fotografija    String?
+  id             Int         @id @default(autoincrement())
+  sensorName     String
+  familyId       Int
+  productId      Int
+  photograph     String?
   payloadDecoder String?
-  parametri      String?
-  string         String?
-  decoder        String?
-  frekvenca      String?
-  zaloge         Zaloga[]
-  prodaje        Prodaja[]
-  narocila       Naročilo[]
+  decoder        Json?
+  zpl            String?
+  description    String?
+  stocks         Stock[]
+  sales          Sale[]
+  orders         Order[]
+  components     Component[]
 }
 
-model Zaloga {
-  id_dela          Int     @id @default(autoincrement())
-  id_senzorja      Int?
-  ime_dela         String
-  kolicinaNaZalogi Int
-  tip              String // "Komponenta" ali "CelotenSenzor"
-  senzor           Senzor? @relation(fields: [id_senzorja], references: [id_senzorja])
-
-  CelotenSenzor CelotenSenzor[]
+model Component {
+  id               Int              @id @default(autoincrement())
+  sensorId         Int
+  componentName    String
+  requiredQuantity Int
+  sensor           Senzor           @relation(fields: [sensorId], references: [id])
+  componentStocks  ComponentStock[]
 }
 
-model Prodaja {
-  id_prodaje    Int      @id @default(autoincrement())
-  id_senzorja   Int
-  kolicina      Int
-  datum_prodaje DateTime
-  cena          Float
-  ime_kupca     String
-  senzor        Senzor   @relation(fields: [id_senzorja], references: [id_senzorja])
+model ComponentStock {
+  componentId Int
+  stockId     Int
+  component   Component @relation(fields: [componentId], references: [id])
+  stock       Stock     @relation(fields: [stockId], references: [id])
+
+  @@id([componentId, stockId])
 }
 
-model Naročilo {
-  id_naročila     Int      @id @default(autoincrement())
-  ime_kupca        String
-  id_senzorja      Int
-  kolicina         Int
-  frekvenca        String
-  datum_naročila  DateTime
-  ostali_parametri String?
-  senzor           Senzor   @relation(fields: [id_senzorja], references: [id_senzorja])
+model Stock {
+  id              Int              @id @default(autoincrement())
+  sensorId        Int?
+  componentName   String
+  quantityInStock Int
+  type            StockType        @default(KOMPONENTA)
+  sensor          Senzor?          @relation(fields: [sensorId], references: [id])
+  componentStocks ComponentStock[]
 }
 
-model CelotenSenzor {
-  id_senzorja   Int       @id
-  id_zaloge     Int
-  zaloga        Zaloga    @relation(fields: [id_zaloge], references: [id_dela])
-  specifikacije String?
-  datumIzdelave DateTime?
+enum StockType {
+  KOMPONENTA
+  CELOTENSENZOR
+}
+
+model Sale {
+  id           Int      @id @default(autoincrement())
+  sensorId     Int
+  quantity     Int
+  saleDate     DateTime
+  price        Float
+  customerName String
+  sensor       Senzor   @relation(fields: [sensorId], references: [id])
+}
+
+model Order {
+  id              Int      @id @default(autoincrement())
+  customerName    String
+  assemblerName   String
+  sensorId        Int
+  quantity        Int
+  frequency       String
+  orderDate       DateTime
+  otherParameters String?
+  sensor          Senzor   @relation(fields: [sensorId], references: [id])
+  // productionLists ProductionList[]
+}
+
+model ProductionList {
+  id                Int    @id @default(autoincrement())
+  DeviceType        String
+  DevEUI            String
+  AppEUI            String
+  AppKey            String
+  FrequencyRegion   String
+  SubBands          String
+  HWVersion         String
+  FWVersion         String
+  CustomFWVersion   String
+  SendPeriod        String
+  ACK               String
+  MovementThreshold String
+  orderNumber       Int
+  // order             Order  @relation(fields: [orderNumber], references: [id])
 }

@@ -2,12 +2,15 @@
 import ipp from "ipp";
 import type { PrintJobRequest } from "ipp"
 
+
 import request from 'request';
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface Tiskalnik {
     name: string;
     url: string;
 }
+
 // Define Printer interface
 
 //type GetPrinterUrlsCallback = (error: Error | null, printerUrls: string[]) => void;
@@ -59,14 +62,16 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
 
 // Function to check printer status and print
 async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
+    console.log(printerUri);
+    console.log("Checking printer status and sending print job...");
 
     try {
-
         // Check printer status via IPP
         const printer = new ipp.Printer(printerUri);
-        // og   printer.execute("Get-Printer-Attributes" , null, (err: Error, res: unknown) => {
+        console.log("Printer object created:", printer);
+        printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
 
-        printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
+            // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
             if (err) {
                 console.error("Error getting printer attributes:", err);
                 callback("Failed to get printer attributes");
@@ -74,6 +79,8 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
             }
 
             const printerStatus = (res as { 'printer-attributes-tag': { 'printer-state': string } })['printer-attributes-tag']['printer-state'];
+            console.log("Printer status:", printerStatus);
+            console.log(`res`, res);
             console.log(`Printer status: ${printerStatus}`); // Log the printer status
 
             if (printerStatus === 'idle') {
@@ -149,7 +156,7 @@ export async function handlePrintRequest(printerUri: string) {
 
 ^FO50,130
 ^A@N,50,30,E:MONTSERRAT.TTF
-^FDThis is Montserrat Font^FS
+
 
 ^PQ1,0,1,Y
 ^XZ
@@ -171,7 +178,45 @@ export async function handlePrintRequest(printerUri: string) {
     }
     return { success: true, message: 'Print job sent successfully' };
 }
+// druga funkcija /////
+export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
+    try {
+        // Ustvarimo ZPL kodo z vstavljenimi podatki
+        const zplCode = await getZplfromDB(family_id, product_id);
+
+        if (!zplCode) {
+            throw new Error("Failed to retrieve ZPL code from database");
+        }
+
+        const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
+
+        // Kličemo obstoječo funkcijo za tisk
+        await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message: string) => {
+            if (message) {
+                console.log(message); // Log success/failure
+            } else {
+                console.log("No message received.");
+            }
+        }).catch(error => {
+            console.error("Error during printing:", error);
+        });
+    } catch (error) {
+        console.error("Error handling print request:", error);
+    }
+    return { success: true, message: 'Print job sent successfully' };
+}
 
 
 
+function getZplfromDB(family_id: number, product_id: number) {
+    // Get ZPL code from database
+    return prisma.senzor.findFirst({
+        where: {
+            familyId: family_id,
+            productId: product_id
+        }
+    }).then((data) => {
+        return data ? data.zpl : null;
+    });
+}
 

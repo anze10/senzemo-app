@@ -1,7 +1,7 @@
 
 
 import { Session } from "lucia";
-import { prisma } from "~/server/prisma";
+import { prisma } from "src/server/DATABASE_ACTION/prisma";
 
 export async function GetUseFromSession(session: Session) {
     return prisma.user.findUnique({ where: { id: Number(session.userId) } });

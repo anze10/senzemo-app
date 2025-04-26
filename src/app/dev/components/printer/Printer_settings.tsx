@@ -4,15 +4,12 @@ import { getPrinterUrls, handlePrintRequest } from "./printer_server_side";
 import type { Tiskalnik } from "./printer_server_side";
 import { usePrinterStore } from "./printer_settinsgs_store"; // Import the store
 
-import { ChevronsUpDown, Printer, TestTube } from "lucide-react";
+import { Printer, TestTube } from "lucide-react";
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
-  Menu,
-  MenuList,
-  MenuItem,
   TextField,
   Typography,
   Checkbox,
@@ -24,11 +21,15 @@ interface PrinterSettingsProps {
 }
 
 const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
-  const { printers, url_server, url_connection, setPrinters } = usePrinterStore();
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const [selectedPrinter, setSelectedPrinter] = useState<string>("");
+  const { printers, url_server, url_connection, setPrinters } =
+    usePrinterStore();
+  const [, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [manualUrlConnection, setManualUrlConnection] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const setSelectedPrinter = usePrinterStore(
+    (state) => state.setSelectedPrinter
+  );
+  const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
 
   const handlePrintClick = async () => {
     if (!url_connection) {
@@ -38,8 +39,9 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
 
     startTransition(async () => {
       try {
+        console.log("Sending print job to:", url_connection);
         // Attempt the print request
-        const result = await handlePrintRequest(url_connection); // Use `url_connection` as the endpoint
+        const result = await handlePrintRequest(url_connection);
 
         if (result.success) {
           alert("Print job sent successfully: " + result.message);
@@ -53,7 +55,6 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
     });
   };
 
-  // Fetch printers from backend and update Zustand store on component mount
   useEffect(() => {
     const fetchPrinters = async () => {
       try {
@@ -68,9 +69,10 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
 
   // Update Zustand store when user selects a printer
   const handlePrinterSelect = (printerValue: string) => {
-    setSelectedPrinter(printerValue);
+    console.log("Selected printer:", printerValue);
+    setSelectedPrinter(`${url_server}/printers/${printerValue}`);
     if (!manualUrlConnection) {
-      const updatedUrlConnection = `${url_server}printers/${printerValue}`;
+      const updatedUrlConnection = `${url_server}/printers/${printerValue}`;
       setPrinters(printers, url_server, updatedUrlConnection);
     }
     setAnchorEl(null);
@@ -107,25 +109,51 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
         <div className="grid w-full items-center gap-4">
           <div className="flex flex-col space-y-1.5">
             <Typography variant="body1">Printer</Typography>
-            <Button
+            {/* <Button
               variant="outlined"
               onClick={(e) => setAnchorEl(e.currentTarget)}
               endIcon={<ChevronsUpDown />}
               fullWidth
             >
               {selectedPrinter
-                ? printers.find((printer) => printer.name === selectedPrinter)?.name
+                ? printers.find((printer) => printer.name === selectedPrinter)
+                  ?.name
                 : "Select printer..."}
-            </Button>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-              <MenuList>
-                {printers.map((printer) => (
-                  <MenuItem key={printer.name} onClick={() => handlePrinterSelect(printer.name)}>
-                    {printer.name}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Menu>
+            </Button> */}
+
+            {/* printer.execute("Get-Printer-Attributes", { }, (err: Error, res: any) => {
+            if (err) {
+              console.error("Error getting printer attributes:", err);
+            callback("Failed to get printer attributes");
+            return;
+            }
+
+            const jobId = res?.["job-id"];
+            if (!jobId) {
+              console.error("No job-id found in response:", res);
+            callback("Failed to get job-id");
+            return;
+            } */}
+
+            <TextField
+              select
+              label="Select Printer"
+              value={selectedPrinter || ""}
+              onChange={(e) => handlePrinterSelect(e.target.value)}
+              fullWidth
+              SelectProps={{
+                native: true,
+              }}
+            >
+              <option value="" disabled>
+                Select printer...
+              </option>
+              {printers.map((printer) => (
+                <option key={printer.name} value={printer.name}>
+                  {printer.name}
+                </option>
+              ))}
+            </TextField>
           </div>
           <div className="flex flex-col space-y-1.5">
             <Typography variant="body1">Printer Server URI</Typography>
@@ -140,7 +168,9 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             control={
               <Checkbox
                 checked={manualUrlConnection}
-                onChange={(e) => handleManualUrlConnectionToggle(e.target.checked)}
+                onChange={(e) =>
+                  handleManualUrlConnectionToggle(e.target.checked)
+                }
               />
             }
             label="Manual URL Connection"

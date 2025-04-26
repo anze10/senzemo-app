@@ -1,7 +1,8 @@
 'use client';
 
 import { Typography, Card, CardHeader, CardContent, Button, Box } from '@mui/material';
-import { Gauge, Package, FileBox, Cloud } from 'lucide-react';
+import { Gauge, Cloud } from 'lucide-react';
+//import { Package, FileBox } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata = {
@@ -25,7 +26,7 @@ export default function Dashboard() {
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/paramets" passHref>
+                            <Link href="/parametrs" passHref>
                                 <Button fullWidth variant="contained">
                                     Začni sestavljanje
                                 </Button>
@@ -33,7 +34,7 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
                 </Box>
-                <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
+                {/* <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader
                             title="Preglej naročila"
@@ -42,7 +43,7 @@ export default function Dashboard() {
                             sx={{ pb: 2 }}
                         />
                         <CardContent>
-                            <Link href="/narocila" passHref>
+                            <Link href="/orders" passHref>
                                 <Button fullWidth variant="contained">
                                     Odpri naročila
                                 </Button>
@@ -66,7 +67,7 @@ export default function Dashboard() {
                             </Link>
                         </CardContent>
                     </Card>
-                </Box>
+                </Box> */}
                 <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader

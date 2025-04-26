@@ -1,6 +1,6 @@
 import { OAuth2Tokens } from "arctic";
 import { prisma } from "./prisma";
-import { google } from "src/server/googleOauth";
+import { google } from "src/server/LOGIN_LUCIA_ACTION/googleOauth";
 
 export default async function SaveToken(token: OAuth2Tokens, userId: number) {
     try {

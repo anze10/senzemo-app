@@ -2,8 +2,8 @@
 
 import { type Auth, google } from "googleapis";
 import * as stream from "stream";
-import { GetAccessToken } from "./GoogleTokenInteractions";
-import { getCurrentSession } from "./session";
+import { GetAccessToken } from "src/server/DATABASE_ACTION/GoogleTokenInteractions";
+import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
 
 // Funkcija za ustvarjanje mape
 async function createFolder(
@@ -518,7 +518,7 @@ export async function insert(
 
   //const tokenInfo = await client.getTokenInfo(session?.user.token);
   //console.log(tokenInfo);
-
+  console.log("Inserting new row into the spreadsheet...");
   try {
     await insertIntoCsvFile(client, fileId, newRow);
     await insertIntoSpreadsheet(client, spreadsheetId, nerEXE);

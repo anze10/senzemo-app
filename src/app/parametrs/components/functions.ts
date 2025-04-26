@@ -1,19 +1,30 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+"use server";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface Sensor {
-    name: string;
-    product: number;
-    familyId: number;
+  name: string;
+  product: number;
+  familyId: number;
+  deafult_data: string;
 }
 
 export async function GetArrayofDevices(): Promise<Sensor[]> {
-    const devices = await prisma.senzor.findMany();
-    return devices.map(device => ({
-        name: device.sensor_name,
-        product: device.Product_id,
-        familyId: device.family_id,
-    }));
-}
+  console.log("Vstop v funkcijo GetArrayofDevices");
+  try {
+    const naprave = await prisma.senzor.findMany();
+    console.log("Prejete naprave iz baze:", naprave);
 
+    const seznam: Sensor[] = naprave.map((device) => ({
+      name: device.sensorName,
+      product: device.productId,
+      familyId: device.familyId,
+      deafult_data: device.description ?? "",
+    }));
+
+    console.log("Oblikovan seznam senzorjev:", seznam);
+    return seznam;
+  } catch (error) {
+    console.error("Napaka pri pridobivanju podatkov iz baze:", error);
+    return [];
+  }
+}

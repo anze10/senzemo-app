@@ -1,141 +1,191 @@
-'use client'
+'use client';
 
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import {
     Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Paper,
     Button, TextField, Dialog, DialogContent, DialogTitle,
-    IconButton, Snackbar, Alert, Typography, Box, MenuItem
+    IconButton, Snackbar, Alert, Typography, Box,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import { UpdateorAddSenor, DeleteSensor, GetSensors, InsertSensor } from './backend';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 const theme = createTheme({
     palette: {
-        primary: {
-            main: '#3f51b5',
-        },
-        secondary: {
-            main: '#9c27b0',
-        },
+        primary: { main: '#3f51b5' },
+        secondary: { main: '#9c27b0' },
     },
 });
 
-type Product = {
+type FrontendSensor = {
     id: number;
-    name: string;
-    frequency: string;
-    type: 'Sensor' | 'Transmitter' | 'Receiver';
-    price: number;
+    sensorName: string;
+    familyId: number;
+    productId: number;
+    photograph?: string | null;
+    payloadDecoder?: string | null;
+    decoder?: JsonValue;
+    description?: string | null;
+    zpl?: string | null;
 };
 
-export default function ProductList() {
-    const [products, setProducts] = useState<Product[]>([
-        { id: 1, name: 'Basic Sensor', frequency: '433 MHz', type: 'Sensor', price: 29.99 },
-        { id: 2, name: 'Advanced Transmitter', frequency: '868 MHz', type: 'Transmitter', price: 49.99 },
-        { id: 3, name: 'High-Gain Receiver', frequency: '915 MHz', type: 'Receiver', price: 39.99 },
-    ]);
+export default function SensorList() {
+    const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [editingSensor, setEditingSensor] = useState<FrontendSensor | null>(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-    const handleOpen = () => {
-        setEditingProduct(null);
-        setOpen(true);
-    };
+    const { data: sensors, isLoading, isError } = useQuery({
+        queryKey: ['sensors'],
+        queryFn: async () => {
+            const data = await GetSensors();
+            return data.map(sensor => ({
+                id: sensor.id,
+                sensorName: sensor.sensorName,
+                familyId: sensor.familyId,
+                productId: sensor.productId,
+                photograph: sensor.photograph,
+                payloadDecoder: sensor.payloadDecoder,
+                decoder: sensor.decoder,
+                description: sensor.description,
+            }));
+        },
+    });
 
-    const handleClose = () => {
-        setOpen(false);
-        setEditingProduct(null);
-    };
+    const updateMutation = useMutation({
+        mutationFn: async (params: FrontendSensor) => {
+            return UpdateorAddSenor({
+                id: params.id,
+                sensorName: params.sensorName,
+                familyId: params.familyId,
+                productId: params.productId,
+                photograph: params.photograph || null,
+                payloadDecoder: params.payloadDecoder || null,
+                decoder: params.decoder !== undefined ? params.decoder : null,
+                description: params.description || null,
+                zpl: params.zpl || null,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sensors'] });
+            setSnackbar({ open: true, message: 'Sensor uspešno posodobljen!', severity: 'success' });
+            setOpen(false);
+        },
+        onError: () => {
+            setSnackbar({ open: true, message: 'Napaka pri shranjevanju senzorja', severity: 'error' });
+        }
+    });
 
-    const handleAddOrUpdateProduct = (event: React.FormEvent<HTMLFormElement>) => {
+    const insertMutation = useMutation({
+        mutationFn: async (params: Omit<FrontendSensor, 'id'>) => {
+            return InsertSensor({
+                sensorName: params.sensorName,
+                familyId: params.familyId,
+                productId: params.productId,
+                photograph: params.photograph || null,
+                payloadDecoder: params.payloadDecoder || null,
+                decoder: params.decoder !== undefined ? params.decoder : null,
+                description: params.description || null,
+                zpl: params.zpl || null,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sensors'] });
+            setSnackbar({ open: true, message: 'Sensor uspešno dodan!', severity: 'success' });
+            setOpen(false);
+        },
+        onError: () => {
+            setSnackbar({ open: true, message: 'Napaka pri dodajanju senzorja', severity: 'error' });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: DeleteSensor,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sensors'] });
+            setSnackbar({ open: true, message: 'Sensor izbrisan!', severity: 'success' });
+        },
+        onError: () => {
+            setSnackbar({ open: true, message: 'Napaka pri brisanju senzorja', severity: 'error' });
+        }
+    });
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        const newProduct: Product = {
-            id: editingProduct ? editingProduct.id : (products.length > 0 ? products[products.length - 1].id + 1 : 1),
-            name: formData.get('name') as string,
-            frequency: formData.get('frequency') as string,
-            type: formData.get('type') as 'Sensor' | 'Transmitter' | 'Receiver',
-            price: Number(formData.get('price')),
+
+        const sensorData = {
+            sensorName: formData.get('sensorName') as string,
+            familyId: Number(formData.get('familyId')),
+            productId: Number(formData.get('productId')),
+            photograph: formData.get('photograph') as string,
+            payloadDecoder: formData.get('payloadDecoder') as string,
+            decoder: formData.get('decoder') as JsonValue,
+            description: formData.get('description') as string,
         };
 
-        if (editingProduct) {
-            setProducts(products.map(product => product.id === editingProduct.id ? newProduct : product));
-            setSnackbar({ open: true, message: 'Product updated successfully!', severity: 'success' });
+        if (editingSensor) {
+            updateMutation.mutate({ ...sensorData, id: editingSensor.id });
         } else {
-            setProducts([...products, newProduct]);
-            setSnackbar({ open: true, message: 'New product added successfully!', severity: 'success' });
+            insertMutation.mutate(sensorData);
         }
-        handleClose();
     };
 
-    const handleDeleteProduct = (id: number) => {
-        setProducts(products.filter(product => product.id !== id));
-        setSnackbar({ open: true, message: 'Product deleted successfully!', severity: 'success' });
-    };
-
-    const handleEditProduct = (product: Product) => {
-        setEditingProduct(product);
-        setOpen(true);
-    };
+    if (isLoading) return <div>Nalaganje...</div>;
+    if (isError) return <div>Napaka pri nalaganju senzorjev</div>;
 
     return (
         <ThemeProvider theme={theme}>
             <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-8">
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="max-w-7xl mx-auto"
-                >
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto">
                     <Box className="flex justify-between items-center mb-8">
-                        <Typography variant="h3" component="h1" className="text-purple-700 font-bold">
-                            Product List
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            style={{ background: 'linear-gradient(to right, #3f51b5, #9c27b0)', color: 'white' }}
-                            onClick={handleOpen}
-                        >
-                            Add New Product
+                        <Typography variant="h3" className="text-purple-700 font-bold">Seznam senzorjev</Typography>
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+                            setEditingSensor(null);
+                            setOpen(true);
+                        }}>
+                            Dodaj nov senzor
                         </Button>
                     </Box>
+
                     <TableContainer component={Paper} elevation={3}>
                         <Table>
                             <TableHead>
                                 <TableRow style={{ background: 'linear-gradient(to right, #3f51b5, #9c27b0)' }}>
-                                    <TableCell style={{ color: 'white' }}>ID</TableCell>
-                                    <TableCell style={{ color: 'white' }}>Name</TableCell>
-                                    <TableCell style={{ color: 'white' }}>Frequency</TableCell>
-                                    <TableCell style={{ color: 'white' }}>Type</TableCell>
-                                    <TableCell style={{ color: 'white' }}>Price</TableCell>
-                                    <TableCell style={{ color: 'white' }}>Actions</TableCell>
+                                    {['ID', 'Ime senzorja', 'ID družine', 'ID produkta', 'Fotografija', 'Payload Decoder', 'Decoder', 'Opis', 'Akcije'].map((header) => (
+                                        <TableCell key={header} style={{ color: 'white' }}>{header}</TableCell>
+                                    ))}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 <AnimatePresence>
-                                    {products.map((product, index) => (
-                                        <motion.tr
-                                            key={product.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -20 }}
-                                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                                        >
-                                            <TableCell>{product.id}</TableCell>
-                                            <TableCell>{product.name}</TableCell>
-                                            <TableCell>{product.frequency}</TableCell>
-                                            <TableCell>{product.type}</TableCell>
-                                            <TableCell>${product.price.toFixed(2)}</TableCell>
+                                    {sensors?.map((sensor) => (
+                                        <motion.tr key={sensor.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                            <TableCell>{sensor.id}</TableCell>
+                                            <TableCell>{sensor.sensorName}</TableCell>
+                                            <TableCell>{sensor.familyId}</TableCell>
+                                            <TableCell>{sensor.productId}</TableCell>
+                                            <TableCell>{sensor.photograph}</TableCell>
+                                            <TableCell className="break-all max-w-xs">{sensor.payloadDecoder}</TableCell>
+                                            <TableCell className="max-w-xl">
+                                                <pre className="text-xs overflow-auto max-h-32">
+                                                    {JSON.stringify(sensor.decoder, null, 2)}
+                                                </pre>
+                                            </TableCell>
+                                            <TableCell>{sensor.description}</TableCell>
                                             <TableCell>
-                                                <IconButton color="secondary" onClick={() => handleEditProduct(product)}>
+                                                <IconButton onClick={() => {
+                                                    setEditingSensor(sensor);
+                                                    setOpen(true);
+                                                }}>
                                                     <EditIcon />
                                                 </IconButton>
-                                                <IconButton color="error" onClick={() => handleDeleteProduct(product.id)}>
+                                                <IconButton onClick={() => deleteMutation.mutate(sensor.id)}>
                                                     <DeleteIcon />
                                                 </IconButton>
                                             </TableCell>
@@ -146,71 +196,91 @@ export default function ProductList() {
                         </Table>
                     </TableContainer>
                 </motion.div>
+
+                <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+                    <DialogTitle>{editingSensor ? 'Uredi senzor' : 'Dodaj nov senzor'}</DialogTitle>
+                    <DialogContent>
+                        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                            <TextField
+                                fullWidth
+                                name="sensorName"
+                                label="Ime senzorja"
+                                defaultValue={editingSensor?.sensorName}
+                                required
+                            />
+                            <TextField
+                                fullWidth
+                                name="familyId"
+                                label="ID družine"
+                                type="number"
+                                defaultValue={editingSensor?.familyId}
+                                required
+                            />
+                            <TextField
+                                fullWidth
+                                name="productId"
+                                label="ID produkta"
+                                type="number"
+                                defaultValue={editingSensor?.productId}
+                                required
+                            />
+                            <TextField
+                                fullWidth
+                                name="photograph"
+                                label="URL fotografije"
+                                defaultValue={editingSensor?.photograph}
+                            />
+                            <TextField
+                                fullWidth
+                                name="payloadDecoder"
+                                label="Payload Decoder"
+                                defaultValue={editingSensor?.payloadDecoder}
+                                multiline
+                                minRows={4}
+                                maxRows={8}
+                                inputProps={{
+                                    maxLength: 5000,
+                                    style: {
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.8rem',
+                                        whiteSpace: 'pre-wrap'
+                                    }
+                                }}
+                            />
+                            <TextField
+                                fullWidth
+                                name="decoder"
+                                label="Decoder (JSON)"
+                                defaultValue={editingSensor?.decoder ? JSON.stringify(editingSensor.decoder, null, 2) : ''}
+                                multiline
+                                minRows={6}
+                                maxRows={12}
+                                helperText='Enter valid JSON (e.g., { "key": "value" })'
+                                InputProps={{
+                                    style: { fontFamily: 'monospace' },
+                                }}
+                            />
+                            <TextField
+                                fullWidth
+                                name="description"
+                                label="Opis"
+                                defaultValue={editingSensor?.description}
+                                multiline
+                                rows={3}
+                            />
+                            <Button type="submit" variant="contained" fullWidth size="large">
+                                {editingSensor ? 'Shrani spremembe' : 'Dodaj senzor'}
+                            </Button>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
+                    <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+                        {snackbar.message}
+                    </Alert>
+                </Snackbar>
             </div>
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
-                <DialogContent>
-                    <form onSubmit={handleAddOrUpdateProduct} className="space-y-4">
-                        <TextField
-                            fullWidth
-                            name="name"
-                            label="Product Name"
-                            variant="outlined"
-                            defaultValue={editingProduct?.name}
-                            required
-                        />
-                        <TextField
-                            fullWidth
-                            name="frequency"
-                            label="Frequency"
-                            variant="outlined"
-                            defaultValue={editingProduct?.frequency}
-                            required
-                        />
-                        <TextField
-                            fullWidth
-                            name="type"
-                            label="Type"
-                            variant="outlined"
-                            select
-                            defaultValue={editingProduct?.type || 'Sensor'}
-                            required
-                        >
-                            <MenuItem value="Sensor">Sensor</MenuItem>
-                            <MenuItem value="Transmitter">Transmitter</MenuItem>
-                            <MenuItem value="Receiver">Receiver</MenuItem>
-                        </TextField>
-                        <TextField
-                            fullWidth
-                            name="price"
-                            label="Price"
-                            variant="outlined"
-                            type="number"
-                            inputProps={{ step: "0.01" }}
-                            defaultValue={editingProduct?.price}
-                            required
-                        />
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            fullWidth
-                            style={{ background: 'linear-gradient(to right, #3f51b5, #9c27b0)', color: 'white' }}
-                        >
-                            {editingProduct ? 'Update Product' : 'Add Product'}
-                        </Button>
-                    </form>
-                </DialogContent>
-            </Dialog>
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={6000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-            >
-                <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </ThemeProvider>
     );
 }
-

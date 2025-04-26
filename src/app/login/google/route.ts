@@ -1,6 +1,6 @@
 import { generateCodeVerifier, generateState } from "arctic";
 import { cookies } from "next/headers";
-import { google } from "src/server/googleOauth";
+import { google } from "src/server//LOGIN_LUCIA_ACTION/googleOauth";
 
 export async function GET(): Promise<Response> {
     const state = generateState();
