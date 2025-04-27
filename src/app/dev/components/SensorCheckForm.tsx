@@ -497,7 +497,14 @@ export function DynamicFormComponent({
           onChange={handleChange}
         />
       ) : my_type === "string" ? (
-        <TextField label={my_key} value={value} onChange={handleChange} />
+        <TextField
+          label={my_key}
+          value={value}
+          onChange={handleChange}
+          inputProps={{
+            readOnly: my_key === "join_eui", // Make the field read-only if the key is "join_eui"
+          }}
+        />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
           (
