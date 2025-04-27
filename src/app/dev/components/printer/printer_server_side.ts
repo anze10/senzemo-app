@@ -182,7 +182,7 @@ export async function handlePrintRequest(printerUri: string) {
 export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
     try {
         // Ustvarimo ZPL kodo z vstavljenimi podatki
-        const zplCode = await getZplfromDB(family_id, product_id);
+        const zplCode = await getZplfromDB(family_id, product_id, dev_eui);
 
         if (!zplCode) {
             throw new Error("Failed to retrieve ZPL code from database");
@@ -208,7 +208,7 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
 
 
 
-function getZplfromDB(family_id: number, product_id: number) {
+function getZplfromDB(family_id: number, product_id: number, dev_eui: string) {
     // Get ZPL code from database
     return prisma.senzor.findFirst({
         where: {
@@ -216,7 +216,10 @@ function getZplfromDB(family_id: number, product_id: number) {
             productId: product_id
         }
     }).then((data) => {
-        return data ? data.zpl : null;
+        if (data && data.zpl) {
+            return data.zpl.replace("{DevEUI}", dev_eui);
+        }
+        return null;
     });
 }
 

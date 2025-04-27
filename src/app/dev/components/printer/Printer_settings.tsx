@@ -138,7 +138,10 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             <TextField
               select
               label="Select Printer"
-              value={selectedPrinter || ""}
+              value={
+                printers.find((printer) => `${url_server}/printers/${printer.name}` === selectedPrinter)
+                  ?.name || ""
+              }
               onChange={(e) => handlePrinterSelect(e.target.value)}
               fullWidth
               SelectProps={{
