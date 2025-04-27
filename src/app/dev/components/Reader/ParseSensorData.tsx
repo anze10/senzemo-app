@@ -138,7 +138,7 @@ const exampleParser: SensorParserCombinator = [
       name: "lora_freq_reg",
       default: 4,
       enum_values: [
-        { value: 4, mapped: "EU868" },
+        { value: 5, mapped: "EU868" },
         { value: 8, mapped: "US915" },
         { value: 0, mapped: "AS923" },
       ],

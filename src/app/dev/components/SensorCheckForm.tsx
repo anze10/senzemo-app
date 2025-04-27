@@ -67,17 +67,17 @@ export function SensorCheckForm() {
 
   const dataforDB = {
     DeviceType: "string",
-    DevEUI: "string",
-    AppEUI: "string",
-    AppKey: "string",
-    FrequencyRegion: "string",
+    dev_eui: "string",
+    join_eui: "string",
+    app_key: "string",
+    lora_freq_reg: "string",
     SubBands: "string",
-    HWVersion: "string",
-    FWVersion: "string",
+    device_hw_ver: "string",
+    device_fw_ver: "string",
     CustomFWVersion: "string",
-    SendPeriod: "string",
-    ACK: "string",
-    MovementThreshold: "string",
+    lora_send_period: "string",
+    lora_ack: "string",
+    device_mov_thr: "string",
     orderNumber: 0,
   } satisfies ProductionListWithoutId;
   const all_sensors = useSensorStore((state) => state.sensors);
@@ -143,14 +143,14 @@ export function SensorCheckForm() {
     useSensorStore.setState({ start_time: Date.now() });
   }, []);
 
-  useMutation({
+  const insertIntoDatabaseMutation = useMutation({
     mutationKey: ["InsertintoDatabase"],
     mutationFn: () => InsertintoDB(dataforDB),
     onMutate: async () => {
       console.log("onMutate");
     },
     onError: (error) => {
-      console.error("Error in GetDataFromSensor:", error);
+      console.error("Error in InsertintoDB:", error);
     },
     onSuccess: (data) => {
       console.log("onSuccess", data);
@@ -167,12 +167,22 @@ export function SensorCheckForm() {
       const parser = sensor_parsers.find(
         (parser) => parser.output.name === key
       );
+      console.log(value, key);
+
+
+      dataforDB.orderNumber = 0;
+
 
       if (!parser?.output) {
         console.error("Parser not found for key", key);
         return;
       }
-
+      console.log("Key", key);
+      if (key in dataforDB) {
+        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        (dataforDB as Record<string, unknown>)[key] = typeof value === "string" ? value : String(value);
+        console.log("Data for DB", value?.toString());
+      }
       if (parser.output.important) {
         important[key] = {
           value,
@@ -189,7 +199,7 @@ export function SensorCheckForm() {
     });
 
     return [important, unimportant];
-  }, [current_sensor, sensor_parsers]);
+  }, [current_sensor, dataforDB, sensor_parsers]);
 
   // useEffect(() => {
   //   if (!current_sensor) return;
@@ -286,6 +296,7 @@ export function SensorCheckForm() {
             }}
           >
             {Object.entries(important_sensor_data).map(([key, value]) => (
+
               <Box
                 key={key}
                 sx={{
@@ -305,6 +316,7 @@ export function SensorCheckForm() {
                 }}
               >
                 <DynamicFormComponent
+
                   my_key={key}
                   my_type={value.my_type}
                   value={value.value}
@@ -381,6 +393,8 @@ export function SensorCheckForm() {
                   if (!decoder) return;
 
                   add_new_sensor(decoder, uint_array);
+                  insertIntoDatabaseMutation.mutate();
+                  console.log("Data inserted into database");
                 } catch (error) {
                   console.error("Error in submission:", error);
                   throw error;
@@ -486,18 +500,18 @@ export function DynamicFormComponent({
         <TextField label={my_key} value={value} onChange={handleChange} />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
-        (
-          <FormControl fullWidth>
-            <InputLabel>{my_key}</InputLabel>
-            <Select label={my_key} value={value} onChange={handleChange}>
-              {enum_values.map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.mapped}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ))
+          (
+            <FormControl fullWidth>
+              <InputLabel>{my_key}</InputLabel>
+              <Select label={my_key} value={value} onChange={handleChange}>
+                {enum_values.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.mapped}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ))
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}

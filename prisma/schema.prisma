@@ -122,19 +122,19 @@ model Order {
 }
 
 model ProductionList {
-  id                Int    @id @default(autoincrement())
-  DeviceType        String
-  DevEUI            String
-  AppEUI            String
-  AppKey            String
-  FrequencyRegion   String
-  SubBands          String
-  HWVersion         String
-  FWVersion         String
-  CustomFWVersion   String
-  SendPeriod        String
-  ACK               String
-  MovementThreshold String
-  orderNumber       Int
+  id               Int    @id @default(autoincrement())
+  DeviceType       String
+  dev_eui          String
+  join_eui         String
+  app_key          String
+  lora_freq_reg    String
+  SubBands         String ////iz kje to zvem
+  device_hw_ver    String
+  device_fw_ver    String
+  CustomFWVersion  String
+  lora_send_period String
+  lora_ack         String
+  device_mov_thr   String
+  orderNumber      Int
   // order             Order  @relation(fields: [orderNumber], references: [id])
 }
