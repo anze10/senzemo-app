@@ -10,7 +10,11 @@ export type ParsedSensorData = Record<string, ParsedSensorValue>;
 type SensorParserInput = {
   byte_position: number;
   byte_length: number;
-  byte_offset?: number; // Optional offset within the byte range
+  byte_offset?: number;
+  msb?: boolean;
+  lsb?: boolean;
+  msb_position?: number;
+  lsb_position?: number;
 };
 
 type SensorParserOutput = {

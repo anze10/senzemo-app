@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import deepEqual from "deep-equal";
+//import deepEqual from "deep-equal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
@@ -270,9 +270,10 @@ export function SensorCheckForm() {
             mb: 2,
             p: 3,
             borderRadius: 2,
-            backgroundColor: current_sensor
-              ? getStatusColor(current_sensor.data.status, current_sensor.data)
-              : "white",
+            backgroundColor: "white"//current_sensor
+            //? getStatusColor(current_sensor.data.status, current_sensor.data)
+            // : "white"
+            ,
             display: "flex",
             flexDirection: "column",
             alignItems: "center", // Center content horizontally
@@ -486,6 +487,7 @@ export function DynamicFormComponent({
             checked={Boolean(value)}
             onChange={handleChange}
             color="primary"
+            sx={{ backgroundColor: getStatusColor2(my_key, value) }}
           />
           <InputLabel>{my_key}</InputLabel>
         </Box>
@@ -495,20 +497,24 @@ export function DynamicFormComponent({
           type="number"
           value={value}
           onChange={handleChange}
+          sx={{ backgroundColor: getStatusColor2(my_key, value) }}
         />
       ) : my_type === "string" ? (
         <TextField
           label={my_key}
           value={value}
           onChange={handleChange}
-          inputProps={{
-            readOnly: my_key === "join_eui", // Make the field read-only if the key is "join_eui"
+          slotProps={{
+            input: {
+              readOnly: my_key === "join_eui",
+            },
           }}
+          sx={{ backgroundColor: getStatusColor2(my_key, value) }}
         />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
           (
-            <FormControl fullWidth>
+            <FormControl fullWidth sx={{ backgroundColor: getStatusColor2(my_key, value) }} >
               <InputLabel>{my_key}</InputLabel>
               <Select label={my_key} value={value} onChange={handleChange}>
                 {enum_values.map((item) => (
@@ -526,22 +532,46 @@ export function DynamicFormComponent({
   );
 }
 
-function getStatusColor(
-  status: ParsedSensorValue,
-  current_sensor: ParsedSensorData
-) {
+// function getStatusColor(
+//   status: ParsedSensorValue,
+//   current_sensor: ParsedSensorData
+// ) {
+//   const target = useSensorStore.getState().target_sensor_data;
+//   if (typeof current_sensor === "undefined" || typeof target === "undefined")
+//     return "white"; /// hitor iskanje
+
+//   const is_equal = deepEqual(target, current_sensor); // tple bo treba spremenit
+
+//   if (is_equal) {
+//     // TODO: return {color:"green", message: "OK"};
+//     return "green";
+//   } else if (!is_equal && (status === 1 || status === 2)) {
+//     return "yellow";
+//   } else {
+//     return "red";
+//   }
+// }
+
+function getStatusColor2(
+  name: string,
+  vrednost: ParsedSensorValue,
+): string {
   const target = useSensorStore.getState().target_sensor_data;
-  if (typeof current_sensor === "undefined" || typeof target === "undefined")
-    return "white"; /// hitor iskanje
-
-  const is_equal = deepEqual(target, current_sensor); // tple bo treba spremenit
-
-  if (is_equal) {
-    // TODO: return {color:"green", message: "OK"};
-    return "green";
-  } else if (!is_equal && (status === 1 || status === 2)) {
-    return "yellow";
-  } else {
-    return "red";
+  if (!target) {
+    return "white"; // Default color if no target data is available
   }
+  if (name === "dev_eui" || name === "join_eui" || name === "app_key") {
+    return "white";
+  }
+
+  for (const [key, value] of Object.entries(target)) {
+
+
+    if (name === key && value === vrednost) {
+      return "white"; // Match found
+    }
+  }
+
+  return "red"; // No match found after checking all entries
 }
+
