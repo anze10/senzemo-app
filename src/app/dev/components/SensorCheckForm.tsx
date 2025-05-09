@@ -363,11 +363,11 @@ export function SensorCheckForm() {
                 console.log("funtion called");
                 try {
                   console.log("Tole ne dela");
-                  // Update sensor status and data first
+
                   set_sensor_status(current_sensor_index, true);
                   set_sensor_data(current_sensor_index, data);
                   console.log("Data submitted:");
-                  // Proceed to print and read new data
+
                   await PrintSticker(
                     data.dev_eui as string,
                     data.family_id as number,
