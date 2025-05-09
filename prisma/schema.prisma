@@ -19,7 +19,7 @@ model User {
   session      Session[]
   GoogleTokens GoogleTokens[]
 
-  @@index([googleId], name: "google_id_index") // Add the index here
+  @@index([googleId], name: "google_id_index")
 }
 
 model Session {
@@ -118,7 +118,6 @@ model Order {
   orderDate       DateTime
   otherParameters String?
   sensor          Senzor   @relation(fields: [sensorId], references: [id])
-  // productionLists ProductionList[]
 }
 
 model ProductionList {
@@ -128,7 +127,7 @@ model ProductionList {
   join_eui         String
   app_key          String
   lora_freq_reg    String
-  SubBands         String ////iz kje to zvem
+  SubBands         String
   device_hw_ver    String
   device_fw_ver    String
   CustomFWVersion  String
@@ -136,5 +135,4 @@ model ProductionList {
   lora_ack         String
   device_mov_thr   String
   orderNumber      Int
-  // order             Order  @relation(fields: [orderNumber], references: [id])
 }

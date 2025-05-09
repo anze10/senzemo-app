@@ -13,18 +13,13 @@ import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import MenuItem from "@mui/material/MenuItem";
-// import AdbIcon from '@mui/icons-material/Adb';
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import Printer_settings from "./printer/Printer_settings";
 import { Modal } from "@mui/material";
 import { connectToPort, readDataFromPort } from "./Reader/HandleClick";
 import type { Session } from "lucia";
-
-//import { GetUseFromSession } from './GetUser';
 import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
 import { useQuery } from "@tanstack/react-query";
-//import Image from 'next/image';
-
 const handleAccount = () => {
   console.log("Account clicked");
 };
@@ -60,7 +55,7 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
   };
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    // console.log(session)
+
     setAnchorElUser(event.currentTarget);
   };
 
@@ -141,7 +136,7 @@ const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
             LOGO
           </Typography>
 
-          {/* Serial Port Button */}
+
           <Box
             sx={{
               display: "flex",

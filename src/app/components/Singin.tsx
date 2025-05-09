@@ -1,23 +1,8 @@
 "use client";
-
-//import { useState } from 'react'
-//import { useRouter } from 'next/navigation'
 import React from "react";
-// import { getGoogleOauthConsentUrl } from "src/server/auth.action";
-// import { toast } from "sonner";
 import { Box, Typography, Button } from "@mui/material";
-//import { signIn } from "src/server/auth_due.actions";
-
-
 import GoogleIcon from "@mui/icons-material/Google";
-
-
-// import { getBaseUrl } from "~/lib/getBaseUrl";
-// import { useRouter } from 'next/navigation'
-
 export default function Signin() {
-
-
     return (
         <Box
             sx={{

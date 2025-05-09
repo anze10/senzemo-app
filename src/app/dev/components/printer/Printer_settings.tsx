@@ -2,8 +2,7 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getPrinterUrls, handlePrintRequest } from "./printer_server_side";
 import type { Tiskalnik } from "./printer_server_side";
-import { usePrinterStore } from "./printer_settinsgs_store"; // Import the store
-
+import { usePrinterStore } from "./printer_settinsgs_store";
 import { Printer, TestTube } from "lucide-react";
 import {
   Button,
@@ -40,7 +39,6 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
     startTransition(async () => {
       try {
         console.log("Sending print job to:", url_connection);
-        // Attempt the print request
         const result = await handlePrintRequest(url_connection);
 
         if (result.success) {

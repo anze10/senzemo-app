@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ParsedSensorData,
   ParsedSensorValue,
-  // SensorParserCombinator,
+
 } from "./Reader/ParseSensorData";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
@@ -47,7 +47,6 @@ type ImportantSensorData = Record<
 >;
 
 export function SensorCheckForm() {
-  // Remove separate useForm; use the context instead.
   const portRef = useRef<SerialPort | null>(null);
 
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
@@ -179,7 +178,6 @@ export function SensorCheckForm() {
       }
       console.log("Key", key);
       if (key in dataforDB) {
-        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         (dataforDB as Record<string, unknown>)[key] = typeof value === "string" ? value : String(value);
         console.log("Data for DB", value?.toString());
       }
@@ -201,12 +199,6 @@ export function SensorCheckForm() {
     return [important, unimportant];
   }, [current_sensor, dataforDB, sensor_parsers]);
 
-  // useEffect(() => {
-  //   if (!current_sensor) return;
-  //   Object.entries(current_sensor.data).forEach(([key, value]) => {
-  //     setValue(key, value);
-  //   });
-  // }, [current_sensor, setValue]);
 
   function handleDynamicChange(name: string, value: ParsedSensorValue): void {
     if (!current_sensor) return;
@@ -270,17 +262,14 @@ export function SensorCheckForm() {
             mb: 2,
             p: 3,
             borderRadius: 2,
-            backgroundColor: "white"//current_sensor
-            //? getStatusColor(current_sensor.data.status, current_sensor.data)
-            // : "white"
-            ,
+            backgroundColor: "white",
             display: "flex",
             flexDirection: "column",
-            alignItems: "center", // Center content horizontally
-            justifyContent: "center", // Center content vertically
-            minHeight: "200px", // Set a minimum height for the main box
-            width: "100%", // Take full width
-            boxShadow: 3, // Add shadow for better visual appearance
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "200px",
+            width: "100%",
+            boxShadow: 3,
           }}
         >
           <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
@@ -290,10 +279,9 @@ export function SensorCheckForm() {
             sx={{
               display: "flex",
               flexWrap: "wrap",
-              gap: 3, // Spacing between parameter boxes
-              justifyContent: "center", // Center parameter boxes horizontally
-              //maxWidth: '1200px', // Limit maximum width for better centering
-              width: "100%", // Take full width of the parent
+              gap: 3,
+              justifyContent: "center",
+              width: "100%",
             }}
           >
             {Object.entries(important_sensor_data).map(([key, value]) => (
@@ -306,13 +294,13 @@ export function SensorCheckForm() {
                   backgroundColor: "background.paper",
                   border: "1px solid",
                   borderColor: "divider",
-                  minWidth: "200px", // Minimum width for each parameter box
-                  textAlign: "center", // Center text inside the box
-                  boxShadow: 1, // Subtle shadow for each parameter box
+                  minWidth: "200px",
+                  textAlign: "center",
+                  boxShadow: 1,
                   "&:hover": {
-                    boxShadow: 3, // Enhance shadow on hover
-                    transform: "scale(1.05)", // Slightly enlarge on hover
-                    transition: "all 0.3s ease", // Smooth transition
+                    boxShadow: 3,
+                    transform: "scale(1.05)",
+                    transition: "all 0.3s ease",
                   },
                 }}
               >
@@ -407,7 +395,7 @@ export function SensorCheckForm() {
             Accept
           </Button>
 
-          <Button
+          {/* <Button
             variant="contained"
             color="error"
             href="/konec"
@@ -417,7 +405,7 @@ export function SensorCheckForm() {
             sx={{ flex: 1 }}
           >
             Reprograme
-          </Button>
+          </Button> */}
 
           <Button
             variant="outlined"
@@ -532,25 +520,6 @@ export function DynamicFormComponent({
   );
 }
 
-// function getStatusColor(
-//   status: ParsedSensorValue,
-//   current_sensor: ParsedSensorData
-// ) {
-//   const target = useSensorStore.getState().target_sensor_data;
-//   if (typeof current_sensor === "undefined" || typeof target === "undefined")
-//     return "white"; /// hitor iskanje
-
-//   const is_equal = deepEqual(target, current_sensor); // tple bo treba spremenit
-
-//   if (is_equal) {
-//     // TODO: return {color:"green", message: "OK"};
-//     return "green";
-//   } else if (!is_equal && (status === 1 || status === 2)) {
-//     return "yellow";
-//   } else {
-//     return "red";
-//   }
-// }
 
 function getStatusColor2(
   name: string,
@@ -558,7 +527,7 @@ function getStatusColor2(
 ): string {
   const target = useSensorStore.getState().target_sensor_data;
   if (!target) {
-    return "white"; // Default color if no target data is available
+    return "white";
   }
   if (name === "dev_eui" || name === "join_eui" || name === "app_key") {
     return "white";
@@ -568,10 +537,10 @@ function getStatusColor2(
 
 
     if (name === key && value === vrednost) {
-      return "white"; // Match found
+      return "white";
     }
   }
 
-  return "red"; // No match found after checking all entries
+  return "red";
 }
 

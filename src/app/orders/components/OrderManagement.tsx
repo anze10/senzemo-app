@@ -59,11 +59,11 @@ export default function OrderManagement() {
     const handleCreateOrUpdateOrder = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        // Ensure random ID generation is handled client-side
+
         const randomId = 1
 
         const newOrder: Order = {
-            id: editingOrder ? editingOrder.id : randomId, // Use client-generated random ID
+            id: editingOrder ? editingOrder.id : randomId,
             customerName: formData.get('customerName') as string,
             sensorId: Number(formData.get('sensorId')),
             quantity: Number(formData.get('quantity')),

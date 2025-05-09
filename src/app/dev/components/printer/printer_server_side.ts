@@ -11,9 +11,6 @@ export interface Tiskalnik {
     url: string;
 }
 
-// Define Printer interface
-
-//type GetPrinterUrlsCallback = (error: Error | null, printerUrls: string[]) => void;
 
 export async function getPrinterUrls(): Promise<Tiskalnik[]> {
     "use server";
@@ -60,18 +57,17 @@ export async function getPrinterUrls(): Promise<Tiskalnik[]> {
 }
 
 
-// Function to check printer status and print
 async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
     console.log(printerUri);
     console.log("Checking printer status and sending print job...");
 
     try {
-        // Check printer status via IPP
+
         const printer = new ipp.Printer(printerUri);
         console.log("Printer object created:", printer);
         printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
 
-            // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
+
             if (err) {
                 console.error("Error getting printer attributes:", err);
                 callback("Failed to get printer attributes");
@@ -81,17 +77,17 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
             const printerStatus = (res as { 'printer-attributes-tag': { 'printer-state': string } })['printer-attributes-tag']['printer-state'];
             console.log("Printer status:", printerStatus);
             console.log(`res`, res);
-            console.log(`Printer status: ${printerStatus}`); // Log the printer status
+            console.log(`Printer status: ${printerStatus}`);
 
             if (printerStatus === 'idle') {
                 console.log("Printer is ready, sending print job...");
 
-                // Create print job
+
                 const msg = {
                     "operation-attributes-tag": {
                         "requesting-user-name": "admin",
                         "job-name": "testing",
-                        "document-format": "text/plain" // ZPL format for Zebra printers
+                        "document-format": "text/plain"
                     },
                     "job-attributes-tag": {},
                     data: bufferToBePrinted
@@ -101,9 +97,9 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
                 printer.execute("Print-Job", msg as PrintJobRequest, (err: Error, res: unknown) => {
                     if (err) {
                         console.error("Error printing job:", err);
-                        callback("Print job failed: " + JSON.stringify(err)); // Include detailed error message
+                        callback("Print job failed: " + JSON.stringify(err));
                     } else {
-                        console.log("Print job sent successfully!", res); // Log successful response
+                        console.log("Print job sent successfully!", res);
                         callback("Print job sent successfully!");
                     }
                 });
@@ -118,11 +114,10 @@ async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: B
     }
 }
 
-// Server-side action to send ZPL print job
+
 export async function handlePrintRequest(printerUri: string) {
 
     try {
-        // Sample ZPL buffer data
         const zplCode = `^XA
 ~TA000
 ~JSN
@@ -163,10 +158,9 @@ export async function handlePrintRequest(printerUri: string) {
 `;
         const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
 
-        // Call the function to print
         await doPrintOnSelectedPrinter(printerUri, bufferToBePrinted, (message: string) => {
             if (message) {
-                console.log(message); // Log success/failure
+                console.log(message);
             } else {
                 console.log("No message received.");
             }
@@ -178,10 +172,9 @@ export async function handlePrintRequest(printerUri: string) {
     }
     return { success: true, message: 'Print job sent successfully' };
 }
-// druga funkcija /////
+
 export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
     try {
-        // Ustvarimo ZPL kodo z vstavljenimi podatki
         const zplCode = await getZplfromDB(family_id, product_id, dev_eui);
 
         if (!zplCode) {
@@ -190,10 +183,10 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
 
         const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
 
-        // Kličemo obstoječo funkcijo za tisk
+
         await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message: string) => {
             if (message) {
-                console.log(message); // Log success/failure
+                console.log(message);
             } else {
                 console.log("No message received.");
             }
@@ -209,7 +202,7 @@ export async function PrintSticker(dev_eui: string, family_id: number, product_i
 
 
 function getZplfromDB(family_id: number, product_id: number, dev_eui: string) {
-    // Get ZPL code from database
+
     return prisma.senzor.findFirst({
         where: {
             familyId: family_id,

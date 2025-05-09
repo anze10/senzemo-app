@@ -11,7 +11,7 @@ export function RightDecoder(
     );
     console.log("right decoder from database", right_decoder?.decoder);
 
-    // Assuming the `decoder` field is already of type `SensorParserCombinator`
+
     if (typeof right_decoder?.decoder === "object") {
       return right_decoder.decoder as SensorParserCombinator;
     }

@@ -1,7 +1,6 @@
 import { create, type StateCreator } from "zustand";
 import { produce } from "immer";
 import { persist, createJSONStorage } from "zustand/middleware";
-//import SMC30_parser from "./Reader/SMC30_Parser";
 import {
   ParsedSensorData,
   ParseSensorData,
@@ -13,14 +12,14 @@ export type RatedSensorData = {
   okay?: boolean;
 };
 
-// current_sensor.data === target_sensor_data
+
 export interface SensorState {
   current_decoder: SensorParserCombinator;
   current_sensor_index: number;
   target_sensor_data?: ParsedSensorData;
   sensors: RatedSensorData[];
-  start_time: number; // Time in milliseconds
-  end_time: number; // Time in milliseconds
+  start_time: number;
+  end_time: number;
   reset: () => void;
   set_target_sensor_data: (data: ParsedSensorData) => void;
   add_new_sensor: (decoder: SensorParserCombinator, data: Uint8Array) => void;
@@ -54,14 +53,6 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
   add_new_sensor: async (decoder, data) => {
     const parsed_data = ParseSensorData(decoder, data);
 
-    /* const { common_data, custom_data } =
-      split_common_custom_sensor_data(parsed_data);
-
-    const new_data: SensorData = {
-      common_data,
-      custom_data,
-    }; */
-
     console.log("Adding new sensor:", parsed_data);
     set(
       produce((state: SensorState) => {
@@ -94,7 +85,6 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
       })
     );
   },
-  // set_time: (start_time: number) => set({ start_time }),
 });
 
 export const useSensorStore = create<SensorState>()(

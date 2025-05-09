@@ -39,14 +39,14 @@ const UsedTime = dynamic(
   { ssr: false }
 );
 
-// SensorReport Component
+
 interface SensorReportProps {
   sensorData: RatedSensorData[];
   startTime?: Date;
 }
 
 function SensorReport({ sensorData }: SensorReportProps) {
-  // Calculate statistics
+
   const totalSensors = sensorData.length;
   const successfulSensors = sensorData.filter((sensor) => sensor.okay).length;
   const unsuccessfulSensors = sensorData.filter(
@@ -61,7 +61,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
           Poročilo o testiranju senzorjev
         </Typography>
 
-        {/* Statistics */}
+
         <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: "#f8f9fa" }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -91,7 +91,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Sensor List */}
+
         <Typography variant="h5" gutterBottom>
           Seznam testiranih senzorjev
         </Typography>
@@ -136,7 +136,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
           )}
         </List>
 
-        {/* Summary */}
+
         <Box sx={{ mt: 3, display: "flex", justifyContent: "center", gap: 2 }}>
           <Chip
             label={`Uspešno: ${successfulSensors}`}
@@ -157,7 +157,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
   );
 }
 
-// Main Konec Component
+
 export function Konec() {
   const { data: sensors } = useQuery({
     queryKey: ["sensors"],
@@ -173,8 +173,8 @@ export function Konec() {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!dataAdded) {
         event.preventDefault();
-        event.returnValue = ""; // Standard for most browsers
-        return ""; // For some older browsers
+        event.returnValue = "";
+        return "";
       }
     };
 
@@ -195,7 +195,7 @@ export function Konec() {
       throw new Error("No credentials");
     }
 
-    // Process each sensor individually
+
     for (const element of sensor_data.filter((el) => el.okay)) {
       const sensorData = element.data;
       const custom_FW = "N/A";
@@ -205,7 +205,7 @@ export function Konec() {
       let model_id = "";
       const lorawan_version = "RP001_V1_0_3_REV_A";
 
-      // Find matching sensor details
+
       (sensors ?? []).forEach((sensor: Senzor) => {
         if (
           sensor.productId === sensorData.product_id &&
@@ -216,7 +216,7 @@ export function Konec() {
         }
       });
 
-      // Determine frequency and band
+
       switch (sensorData.lora_freq_reg) {
         case "AS923":
           freq_reg = "AS_920_923_TTN_AU";
@@ -232,7 +232,7 @@ export function Konec() {
           break;
       }
 
-      // Build EXE and CSV rows for this sensor
+
       const newROWEXE: string[] = [
         model_id,
         String(sensorData.dev_eui),
@@ -245,7 +245,7 @@ export function Konec() {
         custom_FW,
         String(sensorData.lora_send_period),
         String(sensorData.device_adc_delay),
-        String(sensorData.device_mov_thr), // Fix typo if necessary
+        String(sensorData.device_mov_thr),
       ];
 
       const newRowCSV: string[] = [
@@ -264,7 +264,7 @@ export function Konec() {
         band_id,
       ];
 
-      // Insert the row for this sensor
+
       await insert(
         credentials.fileId,
         newRowCSV,
@@ -273,12 +273,12 @@ export function Konec() {
       );
     }
 
-    setDataAdded(true); // Mark data as added
+    setDataAdded(true);
   }
 
   return (
     <Box sx={{ maxWidth: 800, margin: "auto", mt: 4 }}>
-      {/* Sensor Report Component */}
+
       <SensorReport sensorData={sensor_data} />
       <CardActions sx={{ justifyContent: "space-between", p: 2 }}>
         <Button
@@ -298,9 +298,9 @@ export function Konec() {
         >
           Reset and Go Back
         </Button>
-        <Button variant="outlined" onClick={() => posli(sensor_data, sensors)}>
+        {/* <Button variant="outlined" onClick={() => posli(sensor_data, sensors)}>
           Test z TTN
-        </Button>
+        </Button> */}
       </CardActions>
     </Box>
   );

@@ -24,7 +24,7 @@ export async function readDataFromPort(port: SerialPort) {
 
   try {
     const writer = port.writable.getWriter();
-    await writer.write(new TextEncoder().encode("R")); // Pošljemo "R" bralniku
+    await writer.write(new TextEncoder().encode("R"));
     writer.releaseLock();
   } catch (error) {
     console.error("Error writing to port:", error);
