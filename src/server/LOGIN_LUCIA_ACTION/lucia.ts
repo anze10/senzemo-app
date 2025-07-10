@@ -32,12 +32,8 @@ export const getUser = async () => {
                 ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
         }
 
-<<<<<<< HEAD
-    } catch {
-=======
     } catch (error) {
         console.error('Error validating session:', error)
->>>>>>> test
 
     }
     const dbUser = await prisma.user.findUnique({
