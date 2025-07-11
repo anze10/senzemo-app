@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
-import type { ComponentStockItem } from "~/app/inventory/components/InventoryManagement";
+import type { ComponentStockItem, LogEntry } from "~/app/inventory/components/InventoryManagement";
 //import { getUser } from "src/server/LOGIN_LUCIA_ACTION/lucia"
 
 
@@ -470,5 +470,131 @@ export async function addComponentToInventory(
     } catch (error) {
         console.error("Error adding component to inventory:", error);
         throw new Error("Failed to add component to inventory");
+    }
+}
+
+
+
+export async function updateComponentStock(
+    stockId: number,
+    newQuantity: number,
+    reason: string,
+    invoiceNumber: string | null = null,
+    location?: string,
+    email?: string,
+    supplier?: string,
+    phone?: string // <-- Dodaj ta parameter!
+) {
+    try {
+        const updated = await prisma.componentStock.update({
+            where: { id: stockId },
+            data: {
+                quantity: newQuantity,
+                location,
+                supplier: supplier ?? '',
+                email: email ?? '',
+                phone: phone ?? '', // <-- Shrani telefonsko številko!
+                lastUpdated: new Date(),
+            },
+        });
+        // ...logika za inventoryLog...
+        return updated;
+    } catch (error) {
+        throw new Error("Failed to update component stock", error as Error);
+    }
+}
+export async function updateComponentSensorAssignments(
+    componentId: number,
+    assignments: { sensorId: number; requiredQuantity: number }[]
+) {
+    try {
+        // Najprej izbriši vse obstoječe povezave za to komponento
+        await prisma.senzorComponent.deleteMany({
+            where: { componentId }
+        });
+
+        // Nato dodaj nove povezave
+        for (const assignment of assignments) {
+            await prisma.senzorComponent.create({
+                data: {
+                    componentId,
+                    senzorId: assignment.sensorId,
+                    requiredQuantity: assignment.requiredQuantity
+                }
+            });
+        }
+        return true;
+    } catch (error) {
+        console.error("Error updating sensor assignments:", error);
+        throw new Error("Failed to update sensor assignments");
+    }
+}
+
+
+export async function deleteSensorFromInventory(stockId: number) {
+    try {
+        await prisma.senzorStock.delete({
+            where: { id: stockId }
+        });
+        return true;
+    } catch (error) {
+        console.error("Error deleting sensor from inventory:", error);
+        throw new Error("Failed to delete sensor from inventory");
+    }
+}
+
+export async function deleteComponentFromInventory(stockId: number) {
+    try {
+        await prisma.componentStock.delete({
+            where: { id: stockId }
+        });
+        return true;
+    } catch (error) {
+        console.error("Error deleting component from inventory:", error);
+        throw new Error("Failed to delete component from inventory");
+    }
+}
+
+export async function showLogs() {
+    try {
+        const result = await prisma.inventoryLog.findMany({
+            include: {
+                invoice: {
+                    select: {
+                        id: true,
+                        invoiceNumber: true
+                    }
+                }
+            },
+        });
+        return result.map(log => ({
+            user: log.user,
+            id: log.id,
+            invoiceId: log.invoiceId ?? null,
+            invoiceNumber: log.invoice?.invoiceNumber ? `INV-${log.invoiceId}` : null,
+            timestamp: log.timestamp,
+            itemType: log.itemType,
+            itemName: log.itemName,
+            change: log.change,
+            reason: log.reason,
+            details: log.details ?? null,
+            senzorStockId: log.senzorStockId ?? null,
+            componentStockId: log.componentStockId ?? null
+        })) as LogEntry[];
+
+    } catch (error) {
+        console.error("Error deleting component from inventory:", error);
+        throw new Error("Failed to delete component from inventory");
+    }
+}
+
+export async function getAllComponents() {
+    try {
+        return await prisma.component.findMany({
+            select: { id: true, name: true }
+        });
+    } catch (error) {
+        console.error("Error fetching all components:", error);
+        throw new Error("Failed to fetch all components");
     }
 }

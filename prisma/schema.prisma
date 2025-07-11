@@ -118,13 +118,15 @@ model ComponentStock {
   lastUpdated DateTime @default(now())
 
   // Kontaktni podatki dobavitelja
-  supplier  String?
-  email     String?
-  phone     String?
-  category  String? // Kategorija komponent
+  supplier        String?
+  email           String?
+  phone           String?
+  category        String? // Kategorija komponent
+  Component_price Float? // Cena komponente
   // Povezava z računom
-  invoiceId Int?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  invoiceFileKey  String?
+  invoiceId       Int?
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
 
   component Component      @relation(fields: [componentId], references: [id])
   logs      InventoryLog[]

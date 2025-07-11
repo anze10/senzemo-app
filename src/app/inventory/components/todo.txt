@@ -1,0 +1,7 @@
+///nemorm increasat senzorjeu 
+//nemoream upodatead celotne komponente ---> to dela
+//dropdown od komponent se ne posodablja pravilno --> to zdej dela
+//invoice upload ne dela pravilno
+//invoice save treba dodt
+// poizvedba za prikaz senzorjev mora biti skrejp production lista
+// povzetek prikaza in natančen prikaz 
