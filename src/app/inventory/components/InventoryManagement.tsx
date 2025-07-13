@@ -12,12 +12,16 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import EditIcon from '@mui/icons-material/Edit';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import HistoryIcon from '@mui/icons-material/History';
-import { addComponentToInventory, addSensorToInventory, adjustComponentStock, deleteComponentFromInventory, deleteSensorFromInventory, getAllComponents, getSensors, showAllComponents, showLogs, showSensorInInventory, updateComponentSensorAssignments, updateComponentStock } from 'src/app/inventory/components/backent';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import MemoryIcon from '@mui/icons-material/Memory';
+import RadioIcon from '@mui/icons-material/Radio';
+import { addComponentToInventory, addSensorToInventory, adjustComponentStock, adjustSensorStock, deleteComponentFromInventory, deleteSensorFromInventory, getAllComponents, getSensors, showAllComponents, showLogs, showSensorInInventory, updateComponentSensorAssignments, updateComponentStock, getProductionHierarchy, getProductionByFrequency, getProductionDevices } from 'src/app/inventory/components/backent';
 import { useQuery } from '@tanstack/react-query';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { adjustSensorStock } from 'src/app/inventory/components/backent';
+import { uploadPDFToB2 } from 'src/app/inventory/components/aws';
+
 
 
 const theme = createTheme({
@@ -86,6 +90,32 @@ type SensorOption = {
     requiredQuantity: number;
 };
 
+// Novi tipi za hierarhični prikaz senzorjev iz ProductionList
+type ProductionGroupByType = {
+    deviceType: string;
+    totalDevices: number;
+    frequencies: ProductionGroupByFrequency[];
+    expanded: boolean;
+};
+
+type ProductionGroupByFrequency = {
+    frequency: string;
+    count: number;
+    devices: ProductionDevice[];
+    expanded: boolean;
+};
+
+type ProductionDevice = {
+    id: number;
+    devEUI: string;
+    appEUI: string | null;
+    deviceType: string | null;
+    frequency: string | null;
+    hwVersion: string | null;
+    fwVersion: string | null;
+    isAvailable: boolean;
+};
+
 export default function InventoryManagementPage() {
     const [activeTab, setActiveTab] = useState(0);
     const [sensorInventory, setSensorInventory] = useState<SenzorStockItem[]>([]);
@@ -96,11 +126,9 @@ export default function InventoryManagementPage() {
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: '',
-        severity: 'success' as 'success' | 'error' | 'info',
+        severity: 'success' as 'success' | 'error' | 'info' | 'warning',
     });
-    // ...obstoječa koda...
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    // ...obstoječa koda...
     const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
     const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -111,6 +139,7 @@ export default function InventoryManagementPage() {
     const [currentAdjustItem, setCurrentAdjustItem] = useState<InventoryItem | null>(null);
     const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
     const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
+    const [groupedSensors, setGroupedSensors] = useState<ProductionGroupByType[]>([]);
     const queryClient = useQueryClient();
     const frequencyOptions: Frequency[] = ['868 MHz', '915 MHz', '433 MHz', '2.4 GHz', 'Custom'];
 
@@ -143,54 +172,46 @@ export default function InventoryManagementPage() {
             } as ComponentStockItem;
         }
     }, [activeTab]);
-    const [file, setFile] = useState<File | null>(null)
     const [uploading, setUploading] = useState(false)
+
+    const uploadMutation = useMutation({
+        mutationFn: async (file: File) => {
+            // Create a new file with the invoice number as filename, preserving extension
+            const fileExtension = file.name.split('.').pop();
+            const newFileName = `${invoiceNumber}.${fileExtension}`;
+
+            // Create a new File object with the updated name
+            const renamedFile = new File([file], newFileName, { type: file.type });
+
+            return await uploadPDFToB2(renamedFile, invoiceNumber)
+        },
+        onSuccess: () => {
+            setSnackbar({
+                open: true,
+                message: `Invoice uploaded successfully as: ${invoiceNumber}`,
+                severity: 'success',
+            });
+        },
+        onError: (error) => {
+            console.error('Upload error:', error)
+            setSnackbar({
+                open: true,
+                message: 'Upload failed: ' + (error as Error).message,
+                severity: 'error',
+            });
+        },
+    })
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
-        if (!file) {
+        if (!invoiceFile) {
             alert('Please select a file to upload.')
             return
         }
 
         setUploading(true)
-
-        const response = await fetch(
-            process.env.NEXT_PUBLIC_BASE_URL + '/api/upload',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename: file.name, contentType: file.type }),
-            }
-        )
-
-        if (response.ok) {
-            const { url, fields } = await response.json()
-
-            const formData = new FormData()
-            Object.entries(fields).forEach(([key, value]) => {
-                formData.append(key, value as string)
-            })
-            formData.append('file', file)
-
-            const uploadResponse = await fetch(url, {
-                method: 'POST',
-                body: formData,
-            })
-
-            if (uploadResponse.ok) {
-                alert('Upload successful!')
-            } else {
-                console.error('S3 Upload Error:', uploadResponse)
-                alert('Upload failed.')
-            }
-        } else {
-            alert('Failed to get pre-signed URL.')
-        }
-
+        await uploadMutation.mutateAsync(invoiceFile)
         setUploading(false)
     }
 
@@ -198,18 +219,21 @@ export default function InventoryManagementPage() {
         queryKey: ['sensors'],
         queryFn: getSensors,
         staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
 
     const { data: allComponents = [] } = useQuery({
         queryKey: ['components-inventory'],
         queryFn: showAllComponents,
         staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
 
     const { data: rawInventory = [] } = useQuery({
         queryKey: ['sensors-inventory'],
         queryFn: showSensorInInventory,
         staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
 
 
@@ -217,29 +241,68 @@ export default function InventoryManagementPage() {
         queryKey: ['inventory-logs'],
         queryFn: showLogs,
         staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
     const { data: componentOptions = [] } = useQuery({
         queryKey: ['all-components'],
         queryFn: getAllComponents,
         staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
+    // Debug: Track when rawInventory changes
     useEffect(() => {
         if (rawInventory) {
-            console.log('Raw Inventory Data:', rawInventory);
+            console.log('rawInventory changed, length:', rawInventory.length);
         }
     }, [rawInventory]);
 
-    const currentInventory: SenzorStockItem[] = rawInventory.map((item) => ({
-        id: item.id,
-        senzorId: item.sensorId,
-        sensorName: item.sensorName,
-        quantity: item.quantity,
-        location: item.location,
-        lastUpdated: new Date(item.lastUpdated),
-        frequency: (item.frequency as Frequency) || undefined,
-    }));
+    // Use React Query for production hierarchy data with proper caching
+    const { data: productionHierarchy = [] } = useQuery({
+        queryKey: ['production-hierarchy'],
+        queryFn: async () => {
+            try {
+                const deviceTypeData = await getProductionHierarchy();
+                const hierarchyGroups: ProductionGroupByType[] = [];
 
-    console.log('Current Inventory:', currentInventory);
+                for (const deviceTypeGroup of deviceTypeData) {
+                    const frequencyData = await getProductionByFrequency(deviceTypeGroup.deviceType);
+                    const frequencies: ProductionGroupByFrequency[] = [];
+
+                    for (const freqGroup of frequencyData) {
+                        const devices = await getProductionDevices(deviceTypeGroup.deviceType, freqGroup.frequency);
+                        frequencies.push({
+                            frequency: freqGroup.frequency,
+                            count: freqGroup.count,
+                            devices: devices,
+                            expanded: false
+                        });
+                    }
+
+                    hierarchyGroups.push({
+                        deviceType: deviceTypeGroup.deviceType,
+                        totalDevices: deviceTypeGroup.totalDevices,
+                        frequencies: frequencies,
+                        expanded: false
+                    });
+                }
+
+                return hierarchyGroups;
+            } catch (error) {
+                console.error('Error loading production hierarchy:', error);
+                return [];
+            }
+        },
+        enabled: activeTab === 0, // Only fetch when on sensors tab
+        staleTime: 15 * 60 * 1000, // 15 minutes cache
+        gcTime: 60 * 60 * 1000,    // 1 hour garbage collection
+        refetchOnWindowFocus: false, // Don't refetch on window focus
+        refetchOnMount: false,       // Don't refetch on every mount
+    });
+
+    // Update groupedSensors when productionHierarchy changes
+    useEffect(() => {
+        setGroupedSensors(productionHierarchy);
+    }, [productionHierarchy]);
 
     useEffect(() => {
         if (open && activeTab === 1) {
@@ -266,10 +329,37 @@ export default function InventoryManagementPage() {
 
     useEffect(() => {
         if (!open) {
-            setEditItem(initializeNewItem());
+            // Initialize directly to avoid circular dependency
+            if (activeTab === 0) {
+                setEditItem({
+                    id: 0,
+                    senzorId: 0,
+                    sensorName: '',
+                    quantity: 0,
+                    location: 'Main Warehouse',
+                    lastUpdated: new Date(),
+                    frequency: '868 MHz' as Frequency,
+                } as SenzorStockItem);
+            } else {
+                setEditItem({
+                    id: 0,
+                    componentId: 0,
+                    name: '',
+                    quantity: 0,
+                    location: 'Main Warehouse',
+                    lastUpdated: new Date(),
+                    sensorAssignments: [],
+                    invoiceNumber: '',
+                    contactDetails: {
+                        supplier: '',
+                        email: '',
+                        phone: '',
+                    },
+                } as ComponentStockItem);
+            }
             setInvoiceNumber('');
         }
-    }, [activeTab, open, initializeNewItem]);
+    }, [activeTab, open]);
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         setActiveTab(newValue);
@@ -312,13 +402,45 @@ export default function InventoryManagementPage() {
         setIsDragging(false);
 
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            setInvoiceFile(e.dataTransfer.files[0]);
+            const file = e.dataTransfer.files[0];
+            setInvoiceFile(file);
+
+            // Set filename (without extension) as invoice number
+            const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+            setInvoiceNumber(fileNameWithoutExtension);
         }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setInvoiceFile(e.target.files[0]);
+            const file = e.target.files[0];
+            setInvoiceFile(file);
+
+            // Set filename (without extension) as invoice number
+            const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+            setInvoiceNumber(fileNameWithoutExtension);
+
+            // Show notification to user about automatic setting
+            setSnackbar({
+                open: true,
+                message: `Invoice number automatically set to: ${fileNameWithoutExtension}`,
+                severity: 'info',
+            });
+        }
+    };
+
+    // Add handler for invoice number changes
+    const handleInvoiceNumberChange = (value: string) => {
+        setInvoiceNumber(value);
+
+        // If there's a file uploaded and user changes invoice number,
+        // we should note that the filename and invoice number are now different
+        if (invoiceFile && invoiceFile.name.replace(/\.[^/.]+$/, "") !== value) {
+            setSnackbar({
+                open: true,
+                message: 'Note: Invoice number differs from uploaded filename',
+                severity: 'warning',
+            });
         }
     };
 
@@ -689,14 +811,12 @@ export default function InventoryManagementPage() {
             stockId,
             quantity,
             reason,
-            dev_eui,
         }: {
             stockId: number;
             quantity: number;
             reason: string;
-            dev_eui: string;
         }) => {
-            return adjustSensorStock(stockId, quantity, reason, dev_eui);
+            return adjustSensorStock(stockId, quantity, reason);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sensors-inventory'] });
@@ -729,7 +849,6 @@ export default function InventoryManagementPage() {
                     stockId: currentAdjustItem.id!,
                     quantity: change,
                     reason: adjustmentReason,
-                    dev_eui: currentAdjustItem.dev_eui ?? '',
                 });
             } else {
                 await adjustComponentStockMutation.mutateAsync({
@@ -754,6 +873,30 @@ export default function InventoryManagementPage() {
             setEditItem(item);
         }
         setOpen(true);
+    };
+
+    // Funkcije za upravljanje hierarhičnega prikaza
+    const toggleSensorExpanded = (deviceType: string) => {
+        setGroupedSensors(prev => prev.map(group =>
+            group.deviceType === deviceType
+                ? { ...group, expanded: !group.expanded }
+                : group
+        ));
+    };
+
+    const toggleFrequencyExpanded = (deviceType: string, frequency: string) => {
+        setGroupedSensors(prev => prev.map(group =>
+            group.deviceType === deviceType
+                ? {
+                    ...group,
+                    frequencies: group.frequencies.map(freq =>
+                        freq.frequency === frequency
+                            ? { ...freq, expanded: !freq.expanded }
+                            : freq
+                    )
+                }
+                : group
+        ));
     };
 
     return (
@@ -823,8 +966,145 @@ export default function InventoryManagementPage() {
                                 </Table>
                             </TableContainer>
                         </Paper>
+                    ) : activeTab === 0 ? (
+                        // Hierarhični prikaz senzorjev
+                        <>
+                            <Paper elevation={3} className="overflow-hidden mb-8">
+                                <Box className="p-4">
+                                    <Typography variant="h6" className="mb-4">
+                                        Sensor Inventory - Hierarchical View
+                                    </Typography>
+
+                                    {groupedSensors.length === 0 ? (
+                                        <Typography color="textSecondary" className="text-center py-8">
+                                            No sensors in inventory
+                                        </Typography>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {groupedSensors.map((sensorGroup) => (
+                                                <div key={sensorGroup.deviceType} className="border rounded-lg">
+                                                    {/* Nivo 1: Device Type */}
+                                                    <div
+                                                        className="p-4 bg-green-50 hover:bg-green-100 cursor-pointer flex items-center justify-between"
+                                                        onClick={() => toggleSensorExpanded(sensorGroup.deviceType)}
+                                                    >
+                                                        <div className="flex items-center space-x-3">
+                                                            <IconButton size="small">
+                                                                {sensorGroup.expanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                                            </IconButton>
+                                                            <MemoryIcon className="text-green-600" />
+                                                            <Typography variant="h6" className="font-bold text-green-800">
+                                                                {sensorGroup.deviceType}
+                                                            </Typography>
+                                                            <Chip
+                                                                label={`Total: ${sensorGroup.totalDevices}`}
+                                                                color="primary"
+                                                                size="small"
+                                                            />
+                                                        </div>
+                                                        <Box className="flex items-center space-x-2">
+                                                            {/* Add button disabled for production list view */}
+                                                        </Box>
+                                                    </div>
+
+                                                    {/* Nivo 2: Frekvence */}
+                                                    <AnimatePresence>
+                                                        {sensorGroup.expanded && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                transition={{ duration: 0.3 }}
+                                                                className="border-t"
+                                                            >
+                                                                {sensorGroup.frequencies.map((freqGroup) => (
+                                                                    <div key={freqGroup.frequency} className="border-b last:border-b-0">
+                                                                        <div
+                                                                            className="p-3 pl-12 bg-blue-50 hover:bg-blue-100 cursor-pointer flex items-center justify-between"
+                                                                            onClick={() => toggleFrequencyExpanded(sensorGroup.deviceType, freqGroup.frequency)}
+                                                                        >
+                                                                            <div className="flex items-center space-x-3">
+                                                                                <IconButton size="small">
+                                                                                    {freqGroup.expanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                                                                </IconButton>
+                                                                                <RadioIcon className="text-blue-600" />
+                                                                                <Typography variant="subtitle1" className="font-semibold text-blue-800">
+                                                                                    {freqGroup.frequency}
+                                                                                </Typography>
+                                                                                <Chip
+                                                                                    label={`${freqGroup.count} devices`}
+                                                                                    color="secondary"
+                                                                                    size="small"
+                                                                                    variant="outlined"
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Nivo 3: Posamezni senzorji (device EUI) */}
+                                                                        <AnimatePresence>
+                                                                            {freqGroup.expanded && (
+                                                                                <motion.div
+                                                                                    initial={{ opacity: 0, height: 0 }}
+                                                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                                                    exit={{ opacity: 0, height: 0 }}
+                                                                                    transition={{ duration: 0.3 }}
+                                                                                    className="bg-gray-50"
+                                                                                >
+                                                                                    {freqGroup.devices.map((device) => (
+                                                                                        <div key={device.id} className="p-3 pl-20 border-b last:border-b-0 hover:bg-gray-100">
+                                                                                            <div className="flex items-center justify-between">
+                                                                                                <div className="flex items-center space-x-3">
+                                                                                                    <Typography variant="body2" className="font-mono">
+                                                                                                        DevEUI: {device.devEUI || 'N/A'}
+                                                                                                    </Typography>
+                                                                                                    <Typography variant="body2" color="textSecondary">
+                                                                                                        AppEUI: {device.appEUI || 'N/A'}
+                                                                                                    </Typography>
+                                                                                                    <Typography variant="body2" color="textSecondary">
+                                                                                                        HW: {device.hwVersion || 'N/A'}
+                                                                                                    </Typography>
+                                                                                                    <Typography variant="body2" color="textSecondary">
+                                                                                                        FW: {device.fwVersion || 'N/A'}
+                                                                                                    </Typography>
+                                                                                                </div>
+                                                                                                <div className="flex items-center space-x-2">
+                                                                                                    <Chip
+                                                                                                        label={device.isAvailable ? "Available" : "Assigned"}
+                                                                                                        color={device.isAvailable ? "success" : "warning"}
+                                                                                                        size="small"
+                                                                                                    />
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </motion.div>
+                                                                            )}
+                                                                        </AnimatePresence>
+                                                                    </div>
+                                                                ))}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Box>
+                            </Paper>
+
+                            <Box className="flex justify-end">
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={handleClickOpen}
+                                    startIcon={<AddIcon />}
+                                >
+                                    Add Sensor
+                                </Button>
+                            </Box>
+                        </>
                     ) : (
-                        // Inventory tabs
+                        // Components tab
                         <>
                             <Paper elevation={3} className="overflow-hidden mb-8">
                                 <TableContainer>
@@ -832,63 +1112,17 @@ export default function InventoryManagementPage() {
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell>Name</TableCell>
-                                                {activeTab === 0 && <TableCell>Frequency</TableCell>}
                                                 <TableCell>Quantity</TableCell>
-                                                {activeTab === 1 && <TableCell>Supplier</TableCell>}
-                                                {activeTab === 1 && <TableCell>Supplier Contact</TableCell>}
-                                                {activeTab === 1 && <TableCell>Sensor Requirements</TableCell>}
+                                                <TableCell>Supplier</TableCell>
+                                                <TableCell>Supplier Contact</TableCell>
+                                                <TableCell>Sensor Requirements</TableCell>
                                                 <TableCell>Last Updated</TableCell>
                                                 <TableCell>Actions</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
                                             <AnimatePresence>
-                                                {activeTab === 0 && currentInventory.length > 0 &&
-                                                    currentInventory.map((item) => (
-                                                        <motion.tr
-                                                            key={item.id}
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: 'auto' }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            transition={{ duration: 0.3 }}
-                                                        >
-                                                            <TableCell className="font-bold">
-                                                                {'sensorName' in item ? item.sensorName : (item as ComponentStockItem).name}
-                                                            </TableCell>
-                                                            {activeTab === 0 && (
-                                                                <TableCell>
-                                                                    {('frequency' in item) && item.frequency}
-                                                                </TableCell>
-                                                            )}
-                                                            <TableCell>
-                                                                <Box className="flex items-center">
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => openAdjustmentDialog(item, 'decrease')}
-                                                                    >
-                                                                        <RemoveIcon />
-                                                                    </IconButton>
-                                                                    <Typography className="mx-2">{item.quantity}</Typography>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => openAdjustmentDialog(item, 'increase')}
-                                                                    >
-                                                                        <AddIcon />
-                                                                    </IconButton>
-                                                                </Box>
-                                                            </TableCell>
-
-                                                            <TableCell>
-                                                                {item.lastUpdated ? item.lastUpdated.toLocaleString() : '-'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <IconButton color="primary" onClick={() => handleEditItem(item)}>
-                                                                    <EditIcon />
-                                                                </IconButton>
-                                                            </TableCell>
-                                                        </motion.tr>
-                                                    ))}
-                                                {activeTab === 1 && allComponents.length > 0 &&
+                                                {allComponents.length > 0 &&
                                                     allComponents.map((item1) => (
                                                         <motion.tr
                                                             key={item1.id}
@@ -1230,15 +1464,28 @@ export default function InventoryManagementPage() {
                                     label="Invoice Number *"
                                     fullWidth
                                     value={invoiceNumber}
-                                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                                    onChange={(e) => handleInvoiceNumberChange(e.target.value)}
                                     className="mb-4"
                                     placeholder="Required for stock increases"
                                     required
                                 />
 
+                                {/* File upload section with better UI */}
                                 <Typography variant="body2" color="textSecondary" className="mb-2">
-                                    Or upload invoice file:
+                                    Upload invoice file (optional):
                                 </Typography>
+
+                                {invoiceFile && (
+                                    <div className="mb-4 p-3 bg-gray-50 rounded border">
+                                        <Typography variant="body2" className="mb-1">
+                                            <strong>Selected file:</strong> {invoiceFile.name}
+                                        </Typography>
+                                        <Typography variant="body2" color="primary">
+                                            <strong>Will be saved as:</strong> {invoiceNumber}.{invoiceFile.name.split('.').pop()}
+                                        </Typography>
+                                    </div>
+                                )}
+
                                 <div
                                     className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
                                         }`}
@@ -1247,26 +1494,18 @@ export default function InventoryManagementPage() {
                                     onDrop={handleDrop}
                                     onClick={() => document.getElementById('invoice-upload')?.click()}
                                 >
-                                    <CloudUploadIcon className="text-4xl text-gray-400 mb-2" />
-                                    {invoiceFile ? (
-                                        <p className="text-green-600">{invoiceFile.name}</p>
-                                    ) : (
-                                        <>
-                                            <p>Drag & drop an invoice file here</p>
-                                            <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-                                        </>
-                                    )}
+                                    <Typography variant="body1" className="mb-2">
+                                        {invoiceFile ? 'Change file' : 'Drop invoice file here or click to browse'}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        PDF files only
+                                    </Typography>
                                     <input
-                                        type="file"
                                         id="invoice-upload"
-                                        className="hidden"
-                                        accept=".pdf,.jpg,.jpeg,.png"
-                                        onChange={(e) => {
-                                            const files = e.target.files
-                                            if (files) {
-                                                setFile(files[0])
-                                            }
-                                        }}
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={handleFileChange}
+                                        style={{ display: 'none' }}
                                     />
                                 </div>
                             </div>
@@ -1283,7 +1522,12 @@ export default function InventoryManagementPage() {
                         Delete Item
                     </Button>
                     <Button onClick={handleClose}>Cancel</Button>
-                    <Button onClick={activeTab === 0 ? handleAddOrUpdateSensor : handleAddOrUpdateComponent}>{editItem?.id ? 'Update' : 'Add'} Item</Button>
+                    <Button
+                        onClick={activeTab === 0 ? handleAddOrUpdateSensor : handleAddOrUpdateComponent}
+                        disabled={uploading}
+                    >
+                        {uploading ? 'Uploading...' : `${editItem?.id ? 'Update' : 'Add'} Item`}
+                    </Button>
                 </DialogActions>
             </Dialog>
             <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
@@ -1363,38 +1607,10 @@ export default function InventoryManagementPage() {
                                 label="Invoice Number *"
                                 fullWidth
                                 value={invoiceNumber}
-                                onChange={(e) => setInvoiceNumber(e.target.value)}
+                                onChange={(e) => handleInvoiceNumberChange(e.target.value)}
                                 className="mb-4"
                                 required
                             />
-                            <Typography variant="body2" color="textSecondary" className="mb-2">
-                                Or upload invoice file:
-                            </Typography>
-                            <div
-                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                                    }`}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onClick={() => document.getElementById('invoice-upload')?.click()}
-                            >
-                                <CloudUploadIcon className="text-4xl text-gray-400 mb-2" />
-                                {invoiceFile ? (
-                                    <p className="text-green-600">{invoiceFile.name}</p>
-                                ) : (
-                                    <>
-                                        <p>Drag & drop an invoice file here</p>
-                                        <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-                                    </>
-                                )}
-                                <input
-                                    type="file"
-                                    id="invoice-upload"
-                                    className="hidden"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={handleFileChange}
-                                />
-                            </div>
                         </>
                     )}
                 </DialogContent>

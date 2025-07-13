@@ -17,6 +17,11 @@
 // export default config;
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
   webpack: (config: any) => {
     config.externals.push("@node-rs/argon2", "@node-rs/bcrypt");
     return config;

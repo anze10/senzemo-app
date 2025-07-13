@@ -126,6 +126,7 @@ export async function showSensorInInventory() {
             quantity: stock.quantity,
             location: stock.location,
             productionBatch: stock.productionBatch,
+            productionListDevEUI: stock.productionListDevEUI, // Dodano za DevEUI
             lastUpdated: stock.lastUpdated,
             recentLogs: stock.logs
         }));
@@ -138,28 +139,12 @@ export async function showSensorInInventory() {
 export async function adjustSensorStock(
     stockId: number,
     quantity: number,
-    dev_eui: string,
-    reason: string,
-
+    reason: string
 ) {
-
     try {
-        // const user = await getUser();
-        // if (!user?.email) {
-        //     throw new Error("User authentication required");
-        // }
-
-        const result = await prisma.$transaction(async (prisma) => {
-            // Preveri, če dev_eui že obstaja v bazi (ProductionList)
-            const existing = await prisma.productionList.findUnique({
-                where: { DevEUI: dev_eui }
-            });
-            if (existing) {
-                throw new Error("Ta senzor (dev_eui) je že dodeljen in ga ni mogoče ponovno shraniti.");
-            }
-
+        const result = await prisma.$transaction(async (tx) => {
             // Preveri trenutno stanje
-            const currentStock = await prisma.senzorStock.findUnique({
+            const currentStock = await tx.senzorStock.findUnique({
                 where: { id: stockId },
                 include: {
                     senzor: {
@@ -179,35 +164,31 @@ export async function adjustSensorStock(
             }
 
             // Posodobi zalogo
-            const updatedStock = await prisma.senzorStock.update({
+            const updatedStock = await tx.senzorStock.update({
                 where: { id: stockId },
                 data: {
                     quantity: newQuantity,
                     lastUpdated: new Date()
                 },
             });
-            const details: string = "No details provided"
 
-            const log = await prisma.inventoryLog.create({
+            // Logiraj spremembo
+            await tx.inventoryLog.create({
                 data: {
                     itemType: "sensor",
-                    //itemId: stockId,
                     itemName: currentStock.senzor.sensorName,
                     change: quantity,
                     reason: reason,
                     user: "Neznan uporabnik",
-                    details: details,
-                    invoiceId: undefined,
-
+                    details: `DevEUI: ${currentStock.productionListDevEUI || 'N/A'} | Quantity: ${currentStock.quantity} → ${newQuantity}`,
+                    senzorStockId: stockId
                 }
             });
 
-
-
             return {
                 stock: updatedStock,
-                log,
-                previousQuantity: currentStock.quantity
+                previousQuantity: currentStock.quantity,
+                newQuantity: newQuantity
             };
         });
 
@@ -479,11 +460,11 @@ export async function updateComponentStock(
     stockId: number,
     newQuantity: number,
     reason: string,
-    invoiceNumber: string | null = null,
+    invoiceNumber?: string | null,
     location?: string,
     email?: string,
     supplier?: string,
-    phone?: string // <-- Dodaj ta parameter!
+    phone?: string
 ) {
     try {
         const updated = await prisma.componentStock.update({
@@ -596,5 +577,1166 @@ export async function getAllComponents() {
     } catch (error) {
         console.error("Error fetching all components:", error);
         throw new Error("Failed to fetch all components");
+    }
+}
+
+// =====================================
+// HIERARHIČNE FUNKCIJE ZA SENZORJE
+// =====================================
+
+/**
+ * Hierarhična struktura senzorjev po tipih in frekvencah
+ */
+export async function getSensorHierarchy() {
+    try {
+        const sensors = await prisma.senzorStock.findMany({
+            include: {
+                senzor: {
+                    select: { id: true, sensorName: true },
+                },
+            },
+        });
+
+        // Grupiraj po senzorju (tip)
+        const sensorGroups = new Map();
+
+        sensors.forEach(stock => {
+            const sensorKey = `${stock.senzorId}-${stock.senzor.sensorName}`;
+
+            if (!sensorGroups.has(sensorKey)) {
+                sensorGroups.set(sensorKey, {
+                    sensorId: stock.senzorId,
+                    sensorName: stock.senzor.sensorName,
+                    totalQuantity: 0,
+                    frequencies: new Map()
+                });
+            }
+
+            const group = sensorGroups.get(sensorKey);
+            group.totalQuantity += stock.quantity;
+
+            // Grupiraj po frekvenci
+            const frequency = stock.frequency || '868 MHz';
+            if (!group.frequencies.has(frequency)) {
+                group.frequencies.set(frequency, {
+                    frequency,
+                    totalQuantity: 0,
+                    devices: []
+                });
+            }
+
+            const freqGroup = group.frequencies.get(frequency);
+            freqGroup.totalQuantity += stock.quantity;
+            freqGroup.devices.push({
+                id: stock.id,
+                senzorId: stock.senzorId,
+                sensorName: stock.senzor.sensorName,
+                quantity: stock.quantity,
+                location: stock.location,
+                lastUpdated: stock.lastUpdated,
+                frequency: stock.frequency,
+                dev_eui: stock.productionListDevEUI,
+                productionBatch: stock.productionBatch
+            });
+        });
+
+        // Pretvori v array format
+        return Array.from(sensorGroups.values()).map(group => ({
+            ...group,
+            frequencies: Array.from(group.frequencies.values())
+        }));
+
+    } catch (error) {
+        console.error("Error fetching sensor hierarchy:", error);
+        throw new Error("Failed to fetch sensor hierarchy");
+    }
+}
+
+/**
+ * Dobi senzorje po določeni frekvenci
+ */
+export async function getSensorsByFrequency(sensorId: number, frequency: string) {
+    try {
+        const sensors = await prisma.senzorStock.findMany({
+            where: {
+                senzorId: sensorId,
+                frequency: frequency
+            },
+            include: {
+                senzor: {
+                    select: { id: true, sensorName: true },
+                },
+            },
+        });
+
+        return sensors.map(stock => ({
+            id: stock.id,
+            senzorId: stock.senzorId,
+            sensorName: stock.senzor.sensorName,
+            quantity: stock.quantity,
+            location: stock.location,
+            lastUpdated: stock.lastUpdated,
+            frequency: stock.frequency,
+            dev_eui: stock.productionListDevEUI,
+            productionBatch: stock.productionBatch
+        }));
+
+    } catch (error) {
+        console.error("Error fetching sensors by frequency:", error);
+        throw new Error("Failed to fetch sensors by frequency");
+    }
+}
+
+/**
+ * Dobi povzetek količin po senzorjih
+ */
+export async function getSensorQuantitySummary() {
+    try {
+        const summary = await prisma.senzorStock.groupBy({
+            by: ['senzorId'],
+            _sum: {
+                quantity: true
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        // Dobi imena senzorjev
+        const sensorIds = summary.map(s => s.senzorId);
+        const sensors = await prisma.senzor.findMany({
+            where: { id: { in: sensorIds } },
+            select: { id: true, sensorName: true }
+        });
+
+        return summary.map(item => {
+            const sensor = sensors.find(s => s.id === item.senzorId);
+            return {
+                sensorId: item.senzorId,
+                sensorName: sensor?.sensorName || 'Unknown',
+                totalQuantity: item._sum.quantity || 0,
+                deviceCount: item._count.id || 0
+            };
+        });
+
+    } catch (error) {
+        console.error("Error fetching sensor quantity summary:", error);
+        throw new Error("Failed to fetch sensor quantity summary");
+    }
+}
+
+/**
+ * Dobi povzetek količin po frekvencah za določen senzor
+ */
+export async function getSensorFrequencySummary(sensorId: number) {
+    try {
+        const summary = await prisma.senzorStock.groupBy({
+            by: ['frequency'],
+            where: { senzorId: sensorId },
+            _sum: {
+                quantity: true
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        return summary.map(item => ({
+            frequency: item.frequency || '868 MHz',
+            totalQuantity: item._sum.quantity || 0,
+            deviceCount: item._count.id || 0
+        }));
+
+    } catch (error) {
+        console.error("Error fetching sensor frequency summary:", error);
+        throw new Error("Failed to fetch sensor frequency summary");
+    }
+}
+
+/**
+ * Preveri če DevEUI že obstaja
+ */
+export async function checkDevEUIExists(devEUI: string): Promise<boolean> {
+    try {
+        const existing = await prisma.productionList.findUnique({
+            where: { DevEUI: devEUI }
+        });
+        return !!existing;
+    } catch (error) {
+        console.error("Error checking DevEUI:", error);
+        throw new Error("Failed to check DevEUI");
+    }
+}
+
+/**
+ * Dobi podrobne informacije o senzorju po DevEUI
+ */
+export async function getSensorByDevEUI(devEUI: string) {
+    try {
+        const sensor = await prisma.senzorStock.findFirst({
+            where: { productionListDevEUI: devEUI },
+            include: {
+                senzor: {
+                    select: { id: true, sensorName: true, description: true },
+                },
+                logs: {
+                    orderBy: { timestamp: "desc" },
+                    take: 10,
+                    select: {
+                        timestamp: true,
+                        change: true,
+                        reason: true,
+                        user: true,
+                        details: true
+                    }
+                }
+            },
+        });
+
+        if (!sensor) {
+            throw new Error("Sensor not found");
+        }
+
+        return {
+            id: sensor.id,
+            senzorId: sensor.senzorId,
+            sensorName: sensor.senzor.sensorName,
+            quantity: sensor.quantity,
+            location: sensor.location,
+            lastUpdated: sensor.lastUpdated,
+            frequency: sensor.frequency,
+            dev_eui: sensor.productionListDevEUI,
+            productionBatch: sensor.productionBatch,
+            description: sensor.senzor.description,
+            recentLogs: sensor.logs
+        };
+
+    } catch (error) {
+        console.error("Error fetching sensor by DevEUI:", error);
+        throw new Error("Failed to fetch sensor by DevEUI");
+    }
+}
+
+/**
+ * Masovno posodobi zaloge senzorjev
+ */
+export async function bulkUpdateSensorStock(updates: Array<{
+    stockId: number;
+    quantity: number;
+    reason: string;
+}>) {
+    try {
+        const results = await prisma.$transaction(async (tx) => {
+            const updatePromises = updates.map(async (update) => {
+                const currentStock = await tx.senzorStock.findUnique({
+                    where: { id: update.stockId },
+                    include: {
+                        senzor: { select: { sensorName: true } }
+                    }
+                });
+
+                if (!currentStock) {
+                    throw new Error(`Stock item ${update.stockId} not found`);
+                }
+
+                const newQuantity = update.quantity;
+                if (newQuantity < 0) {
+                    throw new Error(`Invalid quantity for stock ${update.stockId}`);
+                }
+
+                const updatedStock = await tx.senzorStock.update({
+                    where: { id: update.stockId },
+                    data: {
+                        quantity: newQuantity,
+                        lastUpdated: new Date()
+                    }
+                });
+
+                await tx.inventoryLog.create({
+                    data: {
+                        itemType: "sensor",
+                        itemName: currentStock.senzor.sensorName,
+                        change: newQuantity - currentStock.quantity,
+                        reason: update.reason,
+                        user: "Bulk Update",
+                        details: `Bulk quantity update: ${currentStock.quantity} → ${newQuantity}`
+                    }
+                });
+
+                return updatedStock;
+            });
+
+            return Promise.all(updatePromises);
+        });
+
+        return results;
+
+    } catch (error) {
+        console.error("Error bulk updating sensor stock:", error);
+        throw new Error("Failed to bulk update sensor stock");
+    }
+}
+
+/**
+ * Dodaj nov senzor v zalogo z DevEUI validacijo (optimizirano za hierarhični prikaz)
+ */
+export async function addSensorToInventoryHierarchical(
+    sensorId: number,
+    quantity: number,
+    location: string,
+    frequency: string,
+    dev_eui: string,
+    productionBatch?: number
+) {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Preveri če DevEUI že obstaja
+            if (dev_eui && dev_eui.trim()) {
+                const existingDevEui = await tx.productionList.findUnique({
+                    where: { DevEUI: dev_eui },
+                });
+
+                if (existingDevEui) {
+                    throw new Error(`DevEUI ${dev_eui} že obstaja v sistemu.`);
+                }
+
+                // 2. Ustvari DevEUI v ProductionList
+                await tx.productionList.create({
+                    data: {
+                        DevEUI: dev_eui,
+                        FrequencyRegion: frequency === '868 MHz' ? 'EU868' :
+                            frequency === '915 MHz' ? 'US915' :
+                                frequency === '433 MHz' ? 'EU433' : 'EU868',
+                    },
+                });
+            }
+
+            // 3. Preveri če senzor obstaja
+            const sensor = await tx.senzor.findUnique({
+                where: { id: sensorId },
+                select: { id: true, sensorName: true }
+            });
+
+            if (!sensor) {
+                throw new Error(`Senzor z ID ${sensorId} ne obstaja.`);
+            }
+
+            // 4. Ustvari zaloga vnos
+            const sensorStock = await tx.senzorStock.create({
+                data: {
+                    senzorId: sensorId,
+                    quantity,
+                    location,
+                    frequency,
+                    productionBatch: productionBatch || null,
+                    productionListDevEUI: dev_eui || null,
+                },
+            });
+
+            // 5. Logiraj
+            await tx.inventoryLog.create({
+                data: {
+                    itemType: "sensor",
+                    itemName: sensor.sensorName,
+                    change: quantity,
+                    reason: "Dodajanje v zalogo",
+                    user: "System",
+                    details: `Senzor: ${sensor.sensorName} | DevEUI: ${dev_eui || 'N/A'} | Frekvenca: ${frequency} | Batch: ${productionBatch || 'N/A'}`,
+                    senzorStockId: sensorStock.id
+                },
+            });
+
+            return {
+                ...sensorStock,
+                sensorName: sensor.sensorName
+            };
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Error adding sensor to inventory:", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to add sensor to inventory");
+    }
+}
+
+/**
+ * Prenesi senzor iz ene lokacije v drugo
+ */
+export async function transferSensorLocation(
+    stockId: number,
+    newLocation: string,
+    reason: string
+) {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const currentStock = await tx.senzorStock.findUnique({
+                where: { id: stockId },
+                include: {
+                    senzor: { select: { sensorName: true } }
+                }
+            });
+
+            if (!currentStock) {
+                throw new Error("Sensor stock not found");
+            }
+
+            const updatedStock = await tx.senzorStock.update({
+                where: { id: stockId },
+                data: {
+                    location: newLocation,
+                    lastUpdated: new Date()
+                }
+            });
+
+            await tx.inventoryLog.create({
+                data: {
+                    itemType: "sensor",
+                    itemName: currentStock.senzor.sensorName,
+                    change: 0, // Ni spremembe količine
+                    reason: `Location transfer: ${reason}`,
+                    user: "System",
+                    details: `DevEUI: ${currentStock.productionListDevEUI || 'N/A'} | ${currentStock.location} → ${newLocation}`,
+                    senzorStockId: stockId
+                }
+            });
+
+            return updatedStock;
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Error transferring sensor location:", error);
+        throw new Error("Failed to transfer sensor location");
+    }
+}
+
+/**
+ * Utility funkcije za hierarhični prikaz
+ */
+
+// Generiraj naključen DevEUI
+
+
+// Validiraj DevEUI format
+export async function validateDevEUI(devEUI: string): Promise<boolean> {
+    const hexPattern = /^[0-9A-Fa-f]{16}$/;
+    return hexPattern.test(devEUI);
+}
+
+// Formatiraj DevEUI za prikaz
+export async function formatDevEUI(devEUI: string): Promise<string> {
+    if (!devEUI || devEUI.length !== 16) return devEUI;
+    return devEUI.match(/.{1,2}/g)?.join(':') || devEUI;
+}
+
+/**
+ * Statistike zaloge senzorjev
+ */
+export async function getSensorStockStatistics() {
+    try {
+        const stats = await prisma.$transaction(async (tx) => {
+            // Skupna količina vseh senzorjev
+            const totalQuantity = await tx.senzorStock.aggregate({
+                _sum: { quantity: true }
+            });
+
+            // Število različnih tipov senzorjev
+            const sensorTypes = await tx.senzorStock.groupBy({
+                by: ['senzorId'],
+                _count: { id: true }
+            });
+
+            // Število različnih frekvenc
+            const frequencies = await tx.senzorStock.groupBy({
+                by: ['frequency'],
+                _sum: { quantity: true }
+            });
+
+            // Število različnih lokacij
+            const locations = await tx.senzorStock.groupBy({
+                by: ['location'],
+                _sum: { quantity: true }
+            });
+
+            // Najnovejši vnosi
+            const recentAdditions = await tx.inventoryLog.findMany({
+                where: {
+                    itemType: 'sensor',
+                    change: { gt: 0 }
+                },
+                orderBy: { timestamp: 'desc' },
+                take: 5,
+                select: {
+                    itemName: true,
+                    change: true,
+                    timestamp: true,
+                    reason: true
+                }
+            });
+
+            return {
+                totalQuantity: totalQuantity._sum.quantity || 0,
+                sensorTypeCount: sensorTypes.length,
+                frequencyDistribution: frequencies.map(f => ({
+                    frequency: f.frequency || '868 MHz',
+                    quantity: f._sum.quantity || 0
+                })),
+                locationDistribution: locations.map(l => ({
+                    location: l.location,
+                    quantity: l._sum.quantity || 0
+                })),
+                recentAdditions
+            };
+        });
+
+        return stats;
+    } catch (error) {
+        console.error("Error fetching sensor statistics:", error);
+        throw new Error("Failed to fetch sensor statistics");
+    }
+}
+
+/**
+ * Poišči senzorje z nizko zalogo
+ */
+export async function getLowStockSensors(threshold: number = 5) {
+    try {
+        const lowStockSensors = await prisma.senzorStock.findMany({
+            where: {
+                quantity: { lte: threshold }
+            },
+            include: {
+                senzor: {
+                    select: { id: true, sensorName: true }
+                }
+            },
+            orderBy: [
+                { quantity: 'asc' },
+                { lastUpdated: 'desc' }
+            ]
+        });
+
+        return lowStockSensors.map(stock => ({
+            id: stock.id,
+            sensorId: stock.senzorId,
+            sensorName: stock.senzor.sensorName,
+            quantity: stock.quantity,
+            location: stock.location,
+            frequency: stock.frequency,
+            dev_eui: stock.productionListDevEUI,
+            lastUpdated: stock.lastUpdated
+        }));
+    } catch (error) {
+        console.error("Error fetching low stock sensors:", error);
+        throw new Error("Failed to fetch low stock sensors");
+    }
+}
+
+// =====================================
+// PRAVILNE HIERARHIČNE FUNKCIJE ZA SENZORJE (PO DEVICE TYPE)
+// =====================================
+
+/**
+ * Hierarhična struktura senzorjev po DeviceType iz ProductionList tabele
+ * Samo senzorji, ki NISO povezani z naročili (orderId = null)
+ */
+export async function getInventorySensorHierarchy() {
+    try {
+        // Dobi vse ProductionList zapise, ki NISO povezani z naročili
+        const availableDevices = await prisma.productionList.findMany({
+            where: {
+                orderId: null, // Ni povezan z naročilom = na zalogi
+                DevEUI: { not: null } // Ima DevEUI
+            },
+            include: {
+                senzorStocks: {
+                    where: {
+                        quantity: { gt: 0 } // Samo če je na zalogi
+                    },
+                    include: {
+                        senzor: {
+                            select: { id: true, sensorName: true, description: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Grupiraj po DeviceType (nivo 1)
+        const deviceGroups = new Map<string, {
+            deviceType: string;
+            totalDevices: number;
+            frequencies: Map<string, {
+                frequency: string;
+                totalDevices: number;
+                devices: {
+                    id: number;
+                    devEUI: string;
+                    deviceType: string | null;
+                    sensorId: number;
+                    sensorName: string;
+                    quantity: number;
+                    location: string;
+                    frequency: string | null;
+                    lastUpdated: Date;
+                    productionBatch: number | null;
+                    hwVersion: string | null;
+                    fwVersion: string | null;
+                }[];
+            }>;
+        }>();
+
+        availableDevices.forEach(device => {
+            const deviceType = device.DeviceType || 'Unknown';
+            const frequency = device.FrequencyRegion || '868 MHz';
+
+            // Samo če ima povezane stock zapise
+            if (device.senzorStocks.length === 0) return;
+
+            // Inicializiraj group za DeviceType
+            if (!deviceGroups.has(deviceType)) {
+                deviceGroups.set(deviceType, {
+                    deviceType,
+                    totalDevices: 0,
+                    frequencies: new Map()
+                });
+            }
+
+            const deviceGroup = deviceGroups.get(deviceType)!;
+            deviceGroup.totalDevices += 1;
+
+            // Inicializiraj group za frekvenco
+            if (!deviceGroup.frequencies.has(frequency)) {
+                deviceGroup.frequencies.set(frequency, {
+                    frequency,
+                    totalDevices: 0,
+                    devices: []
+                });
+            }
+
+            const freqGroup = deviceGroup.frequencies.get(frequency)!;
+            freqGroup.totalDevices += 1;
+
+            // Dodaj device podatke
+            device.senzorStocks.forEach(stock => {
+                freqGroup.devices.push({
+                    id: stock.id,
+                    devEUI: device.DevEUI ?? "",
+                    deviceType: device.DeviceType,
+                    sensorId: stock.senzorId,
+                    sensorName: stock.senzor.sensorName,
+                    quantity: stock.quantity,
+                    location: stock.location,
+                    frequency: device.FrequencyRegion,
+                    lastUpdated: stock.lastUpdated,
+                    productionBatch: stock.productionBatch,
+                    hwVersion: device.HWVersion,
+                    fwVersion: device.FWVersion
+                });
+            });
+        });
+
+        // Pretvori v array format
+        return Array.from(deviceGroups.values()).map(group => ({
+            deviceType: group.deviceType,
+            totalDevices: group.totalDevices,
+            frequencies: Array.from(group.frequencies.values())
+        }));
+
+    } catch (error) {
+        console.error("Error fetching inventory sensor hierarchy:", error);
+        throw new Error("Failed to fetch inventory sensor hierarchy");
+    }
+}
+
+/**
+ * Dobi senzorje po DeviceType in frekvenci (za nivo 2)
+ */
+export async function getDevicesByTypeAndFrequency(deviceType: string, frequency: string) {
+    try {
+        const devices = await prisma.productionList.findMany({
+            where: {
+                orderId: null, // Ni povezan z naročilom
+                DeviceType: deviceType,
+                FrequencyRegion: frequency,
+                DevEUI: { not: null }
+            },
+            include: {
+                senzorStocks: {
+                    where: {
+                        quantity: { gt: 0 }
+                    },
+                    include: {
+                        senzor: {
+                            select: { id: true, sensorName: true, description: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        type DeviceStockInfo = {
+            id: number;
+            devEUI: string | null;
+            deviceType: string | null;
+            sensorId: number;
+            sensorName: string;
+            quantity: number;
+            location: string;
+            frequency: string | null;
+            lastUpdated: Date;
+            productionBatch: number | null;
+            hwVersion: string | null;
+            fwVersion: string | null;
+            appEUI: string | null;
+            appKey: string | null;
+        };
+
+        const result: DeviceStockInfo[] = [];
+        devices.forEach(device => {
+            device.senzorStocks.forEach(stock => {
+                result.push({
+                    id: stock.id,
+                    devEUI: device.DevEUI,
+                    deviceType: device.DeviceType,
+                    sensorId: stock.senzorId,
+                    sensorName: stock.senzor.sensorName,
+                    quantity: stock.quantity,
+                    location: stock.location,
+                    frequency: device.FrequencyRegion,
+                    lastUpdated: stock.lastUpdated,
+                    productionBatch: stock.productionBatch,
+                    hwVersion: device.HWVersion,
+                    fwVersion: device.FWVersion,
+                    appEUI: device.AppEUI,
+                    appKey: device.AppKey
+                });
+            });
+        });
+
+        return result;
+
+    } catch (error) {
+        console.error("Error fetching devices by type and frequency:", error);
+        throw new Error("Failed to fetch devices by type and frequency");
+    }
+}
+
+/**
+ * Dobi senzorje po DeviceType (za nivo 1 razširjen)
+ */
+export async function getDevicesByType(deviceType: string) {
+    try {
+        const devices = await prisma.productionList.findMany({
+            where: {
+                orderId: null, // Ni povezan z naročilom
+                DeviceType: deviceType,
+                DevEUI: { not: null }
+            },
+            include: {
+                senzorStocks: {
+                    where: {
+                        quantity: { gt: 0 }
+                    },
+                    include: {
+                        senzor: {
+                            select: { id: true, sensorName: true, description: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Grupiraj po frekvencah
+        type FrequencyGroupDevice = {
+            id: number;
+            devEUI: string | null;
+            deviceType: string | null;
+            sensorId: number;
+            sensorName: string;
+            quantity: number;
+            location: string;
+            frequency: string | null;
+            lastUpdated: Date;
+            productionBatch: number | null;
+            hwVersion: string | null;
+            fwVersion: string | null;
+        };
+        const frequencyGroups = new Map<string, FrequencyGroupDevice[]>();
+
+        devices.forEach(device => {
+            const frequency = device.FrequencyRegion || '868 MHz';
+
+            if (!frequencyGroups.has(frequency)) {
+                frequencyGroups.set(frequency, []);
+            }
+
+            device.senzorStocks.forEach(stock => {
+                frequencyGroups.get(frequency)!.push({
+                    id: stock.id,
+                    devEUI: device.DevEUI,
+                    deviceType: device.DeviceType,
+                    sensorId: stock.senzorId,
+                    sensorName: stock.senzor.sensorName,
+                    quantity: stock.quantity,
+                    location: stock.location,
+                    frequency: device.FrequencyRegion,
+                    lastUpdated: stock.lastUpdated,
+                    productionBatch: stock.productionBatch,
+                    hwVersion: device.HWVersion,
+                    fwVersion: device.FWVersion
+                });
+            });
+        });
+
+        return Array.from(frequencyGroups.entries()).map(([frequency, devices]) => ({
+            frequency,
+            totalDevices: devices.length,
+            devices
+        }));
+
+    } catch (error) {
+        console.error("Error fetching devices by type:", error);
+        throw new Error("Failed to fetch devices by type");
+    }
+}
+
+/**
+ * Dobi podrobnosti naprave po DevEUI (za nivo 3)
+ */
+export async function getDeviceDetailsByDevEUI(devEUI: string) {
+    try {
+        const device = await prisma.productionList.findUnique({
+            where: { DevEUI: devEUI },
+            include: {
+                order: {
+                    select: {
+                        id: true,
+                        customerName: true,
+                        orderDate: true,
+                        quantity: true
+                    }
+                },
+                senzorStocks: {
+                    include: {
+                        senzor: {
+                            select: {
+                                id: true,
+                                sensorName: true,
+                                description: true,
+                                familyId: true,
+                                productId: true
+                            }
+                        },
+                        logs: {
+                            orderBy: { timestamp: "desc" },
+                            take: 10,
+                            select: {
+                                timestamp: true,
+                                change: true,
+                                reason: true,
+                                user: true,
+                                details: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!device) {
+            throw new Error("Device not found");
+        }
+
+        return {
+            devEUI: device.DevEUI,
+            deviceType: device.DeviceType,
+            frequency: device.FrequencyRegion,
+            appEUI: device.AppEUI,
+            appKey: device.AppKey,
+            hwVersion: device.HWVersion,
+            fwVersion: device.FWVersion,
+            customFWVersion: device.CustomFWVersion,
+            sendPeriod: device.SendPeriod,
+            ack: device.ACK,
+            movementThreshold: device.MovementThreshold,
+            subBands: device.SubBands,
+            isAvailable: !device.orderId, // Ali je na zalogi
+            order: device.order, // Če je povezan z naročilom
+            stockInfo: device.senzorStocks.map(stock => ({
+                id: stock.id,
+                sensorId: stock.senzorId,
+                sensorName: stock.senzor.sensorName,
+                quantity: stock.quantity,
+                location: stock.location,
+                lastUpdated: stock.lastUpdated,
+                productionBatch: stock.productionBatch,
+                recentLogs: stock.logs,
+                sensorDetails: {
+                    familyId: stock.senzor.familyId,
+                    productId: stock.senzor.productId,
+                    description: stock.senzor.description
+                }
+            }))
+        };
+
+    } catch (error) {
+        console.error("Error fetching device details by DevEUI:", error);
+        throw new Error("Failed to fetch device details by DevEUI");
+    }
+}
+
+/**
+ * Povzetek razpoložljivih naprav po tipih
+ */
+export async function getAvailableDevicesSummary() {
+    try {
+        const summary = await prisma.productionList.groupBy({
+            by: ['DeviceType'],
+            where: {
+                orderId: null, // Ni povezan z naročilom
+                DevEUI: { not: null },
+                senzorStocks: {
+                    some: {
+                        quantity: { gt: 0 }
+                    }
+                }
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        // Dodatne statistike po frekvencah
+        const frequencyStats = await prisma.productionList.groupBy({
+            by: ['DeviceType', 'FrequencyRegion'],
+            where: {
+                orderId: null,
+                DevEUI: { not: null },
+                senzorStocks: {
+                    some: {
+                        quantity: { gt: 0 }
+                    }
+                }
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        return {
+            deviceTypes: summary.map(item => ({
+                deviceType: item.DeviceType || 'Unknown',
+                totalDevices: item._count.id
+            })),
+            frequencyBreakdown: frequencyStats.map(item => ({
+                deviceType: item.DeviceType || 'Unknown',
+                frequency: item.FrequencyRegion || '868 MHz',
+                count: item._count.id
+            }))
+        };
+
+    } catch (error) {
+        console.error("Error fetching available devices summary:", error);
+        throw new Error("Failed to fetch available devices summary");
+    }
+}
+
+/**
+ * Premakni napravo iz zaloge v naročilo
+ */
+export async function assignDeviceToOrder(devEUI: string, orderId: number, reason: string = "Assigned to order") {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // Preveri če naprava obstaja in ni že dodeljena
+            const device = await tx.productionList.findUnique({
+                where: { DevEUI: devEUI },
+                include: {
+                    senzorStocks: {
+                        include: {
+                            senzor: { select: { sensorName: true } }
+                        }
+                    }
+                }
+            });
+
+            if (!device) {
+                throw new Error("Device not found");
+            }
+
+            if (device.orderId) {
+                throw new Error("Device is already assigned to an order");
+            }
+
+            // Dodeli napravo naročilu
+            const updatedDevice = await tx.productionList.update({
+                where: { DevEUI: devEUI },
+                data: { orderId: orderId }
+            });
+
+            // Logiraj spremembo
+            if (device.senzorStocks.length > 0) {
+                const stock = device.senzorStocks[0];
+                await tx.inventoryLog.create({
+                    data: {
+                        itemType: "sensor",
+                        itemName: stock.senzor.sensorName,
+                        change: -1, // Iz zaloge
+                        reason: reason,
+                        user: "System",
+                        details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
+                        senzorStockId: stock.id
+                    }
+                });
+            }
+
+            return updatedDevice;
+        });
+
+        return result;
+
+    } catch (error) {
+        console.error("Error assigning device to order:", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to assign device to order");
+    }
+}
+
+/**
+ * Sprosti napravo iz naročila nazaj v zalogo
+ */
+export async function releaseDeviceFromOrder(devEUI: string, reason: string = "Released from order") {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const device = await tx.productionList.findUnique({
+                where: { DevEUI: devEUI },
+                include: {
+                    order: { select: { id: true, customerName: true } },
+                    senzorStocks: {
+                        include: {
+                            senzor: { select: { sensorName: true } }
+                        }
+                    }
+                }
+            });
+
+            if (!device) {
+                throw new Error("Device not found");
+            }
+
+            if (!device.orderId) {
+                throw new Error("Device is not assigned to any order");
+            }
+
+            // Sprosti napravo
+            const updatedDevice = await tx.productionList.update({
+                where: { DevEUI: devEUI },
+                data: { orderId: null }
+            });
+
+            // Logiraj spremembo
+            if (device.senzorStocks.length > 0) {
+                const stock = device.senzorStocks[0];
+                await tx.inventoryLog.create({
+                    data: {
+                        itemType: "sensor",
+                        itemName: stock.senzor.sensorName,
+                        change: 1, // Nazaj v zalogo
+                        reason: reason,
+                        user: "System",
+                        details: `DevEUI: ${devEUI} released from order ${device.orderId} (${device.order?.customerName})`,
+                        senzorStockId: stock.id
+                    }
+                });
+            }
+
+            return updatedDevice;
+        });
+
+        return result;
+
+    } catch (error) {
+        console.error("Error releasing device from order:", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to release device from order");
+    }
+}
+
+// =====================================
+// NOVE HIERARHIČNE FUNKCIJE ZA PRODUCTION LIST
+// =====================================
+
+// Nivo 1: Grupiraj po DeviceType 
+export async function getProductionHierarchy() {
+    try {
+        const deviceTypes = await prisma.productionList.groupBy({
+            by: ['DeviceType'],
+            where: {
+                orderId: null, // Samo naprave, ki niso povezane z naročili
+                DevEUI: { not: null }
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        return deviceTypes.map(item => ({
+            deviceType: item.DeviceType || 'Unknown',
+            totalDevices: item._count.id
+        }));
+    } catch (error) {
+        console.error('Error fetching device hierarchy:', error);
+        return [];
+    }
+}
+
+// Nivo 2: Grupiraj po frekvenci za določen DeviceType
+export async function getProductionByFrequency(deviceType: string) {
+    try {
+        const frequencies = await prisma.productionList.groupBy({
+            by: ['FrequencyRegion'],
+            where: {
+                DeviceType: deviceType,
+                orderId: null,
+                DevEUI: { not: null }
+            },
+            _count: {
+                id: true
+            }
+        });
+
+        return frequencies.map(item => ({
+            frequency: item.FrequencyRegion || 'Unknown',
+            count: item._count.id
+        }));
+    } catch (error) {
+        console.error('Error fetching devices by frequency:', error);
+        return [];
+    }
+}
+
+// Nivo 3: Posamezne naprave po DevEUI
+export async function getProductionDevices(deviceType: string, frequency: string) {
+    try {
+        const devices = await prisma.productionList.findMany({
+            where: {
+                DeviceType: deviceType,
+                FrequencyRegion: frequency,
+                orderId: null,
+                DevEUI: { not: null }
+            }
+        });
+
+        return devices.map(device => ({
+            id: device.id,
+            devEUI: device.DevEUI || 'Unknown',
+            appEUI: device.AppEUI,
+            deviceType: device.DeviceType,
+            frequency: device.FrequencyRegion,
+            hwVersion: device.HWVersion,
+            fwVersion: device.FWVersion,
+            isAvailable: true // Vsi so available ker orderId = null
+        }));
+    } catch (error) {
+        console.error('Error fetching device details:', error);
+        return [];
     }
 }

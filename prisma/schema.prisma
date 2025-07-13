@@ -94,19 +94,19 @@ model SenzorComponent {
 
 // Zaloga senzorjev
 model SenzorStock {
-  id                   Int            @id @default(autoincrement())
+  id                   Int             @id @default(autoincrement())
   senzorId             Int
   quantity             Int
   location             String
   frequency            String?
   productionBatch      Int?
-  lastUpdated          DateTime       @default(now())
+  lastUpdated          DateTime        @default(now())
   category             String?
-  senzor               Senzor         @relation(fields: [senzorId], references: [id])
+  senzor               Senzor          @relation(fields: [senzorId], references: [id])
   logs                 InventoryLog[]
   productionListId     Int? // <-- Add this line
   productionListDevEUI String? // Foreign key to ProductionList.DevEUI
-  //productionList       ProductionList? @relation(fields: [productionListDevEUI], references: [DevEUI])
+  productionList       ProductionList? @relation(fields: [productionListDevEUI], references: [DevEUI])
 }
 
 // Zaloga komponent
@@ -179,7 +179,7 @@ model Sale {
 }
 
 model Order {
-  id              Int      @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   customerName    String
   assemblerName   String
   senzorId        Int
@@ -187,15 +187,15 @@ model Order {
   frequency       String
   orderDate       DateTime
   otherParameters String?
-  // productionLists ProductionList[]
-  senzor          Senzor   @relation(fields: [senzorId], references: [id])
+  productionLists ProductionList[]
+  senzor          Senzor           @relation(fields: [senzorId], references: [id])
 }
 
 model ProductionList {
-  id                Int     @id @default(autoincrement())
-  //orderId           Int?
+  id                Int           @id @default(autoincrement())
+  orderId           Int?
   DeviceType        String?
-  DevEUI            String? @unique
+  DevEUI            String?       @unique
   AppEUI            String?
   AppKey            String?
   FrequencyRegion   String?
@@ -206,6 +206,6 @@ model ProductionList {
   SendPeriod        String?
   ACK               String?
   MovementThreshold String?
-  //order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  //senzorStocks      SenzorStock[] // remains optional by default
+  order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  senzorStocks      SenzorStock[] // remains optional by default
 }
