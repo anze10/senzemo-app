@@ -15,7 +15,7 @@ function makeQueryClient() {
       queries: {
         staleTime: 60 * 1000,
         // Prevent queries from running on the server during SSR
-        retry: (failureCount, error) => {
+        retry: (failureCount) => {
           if (isServer) return false;
           return failureCount < 3;
         },
@@ -24,7 +24,7 @@ function makeQueryClient() {
   });
 }
 
-let browserQueryClient: QueryClient | undefined = undefined;
+let browserQueryClient: QueryClient | undefined;
 
 function getQueryClient() {
   if (isServer) {
