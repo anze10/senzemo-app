@@ -1,7 +1,7 @@
 'use client';
 
 import { Typography, Card, CardHeader, CardContent, Button, Box } from '@mui/material';
-import { Gauge, Cloud } from 'lucide-react';
+import { Gauge, Cloud, FileBox } from 'lucide-react';
 //import { Package, FileBox } from 'lucide-react';
 import Link from 'next/link';
 
@@ -50,7 +50,7 @@ export default function Dashboard() {
                             </Link>
                         </CardContent>
                     </Card>
-                </Box>
+                </Box>*/}
                 <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader
@@ -67,7 +67,7 @@ export default function Dashboard() {
                             </Link>
                         </CardContent>
                     </Card>
-                </Box> */}
+                </Box>
                 <Box flex="1 1 100%" maxWidth="100%" sx={{ maxWidth: { xs: '100%', sm: '50%', md: '25%' } }}>
                     <Card>
                         <CardHeader
