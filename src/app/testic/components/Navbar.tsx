@@ -28,7 +28,7 @@ export function Navbar() {
   return (
     <Paper
       elevation={3}
-      className="w-64 bg-gradient-to-b from-blue-600 to-purple-600 p-4 text-white"
+      className="w-64 bg-linear-to-b from-blue-600 to-purple-600 p-4 text-white"
     >
       <div className="mb-8 text-2xl font-bold">Inventory System</div>
       <List>

@@ -196,7 +196,7 @@ export default function SensorList() {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-8">
+      <div className="min-h-screen bg-linear-to-br from-indigo-50 to-purple-50 p-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

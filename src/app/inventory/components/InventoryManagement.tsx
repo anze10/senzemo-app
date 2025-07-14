@@ -1003,7 +1003,7 @@ export default function InventoryManagementPage() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8">
+      <div className="min-h-screen bg-linear-to-br from-green-50 to-blue-50 p-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

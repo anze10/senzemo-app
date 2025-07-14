@@ -169,7 +169,7 @@ export default function OrderManagement() {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-8">
+      <div className="min-h-screen bg-linear-to-br from-purple-50 to-pink-50 p-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
