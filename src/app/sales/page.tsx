@@ -1,9 +1,11 @@
-import Sales from "./components/Sales";
+
 
 export default async function Home() {
   return (
     <div>
-      <Sales />
+      {/* <Sales /> */}
+
+      podstran je še v izdelavi lp admin
     </div>
   );
 }

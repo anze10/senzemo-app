@@ -63,7 +63,8 @@ export function ParseSensorData(
         case "number": {
           let numericValue = 0;
           for (let i = 0; i < bytes.length; i++) {
-            numericValue = (numericValue << 8) | bytes[i];
+            const byte = bytes[i] ?? 0;
+            numericValue = (numericValue << 8) | byte;
           }
           value = scale ? numericValue * scale : numericValue;
           break;

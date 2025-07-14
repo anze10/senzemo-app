@@ -5,7 +5,7 @@
 import { validateSessionToken } from "src/server/LOGIN_LUCIA_ACTION/validate_session";
 import { google } from "googleapis";
 
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function createSpreadsheet(
   req: NextApiRequest,

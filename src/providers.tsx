@@ -14,6 +14,11 @@ function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,
+        // Prevent queries from running on the server during SSR
+        retry: (failureCount, error) => {
+          if (isServer) return false;
+          return failureCount < 3;
+        },
       },
     },
   });

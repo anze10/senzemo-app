@@ -2,8 +2,8 @@
 
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
-import { Senzor } from "@prisma/client";
-import { JsonValue } from "@prisma/client/runtime/library";
+import type { Senzor } from "@prisma/client";
+import type { JsonValue } from "@prisma/client/runtime/library";
 
 export async function UpdateorAddSenor(params: Senzor) {
   return prisma.senzor.upsert({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
+import type {
   ParsedSensorData,
   ParsedSensorValue,
   // SensorParserCombinator,
@@ -15,7 +15,7 @@ import {
   FormControl,
   Grid2,
   InputLabel,
-  SelectChangeEvent,
+  type SelectChangeEvent,
 } from "@mui/material";
 import { PrintSticker } from "./printer/printer_server_side";
 import {
@@ -35,7 +35,7 @@ import deepEqual from "deep-equal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
-import { InsertintoDB, ProductionListWithoutId } from "./PrismaCode";
+import { InsertintoDB, type ProductionListWithoutId } from "./PrismaCode";
 
 type ImportantSensorData = Record<
   string,
@@ -486,18 +486,18 @@ export function DynamicFormComponent({
         <TextField label={my_key} value={value} onChange={handleChange} />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
-        (
-          <FormControl fullWidth>
-            <InputLabel>{my_key}</InputLabel>
-            <Select label={my_key} value={value} onChange={handleChange}>
-              {enum_values.map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.mapped}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ))
+          (
+            <FormControl fullWidth>
+              <InputLabel>{my_key}</InputLabel>
+              <Select label={my_key} value={value} onChange={handleChange}>
+                {enum_values.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.mapped}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ))
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}

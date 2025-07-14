@@ -1,4 +1,4 @@
-import { Session } from "lucia";
+import type { Session } from "lucia";
 import { prisma } from "src/server/DATABASE_ACTION/prisma";
 
 export async function GetUseFromSession(session: Session) {

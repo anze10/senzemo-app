@@ -12,14 +12,14 @@ import {
   //Checkbox,
   //TextField,
   FormControl,
-  SelectChangeEvent,
+  type SelectChangeEvent,
 } from "@mui/material";
 import { createFolderAndSpreadsheet } from "~/server/GAPI_ACTION/create_folder";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSensorStore } from "~/app/dev/components/SensorStore";
 import { useGoogleIDSstore } from "./Credentisal";
-import {
+import type {
   ParsedSensorData,
   ParsedSensorValue,
   SensorParserCombinator,

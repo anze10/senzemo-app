@@ -1,5 +1,5 @@
-import { SensorParserCombinator } from "./ParseSensorData";
-import { Senzor } from "@prisma/client";
+import type { SensorParserCombinator } from "./ParseSensorData";
+import type { Senzor } from "@prisma/client";
 
 export function RightDecoder(
   data: Uint8Array,

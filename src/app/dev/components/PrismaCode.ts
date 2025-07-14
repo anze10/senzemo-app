@@ -1,6 +1,6 @@
 "use server";
 
-import { ProductionList } from "@prisma/client";
+import type { ProductionList } from "@prisma/client";
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface ProductionList2 {

@@ -1643,12 +1643,12 @@ export async function assignDeviceToOrder(
         await tx.inventoryLog.create({
           data: {
             itemType: "sensor",
-            itemName: stock.senzor.sensorName,
+            itemName: stock?.senzor?.sensorName ?? "Unknown",
             change: -1, // Iz zaloge
             reason: reason,
             user: "System",
             details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
-            senzorStockId: stock.id,
+            senzorStockId: stock?.id ?? null
           },
         });
       }
@@ -1708,12 +1708,12 @@ export async function releaseDeviceFromOrder(
         await tx.inventoryLog.create({
           data: {
             itemType: "sensor",
-            itemName: stock.senzor.sensorName,
+            itemName: stock?.senzor?.sensorName ?? "Unknown",
             change: 1, // Nazaj v zalogo
             reason: reason,
             user: "System",
             details: `DevEUI: ${devEUI} released from order ${device.orderId} (${device.order?.customerName})`,
-            senzorStockId: stock.id,
+            senzorStockId: stock?.id,
           },
         });
       }

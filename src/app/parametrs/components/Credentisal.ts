@@ -1,6 +1,7 @@
 import { create, type StateCreator } from "zustand";
 import { produce } from "immer";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { createSafeStorage } from "~/lib/storage";
 
 export interface GoogleDriveType {
   folderId: string;
@@ -36,6 +37,6 @@ const GoogleIDS_callback: StateCreator<CredentialsState> = (set) => ({
 export const useGoogleIDSstore = create<CredentialsState>()(
   persist(GoogleIDS_callback, {
     name: "GoogleIDS",
-    storage: createJSONStorage(() => localStorage),
+    storage: createSafeStorage(),
   }),
 );

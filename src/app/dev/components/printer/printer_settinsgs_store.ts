@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import type { Tiskalnik } from "./printer_server_side";
+import { createSafeStorage } from "~/lib/storage";
 
 // Define the structure of the PrinterStore state
 interface PrinterStore {
@@ -38,7 +39,7 @@ export const usePrinterStore = create<PrinterStore>()(
     }),
     {
       name: "printer-store", // Unique name for the store in localStorage
-      storage: createJSONStorage(() => localStorage), // Use localStorage for persistence
+      storage: createSafeStorage(), // Use safe storage for persistence
     },
   ),
 );

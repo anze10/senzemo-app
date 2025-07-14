@@ -1,5 +1,5 @@
 "use client";
-import { Duration, formatDuration } from "date-fns";
+import { type Duration, formatDuration } from "date-fns";
 import { Typography } from "@mui/material";
 import { useSensorStore } from "../dev/components/SensorStore";
 import { sl } from "date-fns/locale/sl";

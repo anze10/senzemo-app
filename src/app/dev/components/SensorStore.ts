@@ -1,12 +1,13 @@
 import { create, type StateCreator } from "zustand";
 import { produce } from "immer";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 //import SMC30_parser from "./Reader/SMC30_Parser";
 import {
-  ParsedSensorData,
+  type ParsedSensorData,
   ParseSensorData,
-  SensorParserCombinator,
+  type SensorParserCombinator,
 } from "./Reader/ParseSensorData";
+import { createSafeStorage } from "~/lib/storage";
 
 export type RatedSensorData = {
   data: ParsedSensorData;
@@ -100,6 +101,6 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
 export const useSensorStore = create<SensorState>()(
   persist(sensor_callback, {
     name: "sensor-store",
-    storage: createJSONStorage(() => localStorage),
+    storage: createSafeStorage(),
   }),
 );

@@ -32,7 +32,7 @@ import {
   GetSensors,
   InsertSensor,
 } from "./backend";
-import { JsonValue } from "@prisma/client/runtime/library";
+import type { JsonValue } from "@prisma/client/runtime/library";
 
 const theme = createTheme({
   palette: {
