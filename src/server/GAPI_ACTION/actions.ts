@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // pages/api/createSpreadsheet.js
 
-//import { lucia } from "src/server/lucia"; 
+//import { lucia } from "src/server/lucia";
 import { validateSessionToken } from "src/server/LOGIN_LUCIA_ACTION/validate_session";
 import { google } from "googleapis";
 
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from "next";
 
-export default async function createSpreadsheet(req: NextApiRequest, res: NextApiResponse) {
+export default async function createSpreadsheet(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
   // Retrieve the JWT token from cookies (assuming it's stored in cookies)
-  const token = req.cookies['lucia_auth_token'];
+  const token = req.cookies["lucia_auth_token"];
 
   if (!token) {
     res.status(401).json({ error: "No access token provided" });
@@ -22,7 +25,9 @@ export default async function createSpreadsheet(req: NextApiRequest, res: NextAp
     user = await validateSessionToken(token);
   } catch (error) {
     if (error instanceof Error) {
-      res.status(401).json({ error: "Authentication failed: " + error.message });
+      res
+        .status(401)
+        .json({ error: "Authentication failed: " + error.message });
     } else {
       res.status(401).json({ error: "Authentication failed" });
     }
@@ -51,7 +56,7 @@ export default async function createSpreadsheet(req: NextApiRequest, res: NextAp
       fields: "spreadsheetId",
     });
 
-    res.status(200).json(response.data);  // Send back the spreadsheet details
+    res.status(200).json(response.data); // Send back the spreadsheet details
   } catch (err) {
     console.error("Error creating Google Spreadsheet", err);
     res.status(500).json({ error: "Google Spreadsheet creation failed" });

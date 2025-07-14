@@ -44,7 +44,7 @@ export default function Parameters() {
 
   const router = useRouter();
   const set_target_sensor_data = useSensorStore(
-    (state) => state.set_target_sensor_data
+    (state) => state.set_target_sensor_data,
   );
   const set_credentials = useGoogleIDSstore((state) => state.set_credentials);
 
@@ -65,10 +65,9 @@ export default function Parameters() {
   const handleSelectChange = useCallback(
     (value: number) => {
       const selectedDevice = devices?.find(
-        device => device.product === value
+        (device) => device.product === value,
       );
       setDecoder(selectedDevice?.decoder);
-
 
       const newValues: ParsedSensorData = {};
       selectedDevice?.decoder?.forEach((parser) => {
@@ -76,7 +75,7 @@ export default function Parameters() {
       });
       setFormValues(newValues);
     },
-    [devices]
+    [devices],
   );
   const handleFamilyIdChange = (value: number) => {
     set_family_id(value);
@@ -88,7 +87,7 @@ export default function Parameters() {
   }, [family_id, handleSelectChange]);
 
   const handleValueChange = (name: string, value: ParsedSensorValue) => {
-    setFormValues(prev => ({ ...prev, [name]: value }));
+    setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -126,7 +125,6 @@ export default function Parameters() {
                 id="Company_name"
                 value={company_name}
                 onChange={(e) => set_company_name(e.target.value)}
-
                 required
               />
             </FormControl>
@@ -146,7 +144,9 @@ export default function Parameters() {
                   <DynamicFormComponent
                     my_key={parser.output.name}
                     my_type={parser.output.type}
-                    value={formValues[parser.output.name] ?? parser.output.default}
+                    value={
+                      formValues[parser.output.name] ?? parser.output.default
+                    }
                     enum_values={parser.output.enum_values}
                     onValueChange={handleValueChange}
                   />
@@ -155,8 +155,6 @@ export default function Parameters() {
             </Grid2>
           </Box>
         </Box>
-
-
 
         <Box className="mt-8 flex justify-center">
           <Button
@@ -171,7 +169,7 @@ export default function Parameters() {
                 family_id,
                 company_name,
                 order_number,
-                ...formValues
+                ...formValues,
               };
 
               set_target_sensor_data(formData);
@@ -179,7 +177,7 @@ export default function Parameters() {
 
               const result = await createFolderAndSpreadsheet(
                 company_name,
-                order_number
+                order_number,
               );
 
               set_credentials(result);

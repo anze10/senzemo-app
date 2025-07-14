@@ -33,10 +33,9 @@ import dynamic from "next/dynamic";
 const UsedTime = dynamic(
   () =>
     import("./used_time").then(
-      (mod: typeof import("src/app/konec/used_time")) =>
-        mod.get_used_time
+      (mod: typeof import("src/app/konec/used_time")) => mod.get_used_time,
     ),
-  { ssr: false }
+  { ssr: false },
 );
 
 // SensorReport Component
@@ -50,7 +49,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
   const totalSensors = sensorData.length;
   const successfulSensors = sensorData.filter((sensor) => sensor.okay).length;
   const unsuccessfulSensors = sensorData.filter(
-    (sensor) => !sensor.okay
+    (sensor) => !sensor.okay,
   ).length;
   const failedSensors = totalSensors - successfulSensors;
 
@@ -186,7 +185,7 @@ export function Konec() {
 
   async function posli(
     sensor_data: RatedSensorData[],
-    sensors: Senzor[] | undefined
+    sensors: Senzor[] | undefined,
   ): Promise<void> {
     console.log("Pošiljam");
     console.log(sensor_data);
@@ -269,7 +268,7 @@ export function Konec() {
         credentials.fileId,
         newRowCSV,
         credentials.spreadsheetId,
-        newROWEXE
+        newROWEXE,
       );
     }
 

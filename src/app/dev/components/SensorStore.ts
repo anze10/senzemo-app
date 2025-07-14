@@ -48,7 +48,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     set(
       produce((state: SensorState) => {
         state.target_sensor_data = data;
-      })
+      }),
     );
   },
   add_new_sensor: async (decoder, data) => {
@@ -69,7 +69,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
         state.current_decoder = decoder;
 
         state.current_sensor_index = state.sensors.length - 1;
-      })
+      }),
     );
   },
   set_current_sensor_index: (new_index: number) =>
@@ -81,7 +81,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
         if (!this_sensor) return;
 
         this_sensor.okay = okay;
-      })
+      }),
     );
   },
   set_sensor_data: (sensor_number, data) => {
@@ -91,7 +91,7 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
         if (!this_sensor) return;
 
         this_sensor.data = data;
-      })
+      }),
     );
   },
   // set_time: (start_time: number) => set({ start_time }),
@@ -101,5 +101,5 @@ export const useSensorStore = create<SensorState>()(
   persist(sensor_callback, {
     name: "sensor-store",
     storage: createJSONStorage(() => localStorage),
-  })
+  }),
 );

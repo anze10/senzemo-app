@@ -32,7 +32,7 @@ export type SensorParserCombinator = SensorParser[];
 
 export function ParseSensorData(
   parsers: SensorParserCombinator,
-  data: Uint8Array
+  data: Uint8Array,
 ): ParsedSensorData {
   const result: ParsedSensorData = {};
 

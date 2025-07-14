@@ -8,8 +8,7 @@
 // }
 
 // const SignOutButton = ({ children }: Props) => {
-    
-    
+
 //     return (
 //         <div>
 //         <Button onClick={() => { logOut() }}>{children}</Button>
@@ -17,8 +16,5 @@
 //       </div>
 //     )
 // }
-    
-
-   
 
 // export default SignOutButton

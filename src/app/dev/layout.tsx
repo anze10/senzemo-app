@@ -1,15 +1,8 @@
-
-
 export default function DashboardLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode
+  children: React.ReactNode;
 }) {
-    return (
-        <>
-            {children}
-
-        </>
-    )
+  return <>{children}</>;
 }
-///nerabim več ampak naj ostane 
+///nerabim več ampak naj ostane

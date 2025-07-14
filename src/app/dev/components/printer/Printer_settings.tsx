@@ -27,7 +27,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
   const [manualUrlConnection, setManualUrlConnection] = useState(false);
   const [isPending, startTransition] = useTransition();
   const setSelectedPrinter = usePrinterStore(
-    (state) => state.setSelectedPrinter
+    (state) => state.setSelectedPrinter,
   );
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
 
@@ -197,7 +197,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
           </Button>
           <Button
             variant="contained"
-            className="w-full mt-2"
+            className="mt-2 w-full"
             startIcon={<Printer />}
             onClick={onClose}
           >

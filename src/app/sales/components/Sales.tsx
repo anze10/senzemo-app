@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import dynamic from 'next/dynamic'
+import dynamic from "next/dynamic";
 
 const SalesOverview = dynamic(() => import("./SalesOverview"), {
-    ssr: false,
-})
+  ssr: false,
+});
 
 export default function Sales() {
-    return (
-        <div>
-            <SalesOverview />
-        </div>
-    );
+  return (
+    <div>
+      <SalesOverview />
+    </div>
+  );
 }

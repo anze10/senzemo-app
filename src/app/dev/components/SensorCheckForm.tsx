@@ -56,7 +56,7 @@ export function SensorCheckForm() {
     useState<boolean>(false);
 
   const current_sensor_index = useSensorStore(
-    (state) => state.current_sensor_index
+    (state) => state.current_sensor_index,
   );
 
   const current_sensor = useSensorStore((state) => {
@@ -89,7 +89,7 @@ export function SensorCheckForm() {
   const set_sensor_status = useSensorStore((state) => state.set_sensor_status);
 
   const set_current_sensor_index = useSensorStore(
-    (state) => state.set_current_sensor_index
+    (state) => state.set_current_sensor_index,
   );
 
   const { data: sensors } = useQuery({
@@ -165,7 +165,7 @@ export function SensorCheckForm() {
     if (!current_sensor) return [important, unimportant];
     Object.entries(current_sensor.data).forEach(([key, value]) => {
       const parser = sensor_parsers.find(
-        (parser) => parser.output.name === key
+        (parser) => parser.output.name === key,
       );
 
       if (!parser?.output) {
@@ -205,7 +205,7 @@ export function SensorCheckForm() {
   }
 
   async function handleSubmit(
-    dataHandler: (data: ParsedSensorData) => Promise<void>
+    dataHandler: (data: ParsedSensorData) => Promise<void>,
   ): Promise<void> {
     if (!current_sensor) {
       console.log("No current sensor", sensors);
@@ -230,7 +230,7 @@ export function SensorCheckForm() {
 
         set_sensor_data(
           current_sensor_index,
-          current_sensor.data as ParsedSensorData
+          current_sensor.data as ParsedSensorData,
         );
 
         console.log("onSubmit after", {
@@ -371,7 +371,7 @@ export function SensorCheckForm() {
                     data.dev_eui as string,
                     data.family_id as number,
                     data.product_id as number,
-                    selectedPrinter
+                    selectedPrinter,
                   );
 
                   const uint_array = await GetDataFromSensor();
@@ -451,7 +451,7 @@ export function DynamicFormComponent({
   const handleChange = (
     e:
       | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-      | SelectChangeEvent<unknown>
+      | SelectChangeEvent<unknown>,
   ) => {
     let value: ParsedSensorValue = e.target.value as ParsedSensorValue;
 
@@ -486,18 +486,18 @@ export function DynamicFormComponent({
         <TextField label={my_key} value={value} onChange={handleChange} />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
-          (
-            <FormControl fullWidth>
-              <InputLabel>{my_key}</InputLabel>
-              <Select label={my_key} value={value} onChange={handleChange}>
-                {enum_values.map((item) => (
-                  <MenuItem key={item.value} value={item.value}>
-                    {item.mapped}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ))
+        (
+          <FormControl fullWidth>
+            <InputLabel>{my_key}</InputLabel>
+            <Select label={my_key} value={value} onChange={handleChange}>
+              {enum_values.map((item) => (
+                <MenuItem key={item.value} value={item.value}>
+                  {item.mapped}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ))
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}
@@ -507,7 +507,7 @@ export function DynamicFormComponent({
 
 function getStatusColor(
   status: ParsedSensorValue,
-  current_sensor: ParsedSensorData
+  current_sensor: ParsedSensorData,
 ) {
   const target = useSensorStore.getState().target_sensor_data;
   if (typeof current_sensor === "undefined" || typeof target === "undefined")

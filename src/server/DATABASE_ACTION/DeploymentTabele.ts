@@ -3,8 +3,6 @@
 // import { prisma } from "./prisma"
 // import { Senzor } from "./Senzorji";
 
-
-
 // export function ProcessOrder() {
 //     return prisma.productionList.create({
 //         data: {
@@ -13,7 +11,6 @@
 //         }
 //     });
 // }
-
 
 // export function InsertArrayofSensors(sezors: Senzor[], defaultData: deafultData[]) {
 //     for (let i = 0; i < sezors.length; i++) {

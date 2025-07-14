@@ -11,7 +11,6 @@ async function createFolder(
   customer_name: string,
   order_number: string,
 ) {
-
   const service = google.drive({ version: "v3", auth: client });
   const fileMetadata = {
     name: customer_name + "   " + order_number,
@@ -39,7 +38,6 @@ async function createSpreadsheet(
   currentTime: Date,
   name: string,
 ) {
-
   const service = google.drive({ version: "v3", auth: client });
 
   const sheets = google.sheets({ version: "v4", auth: client });
@@ -289,7 +287,6 @@ async function insertIntoSpreadsheet(
   spreadsheetId: string,
   newRow: string[],
 ): Promise<void> {
-
   const sheets = google.sheets({ version: "v4", auth: client });
 
   try {
@@ -372,7 +369,6 @@ async function createSpreadsheetCsv(
   folderId: string | null | undefined,
   order_number: string,
 ) {
-
   const service = google.drive({ version: "v3", auth: client });
   const fileMetadata = {
     name: "Order " + order_number + "-" + "TTN import" + ".csv",
@@ -405,7 +401,6 @@ async function insertIntoCsvFile(
   fileId: string,
   newRow: string[],
 ): Promise<void> {
-
   const drive = google.drive({ version: "v3", auth: client });
 
   try {
@@ -463,7 +458,7 @@ export async function createFolderAndSpreadsheet(
   const client = new google.auth.OAuth2() as unknown as Auth.OAuth2Client;
 
   client.setCredentials({
-    access_token: token
+    access_token: token,
   });
 
   if (!token) throw new Error("No access token found");
@@ -527,4 +522,3 @@ export async function insert(
     throw err;
   }
 }
-

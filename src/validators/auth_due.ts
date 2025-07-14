@@ -6,5 +6,4 @@ export const signInSchema = z.object({
   code: z.string().optional(), // Add the code property
 
   codeVerifier: z.string().optional(), // Add the codeVerifier property
-
 });

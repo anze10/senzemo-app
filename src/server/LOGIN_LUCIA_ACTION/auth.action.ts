@@ -13,12 +13,10 @@ import { google } from "~/server/LOGIN_LUCIA_ACTION/googleOauth";
 import { z } from "zod";
 // import { signInSchema } from "~/validators/auth_due";
 
-
-
 export const signInSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-})
+});
 // export const signUpSchema = z.object({
 //     name: z.string().min(5),
 //     email: z.string().email(),
@@ -59,13 +57,12 @@ export const signInSchema = z.object({
 //     }
 // }
 
-
 export async function logOut() {
   const sessionCookie = lucia.createBlankSessionCookie();
   (await cookies()).set(
     sessionCookie.name,
     sessionCookie.value,
-    sessionCookie.attributes
+    sessionCookie.attributes,
   );
   return { success: true }; // Plain object
 }
@@ -95,8 +92,6 @@ export async function logOut() {
 //   }
 // }
 
-
-
 export async function getGoogleOauthConsentUrl() {
   try {
     const state = generateState();
@@ -121,16 +116,10 @@ export async function getGoogleOauthConsentUrl() {
     ];
 
     // Create authorization URL with the necessary parameters
-    const authUrl = google.createAuthorizationURL(
-      state,
-      codeVerifier,
-      scopes
-    );
+    const authUrl = google.createAuthorizationURL(state, codeVerifier, scopes);
 
     return { success: true, url: authUrl.toString() };
   } catch (error: unknown) {
     return { success: false, error };
   }
 }
-
-

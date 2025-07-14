@@ -52,4 +52,3 @@
 //         return new Response("Failed to get token from database", { status: 500 });
 //     }
 // }
-

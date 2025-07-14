@@ -29,7 +29,7 @@ const handleAccount = () => {
   console.log("Account clicked");
 };
 
-const ResponsiveAppBar: React.FC<{ session?: Session }> = ({ }) => {
+const ResponsiveAppBar: React.FC<{ session?: Session }> = ({}) => {
   const portRef = useRef<SerialPort | null>(null);
 
   const GetDataFromSensor = async () => {
