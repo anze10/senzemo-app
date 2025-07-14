@@ -69,6 +69,7 @@ export default function SensorList() {
                 decoder: params.decoder !== undefined ? params.decoder : null,
                 description: params.description || null,
                 zpl: params.zpl || null,
+                frequency: null
             });
         },
         onSuccess: () => {
@@ -92,6 +93,7 @@ export default function SensorList() {
                 decoder: params.decoder !== undefined ? params.decoder : null,
                 description: params.description || null,
                 zpl: params.zpl || null,
+                frequency: null
             });
         },
         onSuccess: () => {

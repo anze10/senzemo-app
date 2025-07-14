@@ -7,22 +7,17 @@
 import { lucia } from "src/server/LOGIN_LUCIA_ACTION/lucia";
 import { cookies } from "next/headers";
 //import { signInSchema } from "./SignInForm"
-<<<<<<< HEAD
-import { NextResponse } from 'next/server';
-import { generateCodeVerifier, generateState } from "arctic"
-import { googleOAuthClient } from "src/server/googleOauth"
-=======
 //import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic";
 import { google } from "~/server/LOGIN_LUCIA_ACTION/googleOauth";
+import { z } from "zod";
 // import { signInSchema } from "~/validators/auth_due";
 
 
->>>>>>> test
 
 export const signInSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
+  email: z.string().email(),
+  password: z.string().min(8),
 })
 // export const signUpSchema = z.object({
 //     name: z.string().min(5),
@@ -64,37 +59,6 @@ export const signInSchema = z.object({
 //     }
 // }
 
-<<<<<<< HEAD
-export async function  signIn  (values: z.infer<typeof signInSchema>) {
-    const user = await prisma.user.findUnique({
-        where: {
-            email: values.email
-        }
-    })
-    if (!user || !user.hashedPassword) {
-        return { success: false, error: "Invalid Credentials!" }
-    }
-    const passwordMatch = await new Argon2id().verify(user.hashedPassword, values.password)
-    if (!passwordMatch) {
-        return { success: false, error: "Invalid Credentials!" }
-    }
-    // successfully login
-    const session = await lucia.createSession(user.id, {})
-    const sessionCookie = await lucia.createSessionCookie(session.id)
-        ; (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
-    return { success: true }
-}
-export async function logOut() {
-    const sessionCookie = lucia.createBlankSessionCookie();
-    (await cookies()).set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-    return NextResponse.redirect('http://localhost:3000');
-}
-
-export async function  getGoogleOauthConsentUrl () {
-    try {
-        const state = generateState()
-        const codeVerifier = generateCodeVerifier()
-=======
 
 export async function logOut() {
   const sessionCookie = lucia.createBlankSessionCookie();
@@ -168,17 +132,5 @@ export async function getGoogleOauthConsentUrl() {
     return { success: false, error };
   }
 }
->>>>>>> test
 
 
-<<<<<<< HEAD
-        const authUrl = googleOAuthClient.createAuthorizationURL(state, codeVerifier, ['email', 'profile'])
-        return { success: true, url: authUrl.toString() }
-
-    } catch {
-        return { success: false, error: 'Something went wrong' }
-    }
-}
-=======
-
->>>>>>> test

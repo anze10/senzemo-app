@@ -78,7 +78,7 @@ export function SensorCheckForm() {
     SendPeriod: "string",
     ACK: "string",
     MovementThreshold: "string",
-    orderNumber: 0,
+    orderId: 0,
   } satisfies ProductionListWithoutId;
   const all_sensors = useSensorStore((state) => state.sensors);
 
@@ -486,18 +486,18 @@ export function DynamicFormComponent({
         <TextField label={my_key} value={value} onChange={handleChange} />
       ) : my_type === "enum" && enum_values ? (
         (console.log(my_key, value),
-        (
-          <FormControl fullWidth>
-            <InputLabel>{my_key}</InputLabel>
-            <Select label={my_key} value={value} onChange={handleChange}>
-              {enum_values.map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.mapped}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ))
+          (
+            <FormControl fullWidth>
+              <InputLabel>{my_key}</InputLabel>
+              <Select label={my_key} value={value} onChange={handleChange}>
+                {enum_values.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.mapped}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ))
       ) : (
         <Typography color="error">Invalid type: {my_type}</Typography>
       )}

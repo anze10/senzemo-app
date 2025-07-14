@@ -25,7 +25,8 @@ export async function addSensorToInventory(
     location: string,
     frequency: string | null = null,
     BN: number,
-    dev_eui: string
+    dev_eui: string,
+    //deviceType?: string
 ) {
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -38,17 +39,37 @@ export async function addSensorToInventory(
                 throw new Error("The provided dev_eui already exists in the ProductionList table.");
             }
 
-            // 2. Create the dev_eui in productionList
+            // 2. Get sensor information to determine DeviceType if not provided
+            const sensorInfo = await tx.senzor.findUnique({
+                where: { id: sensorId },
+                select: { id: true, sensorName: true, familyId: true, productId: true }
+            });
+
+            if (!sensorInfo) {
+                throw new Error(`Sensor with ID ${sensorId} not found`);
+            }
+
+            // 3. Determine DeviceType - use provided deviceType or generate from sensor info
+            const finalDeviceType = sensorInfo.sensorName;
+
+            // 4. Map frequency to FrequencyRegion format
+            const mapFrequencyToRegion = (freq: string | null): string => {
+                if (!freq) return 'EU868';
+                switch (freq) {
+                    case '868 MHz': return 'EU868';
+                    case '915 MHz': return 'US915';
+                    case '433 MHz': return 'EU433';
+                    case '2.4 GHz': return 'ISM2400';
+                    default: return 'EU868';
+                }
+            };
+
+            // 5. Create the dev_eui in productionList
             await tx.productionList.create({
                 data: {
                     DevEUI: dev_eui,
-
-                    FrequencyRegion: "EU868",
-
-                    //order: undefined,
-                    // orderId: 0 // Provide a suitable default or value for 'order'
-                    // If you want to leave it unset, remove the field or set to undefined
-                    // order: undefined,
+                    DeviceType: finalDeviceType,
+                    FrequencyRegion: mapFrequencyToRegion(frequency),
                 },
             });
 
@@ -1738,5 +1759,126 @@ export async function getProductionDevices(deviceType: string, frequency: string
     } catch (error) {
         console.error('Error fetching device details:', error);
         return [];
+    }
+}
+
+/**
+ * Izračunaj koliko senzorjev lahko sestavimo na podlagi razpoložljivih komponent
+ */
+export async function getSensorProductionCapacity() {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // Dobi vse senzorje z njihovimi komponentnimi potrebami
+            const sensors = await tx.senzor.findMany({
+                include: {
+                    components: {
+                        include: {
+                            component: {
+                                include: {
+                                    stockItems: {
+                                        select: {
+                                            quantity: true,
+                                            location: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const productionCapacity = sensors.map(sensor => {
+                // Za vsak senzor preveri, koliko lahko sestavimo
+                let maxProducible = Infinity;
+                const componentDetails: Array<{
+                    name: string;
+                    required: number;
+                    available: number;
+                    maxPossible: number;
+                    isLimitingFactor: boolean;
+                }> = [];
+
+                sensor.components.forEach(sensorComponent => {
+                    const component = sensorComponent.component;
+                    const requiredQuantity = sensorComponent.requiredQuantity;
+
+                    // Seštej vso razpoložljivo zalogo te komponente
+                    const totalAvailable = component.stockItems.reduce(
+                        (sum, stock) => sum + stock.quantity,
+                        0
+                    );
+
+                    // Izračunaj koliko senzorjev lahko sestavimo s to komponento
+                    const possibleWithThisComponent = Math.floor(totalAvailable / requiredQuantity);
+
+                    componentDetails.push({
+                        name: component.name,
+                        required: requiredQuantity,
+                        available: totalAvailable,
+                        maxPossible: possibleWithThisComponent,
+                        isLimitingFactor: false
+                    });
+
+                    // Omejitveni faktor je komponenta, ki omogoča najmanj proizvodnje
+                    if (possibleWithThisComponent < maxProducible) {
+                        maxProducible = possibleWithThisComponent;
+                    }
+                });
+
+                // Označi omejitvene komponente
+                componentDetails.forEach(comp => {
+                    comp.isLimitingFactor = comp.maxPossible === maxProducible;
+                });
+
+                return {
+                    sensorId: sensor.id,
+                    sensorName: sensor.sensorName,
+                    maxProducible: maxProducible === Infinity ? 0 : maxProducible,
+                    componentDetails,
+                    hasAllComponents: sensor.components.length > 0 && maxProducible > 0
+                };
+            });
+
+            return productionCapacity;
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Error calculating sensor production capacity:", error);
+        throw new Error("Failed to calculate sensor production capacity");
+    }
+}
+
+/**
+ * Dobi povzetek proizvodnih zmogljivosti - skupno število senzorjev, ki jih lahko sestavimo
+ */
+export async function getProductionCapacitySummary() {
+    try {
+        const capacity = await getSensorProductionCapacity();
+
+        const summary = {
+            totalSensorTypes: capacity.length,
+            sensorsWithComponents: capacity.filter(s => s.hasAllComponents).length,
+            totalProducibleUnits: capacity.reduce((sum, s) => sum + s.maxProducible, 0),
+            topLimitingComponents: {} as Record<string, number>
+        };
+
+        // Najdi najštevilčneje omejujoče komponente
+        const limitingComponentCounts: Record<string, number> = {};
+        capacity.forEach(sensor => {
+            sensor.componentDetails.forEach(comp => {
+                if (comp.isLimitingFactor) {
+                    limitingComponentCounts[comp.name] = (limitingComponentCounts[comp.name] || 0) + 1;
+                }
+            });
+        });
+
+        summary.topLimitingComponents = limitingComponentCounts;
+
+        return summary;
+    } catch (error) {
+        console.error("Error calculating production capacity summary:", error);
+        throw new Error("Failed to calculate production capacity summary");
     }
 }

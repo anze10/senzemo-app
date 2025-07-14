@@ -7,7 +7,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, TextField, Dialog, DialogActions, DialogContent,
     DialogTitle, IconButton, Snackbar, Alert, Typography, Box, Chip,
-    Tabs, Tab, MenuItem, Select
+    Tabs, Tab, MenuItem, Select, Card, CardContent,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -17,7 +17,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MemoryIcon from '@mui/icons-material/Memory';
 import RadioIcon from '@mui/icons-material/Radio';
-import { addComponentToInventory, addSensorToInventory, adjustComponentStock, adjustSensorStock, deleteComponentFromInventory, deleteSensorFromInventory, getAllComponents, getSensors, showAllComponents, showLogs, showSensorInInventory, updateComponentSensorAssignments, updateComponentStock, getProductionHierarchy, getProductionByFrequency, getProductionDevices } from 'src/app/inventory/components/backent';
+import BuildIcon from '@mui/icons-material/Build';
+//import WarningIcon from '@mui/icons-material/Warning';
+//import InfoIcon from '@mui/icons-material/Info';
+import { addComponentToInventory, addSensorToInventory, adjustComponentStock, adjustSensorStock, deleteComponentFromInventory, deleteSensorFromInventory, getAllComponents, getSensors, showAllComponents, showLogs, showSensorInInventory, updateComponentSensorAssignments, updateComponentStock, getProductionHierarchy, getProductionByFrequency, getProductionDevices, getSensorProductionCapacity, getProductionCapacitySummary } from 'src/app/inventory/components/backent';
 import { useQuery } from '@tanstack/react-query';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadPDFToB2 } from 'src/app/inventory/components/aws';
@@ -139,7 +142,6 @@ export default function InventoryManagementPage() {
     const [currentAdjustItem, setCurrentAdjustItem] = useState<InventoryItem | null>(null);
     const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
     const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
-    const [groupedSensors, setGroupedSensors] = useState<ProductionGroupByType[]>([]);
     const queryClient = useQueryClient();
     const frequencyOptions: Frequency[] = ['868 MHz', '915 MHz', '433 MHz', '2.4 GHz', 'Custom'];
 
@@ -149,7 +151,7 @@ export default function InventoryManagementPage() {
                 id: 0,
                 senzorId: 0,
                 sensorName: '',
-                quantity: 0,
+                quantity: 1,
                 location: 'Main Warehouse',
                 lastUpdated: new Date(),
                 frequency: '868 MHz' as Frequency,
@@ -159,7 +161,7 @@ export default function InventoryManagementPage() {
                 id: 0,
                 componentId: 0,
                 name: '',
-                quantity: 0,
+                quantity: 1,
                 location: 'Main Warehouse',
                 lastUpdated: new Date(),
                 sensorAssignments: [],
@@ -299,10 +301,22 @@ export default function InventoryManagementPage() {
         refetchOnMount: false,       // Don't refetch on every mount
     });
 
-    // Update groupedSensors when productionHierarchy changes
-    useEffect(() => {
-        setGroupedSensors(productionHierarchy);
-    }, [productionHierarchy]);
+    // Use React Query for production capacity data
+    const { data: productionCapacity = [] } = useQuery({
+        queryKey: ['production-capacity'],
+        queryFn: getSensorProductionCapacity,
+        enabled: activeTab === 0, // Only fetch when on sensors tab
+        staleTime: 10 * 60 * 1000, // 10 minutes cache
+        refetchOnWindowFocus: false,
+    });
+
+    const { data: capacitySummary } = useQuery({
+        queryKey: ['capacity-summary'],
+        queryFn: getProductionCapacitySummary,
+        enabled: activeTab === 0, // Only fetch when on sensors tab
+        staleTime: 10 * 60 * 1000, // 10 minutes cache
+        refetchOnWindowFocus: false,
+    });
 
     useEffect(() => {
         if (open && activeTab === 1) {
@@ -335,7 +349,7 @@ export default function InventoryManagementPage() {
                     id: 0,
                     senzorId: 0,
                     sensorName: '',
-                    quantity: 0,
+                    quantity: 1,
                     location: 'Main Warehouse',
                     lastUpdated: new Date(),
                     frequency: '868 MHz' as Frequency,
@@ -345,7 +359,7 @@ export default function InventoryManagementPage() {
                     id: 0,
                     componentId: 0,
                     name: '',
-                    quantity: 0,
+                    quantity: 1,
                     location: 'Main Warehouse',
                     lastUpdated: new Date(),
                     sensorAssignments: [],
@@ -877,26 +891,30 @@ export default function InventoryManagementPage() {
 
     // Funkcije za upravljanje hierarhičnega prikaza
     const toggleSensorExpanded = (deviceType: string) => {
-        setGroupedSensors(prev => prev.map(group =>
-            group.deviceType === deviceType
-                ? { ...group, expanded: !group.expanded }
-                : group
-        ));
+        queryClient.setQueryData(['production-hierarchy'], (prev: ProductionGroupByType[]) =>
+            prev?.map(group =>
+                group.deviceType === deviceType
+                    ? { ...group, expanded: !group.expanded }
+                    : group
+            ) || []
+        );
     };
 
     const toggleFrequencyExpanded = (deviceType: string, frequency: string) => {
-        setGroupedSensors(prev => prev.map(group =>
-            group.deviceType === deviceType
-                ? {
-                    ...group,
-                    frequencies: group.frequencies.map(freq =>
-                        freq.frequency === frequency
-                            ? { ...freq, expanded: !freq.expanded }
-                            : freq
-                    )
-                }
-                : group
-        ));
+        queryClient.setQueryData(['production-hierarchy'], (prev: ProductionGroupByType[]) =>
+            prev?.map(group =>
+                group.deviceType === deviceType
+                    ? {
+                        ...group,
+                        frequencies: group.frequencies.map(freq =>
+                            freq.frequency === frequency
+                                ? { ...freq, expanded: !freq.expanded }
+                                : freq
+                        )
+                    }
+                    : group
+            ) || []
+        );
     };
 
     return (
@@ -967,21 +985,123 @@ export default function InventoryManagementPage() {
                             </TableContainer>
                         </Paper>
                     ) : activeTab === 0 ? (
-                        // Hierarhični prikaz senzorjev
+                        // Sensors tab
                         <>
+                            {/* Production Capacity Summary */}
+                            {capacitySummary && (
+                                <Paper elevation={3} className="mb-6">
+                                    <Box className="p-4">
+                                        <Box className="flex items-center mb-4">
+                                            <BuildIcon className="text-blue-600 mr-2" />
+                                            <Typography variant="h6" className="text-blue-800 font-bold">
+                                                Povzetek proizvodnih zmogljivosti
+                                            </Typography>
+                                        </Box>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                            <Card>
+                                                <CardContent className="text-center">
+                                                    <Typography color="textSecondary" gutterBottom>
+                                                        Skupno tipov senzorjev
+                                                    </Typography>
+                                                    <Typography variant="h4" component="div">
+                                                        {capacitySummary.totalSensorTypes}
+                                                    </Typography>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card>
+                                                <CardContent className="text-center">
+                                                    <Typography color="textSecondary" gutterBottom>
+                                                        S komponentami
+                                                    </Typography>
+                                                    <Typography variant="h4" component="div" className="text-green-600">
+                                                        {capacitySummary.sensorsWithComponents}
+                                                    </Typography>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card>
+                                                <CardContent className="text-center">
+                                                    <Typography color="textSecondary" gutterBottom>
+                                                        Skupno lahko sestavimo
+                                                    </Typography>
+                                                    <Typography variant="h4" component="div" className="text-blue-600">
+                                                        {capacitySummary.totalProducibleUnits}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        senzorjev
+                                                    </Typography>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+
+                                        {/* Detailed breakdown per sensor */}
+                                        {productionCapacity && productionCapacity.length > 0 && (
+                                            <Box className="mt-4">
+                                                <Typography variant="subtitle1" className="mb-3 font-semibold">
+                                                    Podrobnosti po tipih senzorjev:
+                                                </Typography>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {productionCapacity.map((sensor) => (
+                                                        <Card key={sensor.sensorId} variant="outlined">
+                                                            <CardContent className="p-3">
+                                                                <Box className="flex items-center justify-between mb-2">
+                                                                    <Typography variant="subtitle2" className="font-medium">
+                                                                        {sensor.sensorName}
+                                                                    </Typography>
+                                                                    <Chip
+                                                                        label={`${sensor.maxProducible} kos`}
+                                                                        color={sensor.maxProducible > 0 ? "success" : "default"}
+                                                                        size="small"
+                                                                    />
+                                                                </Box>
+
+                                                                {sensor.hasAllComponents ? (
+                                                                    <Box>
+                                                                        <Typography variant="caption" color="textSecondary" className="block mb-1">
+                                                                            Lahko sestavite <strong>{sensor.maxProducible}</strong> senzorjev
+                                                                        </Typography>
+                                                                        {sensor.componentDetails.map((comp, idx) => (
+                                                                            <Typography
+                                                                                key={idx}
+                                                                                variant="caption"
+                                                                                className={`block ${comp.isLimitingFactor ? 'text-orange-600 font-medium' : 'text-gray-600'}`}
+                                                                            >
+                                                                                {comp.name}: {comp.available}/{comp.required}
+                                                                                {comp.isLimitingFactor && ' (omejuje)'}
+                                                                            </Typography>
+                                                                        ))}
+                                                                    </Box>
+                                                                ) : (
+                                                                    <Typography variant="caption" color="error">
+                                                                        Manjkajo komponente
+                                                                    </Typography>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
+                                                </div>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Paper>
+                            )}
+
+                            {/* Hierarhični prikaz senzorjev */}
                             <Paper elevation={3} className="overflow-hidden mb-8">
                                 <Box className="p-4">
                                     <Typography variant="h6" className="mb-4">
                                         Sensor Inventory - Hierarchical View
                                     </Typography>
 
-                                    {groupedSensors.length === 0 ? (
+                                    {productionHierarchy.length === 0 ? (
                                         <Typography color="textSecondary" className="text-center py-8">
                                             No sensors in inventory
                                         </Typography>
                                     ) : (
                                         <div className="space-y-2">
-                                            {groupedSensors.map((sensorGroup) => (
+                                            {productionHierarchy.map((sensorGroup) => (
                                                 <div key={sensorGroup.deviceType} className="border rounded-lg">
                                                     {/* Nivo 1: Device Type */}
                                                     <div
@@ -1378,12 +1498,13 @@ export default function InventoryManagementPage() {
                                 type="number"
                                 fullWidth
                                 variant="outlined"
-                                value={editItem?.quantity || 0}
+                                value={editItem?.quantity || 1}
                                 onChange={(e) => editItem && setEditItem({
                                     ...editItem,
-                                    quantity: parseInt(e.target.value) || 0
+                                    quantity: Math.max(1, parseInt(e.target.value) || 1)
                                 })}
                                 className="mb-4 mt-4"
+                                inputProps={{ min: 1 }}
                             />
 
 
