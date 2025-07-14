@@ -292,6 +292,7 @@ export async function showAllComponents() {
                     select: {
                         id: true,
                         name: true,
+                        Component_price: true,
                         senzorComponent: {   // <-- NESTED HERE, not at the same level as 'component'
                             include: {
                                 senzor: {
@@ -323,6 +324,7 @@ export async function showAllComponents() {
             quantity: stock.quantity,
             location: stock.location,
             supplier: stock.supplier,
+            price: stock.component.Component_price,
             lastUpdated: stock.lastUpdated,
             recentLogs: stock.logs,
             sensorAssignments: stock.component.senzorComponent.map(sc => ({
@@ -417,7 +419,8 @@ export async function addComponentToInventory(
     location: string,
     email: string | null = null,
     supplier: string | null = null,
-    invoiceNumber: string | null = null
+    invoiceNumber: string | null = null,
+    price: number | null = null
 ) {
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -430,6 +433,14 @@ export async function addComponentToInventory(
                     supplier
                 }
             });
+
+            // Update the component price if provided
+            if (price !== null) {
+                await tx.component.update({
+                    where: { id: componentId },
+                    data: { Component_price: price }
+                });
+            }
 
             const component = await tx.component.findUnique({
                 where: { id: componentId },
@@ -485,22 +496,45 @@ export async function updateComponentStock(
     location?: string,
     email?: string,
     supplier?: string,
-    phone?: string
+    phone?: string,
+    price?: number
 ) {
     try {
-        const updated = await prisma.componentStock.update({
-            where: { id: stockId },
-            data: {
-                quantity: newQuantity,
-                location,
-                supplier: supplier ?? '',
-                email: email ?? '',
-                phone: phone ?? '', // <-- Shrani telefonsko številko!
-                lastUpdated: new Date(),
-            },
+        const result = await prisma.$transaction(async (tx) => {
+            // First get the current stock to find the componentId
+            const currentStock = await tx.componentStock.findUnique({
+                where: { id: stockId },
+                select: { componentId: true }
+            });
+
+            if (!currentStock) {
+                throw new Error("Component stock not found");
+            }
+
+            const updated = await tx.componentStock.update({
+                where: { id: stockId },
+                data: {
+                    quantity: newQuantity,
+                    location,
+                    supplier: supplier ?? '',
+                    email: email ?? '',
+                    phone: phone ?? '',
+                    lastUpdated: new Date(),
+                },
+            });
+
+            // Update the component price if provided
+            if (price !== undefined) {
+                await tx.component.update({
+                    where: { id: currentStock.componentId },
+                    data: { Component_price: price }
+                });
+            }
+
+            return updated;
         });
-        // ...logika za inventoryLog...
-        return updated;
+
+        return result;
     } catch (error) {
         throw new Error("Failed to update component stock", error as Error);
     }

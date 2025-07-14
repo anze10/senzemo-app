@@ -82,6 +82,7 @@ export type ComponentStockItem = {
     }[];
     invoiceNumber?: string;
     contactDetails: ContactDetails;
+    price?: number; // Price per item
 };
 
 type InventoryItem = SenzorStockItem | ComponentStockItem;
@@ -166,6 +167,7 @@ export default function InventoryManagementPage() {
                 lastUpdated: new Date(),
                 sensorAssignments: [],
                 invoiceNumber: '',
+                price: 0,
                 contactDetails: {
                     supplier: '',
                     email: '',
@@ -364,6 +366,7 @@ export default function InventoryManagementPage() {
                     lastUpdated: new Date(),
                     sensorAssignments: [],
                     invoiceNumber: '',
+                    price: 0,
                     contactDetails: {
                         supplier: '',
                         email: '',
@@ -728,6 +731,7 @@ export default function InventoryManagementPage() {
                     requiredQuantity: option.requiredQuantity,
                 })),
             invoiceNumber: invoiceNumber,
+            price: (editItem as ComponentStockItem).price ?? 0,
             contactDetails: (editItem as ComponentStockItem).contactDetails ?? {
                 supplier: '',
                 email: '',
@@ -745,7 +749,8 @@ export default function InventoryManagementPage() {
                     updatedItem.location,
                     updatedItem.contactDetails.email,
                     updatedItem.contactDetails.supplier,
-                    updatedItem.contactDetails.phone // <-- Dodaj ta argument!
+                    updatedItem.contactDetails.phone,
+                    updatedItem.price // <-- Add price parameter
                 );
 
 
@@ -769,7 +774,8 @@ export default function InventoryManagementPage() {
                     updatedItem.location,
                     updatedItem.contactDetails.email,
                     updatedItem.contactDetails.supplier,
-                    updatedItem.invoiceNumber
+                    updatedItem.invoiceNumber,
+                    updatedItem.price // <-- Add price parameter
                 );
 
                 queryClient.invalidateQueries({ queryKey: ['components-inventory'] });
@@ -934,7 +940,7 @@ export default function InventoryManagementPage() {
                     </Box>
 
                     <Tabs value={activeTab} onChange={handleTabChange} className="mb-6">
-                        <Tab label="Sensors" />
+                        <Tab label="Devices" />
                         <Tab label="Components" />
                         <Tab label="Logs" icon={<HistoryIcon />} />
                     </Tabs>
@@ -1092,12 +1098,12 @@ export default function InventoryManagementPage() {
                             <Paper elevation={3} className="overflow-hidden mb-8">
                                 <Box className="p-4">
                                     <Typography variant="h6" className="mb-4">
-                                        Sensor Inventory - Hierarchical View
+                                        Device Inventory - Hierarchical View
                                     </Typography>
 
                                     {productionHierarchy.length === 0 ? (
                                         <Typography color="textSecondary" className="text-center py-8">
-                                            No sensors in inventory
+                                            No devices in inventory
                                         </Typography>
                                     ) : (
                                         <div className="space-y-2">
@@ -1219,7 +1225,7 @@ export default function InventoryManagementPage() {
                                     onClick={handleClickOpen}
                                     startIcon={<AddIcon />}
                                 >
-                                    Add Sensor
+                                    Add Device
                                 </Button>
                             </Box>
                         </>
@@ -1233,6 +1239,7 @@ export default function InventoryManagementPage() {
                                             <TableRow>
                                                 <TableCell>Name</TableCell>
                                                 <TableCell>Quantity</TableCell>
+                                                <TableCell>Price per Item</TableCell>
                                                 <TableCell>Supplier</TableCell>
                                                 <TableCell>Supplier Contact</TableCell>
                                                 <TableCell>Sensor Requirements</TableCell>
@@ -1262,6 +1269,9 @@ export default function InventoryManagementPage() {
                                                                         <AddIcon />
                                                                     </IconButton>
                                                                 </Box>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {item1.price ? `€${item1.price.toFixed(2)}` : '-'}
                                                             </TableCell>
                                                             <TableCell>{item1.contactDetails?.supplier || '-'}</TableCell>
                                                             <TableCell>
@@ -1315,7 +1325,7 @@ export default function InventoryManagementPage() {
                                     onClick={handleClickOpen}
                                     startIcon={<AddIcon />}
                                 >
-                                    Add {activeTab === 0 ? 'Sensor' : 'Component'}
+                                    Add {activeTab === 0 ? 'Device' : 'Component'}
                                 </Button>
                             </Box>
                         </>
@@ -1487,6 +1497,25 @@ export default function InventoryManagementPage() {
                                                 }
                                             } as ComponentStockItem);
                                         }}
+                                    />
+
+                                    <TextField
+                                        margin="dense"
+                                        id="price"
+                                        label="Price per Item (€)"
+                                        type="number"
+                                        fullWidth
+                                        variant="outlined"
+                                        value={(editItem as ComponentStockItem)?.price || ''}
+                                        onChange={(e) => {
+                                            if (!editItem) return;
+                                            setEditItem({
+                                                ...editItem,
+                                                price: parseFloat(e.target.value) || 0
+                                            } as ComponentStockItem);
+                                        }}
+                                        className="mb-4"
+                                        inputProps={{ min: 0, step: 0.01 }}
                                     />
                                 </>
                             )}
