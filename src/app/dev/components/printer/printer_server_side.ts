@@ -1,14 +1,13 @@
-"use server"
+"use server";
 import ipp from "ipp";
-import type { PrintJobRequest } from "ipp"
+import type { PrintJobRequest } from "ipp";
 
-
-import request from 'request';
+import request from "request";
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface Tiskalnik {
-    name: string;
-    url: string;
+	name: string;
+	url: string;
 }
 
 // Define Printer interface
@@ -16,114 +15,130 @@ export interface Tiskalnik {
 //type GetPrinterUrlsCallback = (error: Error | null, printerUrls: string[]) => void;
 
 export async function getPrinterUrls(): Promise<Tiskalnik[]> {
-    "use server";
+	"use server";
 
-    return new Promise((resolve, reject) => {
-        const CUPSurl = 'http://localhost:631/printers';
-        console.log("Starting getPrinterUrls...");
+	return new Promise((resolve, reject) => {
+		const CUPSurl = "http://localhost:631/printers";
+		console.log("Starting getPrinterUrls...");
 
-        request(CUPSurl, (error: Error | null, response: request.Response, body: string) => {
-            const printerUrls: Tiskalnik[] = [];
+		request(
+			CUPSurl,
+			(error: Error | null, response: request.Response, body: string) => {
+				const printerUrls: Tiskalnik[] = [];
 
-
-            if (!error && response.statusCode === 200) {
-                const printersMatches = body.match(/<TR><TD><A HREF="\/printers\/([a-zA-Z0-9-_]+)">([^<]+)<\/A><\/TD><TD>[^<]+<\/TD><TD>[^<]*<\/TD><TD>[^<]+<\/TD><TD>[^<]+<\/TD><\/TR>/gm);
-                console.log("printersMatches:", printersMatches);
-                if (printersMatches) {
-                    for (const match of printersMatches) {
-                        const a = /<A HREF="\/printers\/([a-zA-Z0-9-_]+)">([^<]+)<\/A>/.exec(match);
-                        if (a) {
-                            console.log("Fetched printer URLs:", a[1]);
-                            if (a[1] === undefined) {
-                                printerUrls.push({
-                                    name: "unknown",
-                                    url: `something went wrong`
-                                });
-                            }
-                            else {
-                                printerUrls.push({
-                                    name: a[1],
-                                    url: `${CUPSurl}/${a[1]}`
-                                });
-                            }
-                        }
-                    }
-                }
-                resolve(printerUrls);
-            } else {
-                console.error('Failed to fetch printers:', error);
-                reject(error);
-            }
-        });
-
-    });
+				if (!error && response.statusCode === 200) {
+					const printersMatches = body.match(
+						/<TR><TD><A HREF="\/printers\/([a-zA-Z0-9-_]+)">([^<]+)<\/A><\/TD><TD>[^<]+<\/TD><TD>[^<]*<\/TD><TD>[^<]+<\/TD><TD>[^<]+<\/TD><\/TR>/gm,
+					);
+					console.log("printersMatches:", printersMatches);
+					if (printersMatches) {
+						for (const match of printersMatches) {
+							const a =
+								/<A HREF="\/printers\/([a-zA-Z0-9-_]+)">([^<]+)<\/A>/.exec(
+									match,
+								);
+							if (a) {
+								console.log("Fetched printer URLs:", a[1]);
+								if (a[1] === undefined) {
+									printerUrls.push({
+										name: "unknown",
+										url: `something went wrong`,
+									});
+								} else {
+									printerUrls.push({
+										name: a[1],
+										url: `${CUPSurl}/${a[1]}`,
+									});
+								}
+							}
+						}
+					}
+					resolve(printerUrls);
+				} else {
+					console.error("Failed to fetch printers:", error);
+					reject(error);
+				}
+			},
+		);
+	});
 }
 
-
 // Function to check printer status and print
-async function doPrintOnSelectedPrinter(printerUri: string, bufferToBePrinted: Buffer, callback: (result: string) => void) {
-    console.log(printerUri);
-    console.log("Checking printer status and sending print job...");
+async function doPrintOnSelectedPrinter(
+	printerUri: string,
+	bufferToBePrinted: Buffer,
+	callback: (result: string) => void,
+) {
+	console.log(printerUri);
+	console.log("Checking printer status and sending print job...");
 
-    try {
-        // Check printer status via IPP
-        const printer = new ipp.Printer(printerUri);
-        console.log("Printer object created:", printer);
-        printer.execute("Get-Printer-Attributes", null, (err: Error, res: unknown) => {
+	try {
+		// Check printer status via IPP
+		const printer = new ipp.Printer(printerUri);
+		console.log("Printer object created:", printer);
+		printer.execute(
+			"Get-Printer-Attributes",
+			{ "operation-attributes-tag": {} },
+			(err: Error, res: unknown) => {
+				// printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
+				if (err) {
+					console.error("Error getting printer attributes:", err);
+					callback("Failed to get printer attributes");
+					return;
+				}
 
-            // printer.execute("Get-Printer-Attributes", {}, (err: Error, res: unknown) => {
-            if (err) {
-                console.error("Error getting printer attributes:", err);
-                callback("Failed to get printer attributes");
-                return;
-            }
+				const printerStatus = (
+					res as { "printer-attributes-tag": { "printer-state": string } }
+				)["printer-attributes-tag"]["printer-state"];
+				console.log("Printer status:", printerStatus);
+				console.log(`res`, res);
+				console.log(`Printer status: ${printerStatus}`); // Log the printer status
 
-            const printerStatus = (res as { 'printer-attributes-tag': { 'printer-state': string } })['printer-attributes-tag']['printer-state'];
-            console.log("Printer status:", printerStatus);
-            console.log(`res`, res);
-            console.log(`Printer status: ${printerStatus}`); // Log the printer status
+				if (printerStatus === "idle") {
+					console.log("Printer is ready, sending print job...");
 
-            if (printerStatus === 'idle') {
-                console.log("Printer is ready, sending print job...");
+					// Create print job
+					const msg = {
+						"operation-attributes-tag": {
+							"requesting-user-name": "admin",
+							"job-name": "testing",
+							"document-format": "text/plain", // ZPL format for Zebra printers
+						},
+						"job-attributes-tag": {},
+						data: bufferToBePrinted,
+					};
 
-                // Create print job
-                const msg = {
-                    "operation-attributes-tag": {
-                        "requesting-user-name": "admin",
-                        "job-name": "testing",
-                        "document-format": "text/plain" // ZPL format for Zebra printers
-                    },
-                    "job-attributes-tag": {},
-                    data: bufferToBePrinted
-                };
-
-                // Send the print job
-                printer.execute("Print-Job", msg as PrintJobRequest, (err: Error, res: unknown) => {
-                    if (err) {
-                        console.error("Error printing job:", err);
-                        callback("Print job failed: " + JSON.stringify(err)); // Include detailed error message
-                    } else {
-                        console.log("Print job sent successfully!", res); // Log successful response
-                        callback("Print job sent successfully!");
-                    }
-                });
-            } else {
-                console.error(`Printer is not ready, status: ${printerStatus}`);
-                callback(`Printer is not ready, status: ${printerStatus}`);
-            }
-        });
-    } catch (error) {
-        console.error("An error occurred while printing:", error);
-        callback("An error occurred while processing the print job");
-    }
+					// Send the print job
+					printer.execute(
+						"Print-Job",
+						msg as PrintJobRequest,
+						(err: Error, res: unknown) => {
+							if (err) {
+								console.error("Error printing job:", err);
+								callback(`Print job failed: ${JSON.stringify(err)}`); // Include detailed error message
+							} else {
+								console.log("Print job sent successfully!", res); // Log successful response
+								callback("Print job sent successfully!");
+							}
+						},
+					);
+				} else {
+					console.error(`Printer is not ready, status: ${printerStatus}`);
+					callback(`Printer is not ready, status: ${printerStatus}`);
+				}
+			},
+		);
+	} catch (error) {
+		console.error("An error occurred while printing:", error);
+		callback("An error occurred while processing the print job");
+	}
 }
 
 // Server-side action to send ZPL print job
 export async function handlePrintRequest(printerUri: string) {
-
-    try {
-        // Sample ZPL buffer data
-        const zplCode = `^XA
+	try {
+		// Sample ZPL buffer data
+		const zplCode = `^XA
 ~TA000
 ~JSN
 ^LT0
@@ -161,62 +176,74 @@ export async function handlePrintRequest(printerUri: string) {
 ^PQ1,0,1,Y
 ^XZ
 `;
-        const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
+		const bufferToBePrinted = Buffer.from(zplCode, "utf8");
 
-        // Call the function to print
-        await doPrintOnSelectedPrinter(printerUri, bufferToBePrinted, (message: string) => {
-            if (message) {
-                console.log(message); // Log success/failure
-            } else {
-                console.log("No message received.");
-            }
-        }).catch(error => {
-            console.error("Error during printing:", error);
-        });
-    } catch (error) {
-        console.error("Error handling print request:", error);
-    }
-    return { success: true, message: 'Print job sent successfully' };
+		// Call the function to print
+		await doPrintOnSelectedPrinter(
+			printerUri,
+			bufferToBePrinted,
+			(message: string) => {
+				if (message) {
+					console.log(message); // Log success/failure
+				} else {
+					console.log("No message received.");
+				}
+			},
+		).catch((error) => {
+			console.error("Error during printing:", error);
+		});
+	} catch (error) {
+		console.error("Error handling print request:", error);
+	}
+	return { success: true, message: "Print job sent successfully" };
 }
 // druga funkcija /////
-export async function PrintSticker(dev_eui: string, family_id: number, product_id: number, printer_uri: string) {
-    try {
-        // Ustvarimo ZPL kodo z vstavljenimi podatki
-        const zplCode = await getZplfromDB(family_id, product_id);
+export async function PrintSticker(
+	dev_eui: string,
+	family_id: number,
+	product_id: number,
+	printer_uri: string,
+) {
+	try {
+		// Ustvarimo ZPL kodo z vstavljenimi podatki
+		const zplCode = await getZplfromDB(family_id, product_id);
 
-        if (!zplCode) {
-            throw new Error("Failed to retrieve ZPL code from database");
-        }
+		if (!zplCode) {
+			throw new Error("Failed to retrieve ZPL code from database");
+		}
 
-        const bufferToBePrinted = Buffer.from(zplCode, 'utf8');
+		const bufferToBePrinted = Buffer.from(zplCode, "utf8");
 
-        // Kličemo obstoječo funkcijo za tisk
-        await doPrintOnSelectedPrinter(printer_uri, bufferToBePrinted, (message: string) => {
-            if (message) {
-                console.log(message); // Log success/failure
-            } else {
-                console.log("No message received.");
-            }
-        }).catch(error => {
-            console.error("Error during printing:", error);
-        });
-    } catch (error) {
-        console.error("Error handling print request:", error);
-    }
-    return { success: true, message: 'Print job sent successfully' };
+		// Kličemo obstoječo funkcijo za tisk
+		await doPrintOnSelectedPrinter(
+			printer_uri,
+			bufferToBePrinted,
+			(message: string) => {
+				if (message) {
+					console.log(message); // Log success/failure
+				} else {
+					console.log("No message received.");
+				}
+			},
+		).catch((error) => {
+			console.error("Error during printing:", error);
+		});
+	} catch (error) {
+		console.error("Error handling print request:", error);
+	}
+	return { success: true, message: "Print job sent successfully" };
 }
-
-
 
 function getZplfromDB(family_id: number, product_id: number) {
-    // Get ZPL code from database
-    return prisma.senzor.findFirst({
-        where: {
-            familyId: family_id,
-            productId: product_id
-        }
-    }).then((data) => {
-        return data ? data.zpl : null;
-    });
+	// Get ZPL code from database
+	return prisma.senzor
+		.findFirst({
+			where: {
+				familyId: family_id,
+				productId: product_id,
+			},
+		})
+		.then((data) => {
+			return data ? data.zpl : null;
+		});
 }
-
