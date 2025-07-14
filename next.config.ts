@@ -15,24 +15,24 @@
 // const config = {};
 
 // export default config;
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
-  },
-  webpack: (config: any) => {
-    config.externals.push("@node-rs/argon2", "@node-rs/bcrypt");
-    return config;
-  },
-  images: {
-    remotePatterns: [
-      {
-        hostname: "lh3.googleusercontent.com",
-      },
-    ],
-  },
+
+const nextConfig: import("next").NextConfig = {
+	experimental: {
+		serverActions: {
+			bodySizeLimit: "2mb",
+		},
+	},
+	webpack: (config) => {
+		config.externals.push("@node-rs/argon2", "@node-rs/bcrypt");
+		return config;
+	},
+	images: {
+		remotePatterns: [
+			{
+				hostname: "lh3.googleusercontent.com",
+			},
+		],
+	},
 };
 
 export default nextConfig;
