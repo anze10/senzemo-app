@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ParsedSensorData,
   ParsedSensorValue,
@@ -55,7 +55,7 @@ import { InsertintoDB, ProductionListWithoutId } from "./PrismaCode";
 import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
-import { error } from "console";
+
 
 type ImportantSensorData = Record<
   string,
@@ -84,24 +84,7 @@ export function SensorCheckForm() {
     else return undefined;
   });
 
-  const dataforDB = {
-    orderId: 0,
-    DevEUI: "",
-    AppEUI: "",
-    AppKey: "",
-    DeviceType: "",
-    // LoraFreqReg: "",
-    SubBands: "",
-    //DeviceHWVer: "",
-    //DeviceFWVer: "",
-    CustomFWVersion: "",
-    FrequencyRegion: null,
-    HWVersion: null,
-    FWVersion: null,
-    SendPeriod: null,
-    ACK: null,
-    MovementThreshold: null,
-  } satisfies ProductionListWithoutId;
+  // Remove static dataforDB object - it will be created dynamically in useMemo
   const all_sensors = useSensorStore((state) => state.sensors);
 
   const add_new_sensor = useSensorStore((state) => state.add_new_sensor);
@@ -140,7 +123,22 @@ export function SensorCheckForm() {
     queryKey: ["session"],
     queryFn: getCurrentSession,
   });
-
+  const GetSensorName = useQuery({
+    queryKey: ["sensor_name"],
+    queryFn: async () => {
+      const data = await GetSensors();
+      return data.map((sensor) => ({
+        id: sensor.id,
+        sensorName: sensor.sensorName,
+        familyId: sensor.familyId,
+        productId: sensor.productId,
+        photograph: sensor.photograph,
+        payloadDecoder: sensor.payloadDecoder,
+        decoder: sensor.decoder,
+        description: sensor.description,
+      }));
+    }
+  });
   const set_current_sensor_index = useSensorStore(
     (state) => state.set_current_sensor_index
   );
@@ -167,6 +165,7 @@ export function SensorCheckForm() {
       current_sensor,
     });
 
+
     // set_current_sensor_index(current_sensor_index + 1);
     const uint_array = await GetDataFromSensor();
     if (!uint_array || !sensors) return;
@@ -176,6 +175,8 @@ export function SensorCheckForm() {
 
     add_new_sensor(decoder, uint_array);
   };
+
+
 
   const GetDataFromSensor = async () => {
     try {
@@ -190,50 +191,143 @@ export function SensorCheckForm() {
     } catch (error) {
       console.error("Failed to handle click:", error);
     }
-  };
+  }
 
-  useEffect(() => {
-    useSensorStore.setState({ start_time: Date.now() });
-  }, []);
+  // useEffect(() => {
+  //   useSensorStore.setState({ start_time: Date.now() });
+  // }, []);
 
-  const insertIntoDatabaseMutation = useMutation({
-    mutationKey: ["InsertintoDatabase"],
-    mutationFn: () => InsertintoDB(dataforDB),
-    onMutate: async () => {
-      console.log("onMutate");
-    },
-    onError: (error) => {
-      console.error("Error in InsertintoDB:", error);
-    },
-    onSuccess: (data) => {
-      console.log("onSuccess", data);
-    },
-  });
-  const [important_sensor_data, unimportant_sensor_data] = useMemo(() => {
+  const [important_sensor_data, unimportant_sensor_data, dataforDB] = useMemo(() => {
     const important: ImportantSensorData = {};
     const unimportant: ImportantSensorData = {};
+
+    // Create fresh dataforDB object
+    const dataforDB: ProductionListWithoutId = {
+      orderId: null,
+      DevEUI: null,
+      AppEUI: null,
+      AppKey: null,
+      DeviceType: null,
+      SubBands: null,
+      CustomFWVersion: null,
+      FrequencyRegion: null,
+      HWVersion: null,
+      FWVersion: null,
+      SendPeriod: null,
+      ACK: null,
+      MovementThreshold: null,
+    };
+
     console.log("sensor_parsers", sensor_parsers);
     console.log("current_sensor", current_sensor);
     console.log("Sensor parser: ", sensor_parsers);
-    if (!current_sensor) return [important, unimportant];
+
+    if (!current_sensor) return [important, unimportant, dataforDB];
+
+    console.log("Available sensor data keys:", Object.keys(current_sensor.data));
+
     Object.entries(current_sensor.data).forEach(([key, value]) => {
       const parser = sensor_parsers.find(
         (parser) => parser.output.name === key
       );
-      console.log(value, key);
-
-      dataforDB.orderId = 0;
+      console.log(`Processing key: ${key}, value: ${value}`);
 
       if (!parser?.output) {
         console.error("Parser not found for key", key);
         return;
       }
-      console.log("Key", key);
+
+      // Map sensor data to database fields based on actual sensor parser keys
+      // DevEUI mapping
+      if (key === "dev_eui") {
+        dataforDB.DevEUI = typeof value === "string" ? value : String(value);
+        console.log(`Mapped DevEUI: ${dataforDB.DevEUI}`);
+      }
+      // AppEUI mapping (join_eui or app_eui)
+      else if (key === "app_eui" || key === "join_eui") {
+        dataforDB.AppEUI = typeof value === "string" ? value : String(value);
+        console.log(`Mapped AppEUI: ${dataforDB.AppEUI}`);
+      }
+      // AppKey mapping
+      else if (key === "app_key") {
+        dataforDB.AppKey = typeof value === "string" ? value : String(value);
+        console.log(`Mapped AppKey: ${dataforDB.AppKey}`);
+      }
+      // FrequencyRegion mapping (from enum values)
+      else if (key === "lora_freq_reg") {
+        // Convert enum value to string representation
+        if (parser.output.enum_values) {
+          let mappedValue: string | undefined;
+          if (typeof value === "number") {
+            const enumEntry = parser.output.enum_values.find(e => e.value === value);
+            mappedValue = enumEntry?.mapped;
+          } else if (typeof value === "string") {
+            // If value is already a mapped string, use it directly
+            const enumEntry = parser.output.enum_values.find(e => e.mapped === value);
+            mappedValue = enumEntry?.mapped ?? value;
+          }
+          if (mappedValue) {
+            dataforDB.FrequencyRegion = mappedValue;
+            console.log(`Mapped FrequencyRegion: ${dataforDB.FrequencyRegion}`);
+          }
+        }
+      }
+      // SubBands mapping  
+      else if (key === "sub_bands" || key === "lora_sub_bands") {
+        dataforDB.SubBands = typeof value === "string" ? value : String(value);
+        console.log(`Mapped SubBands: ${dataforDB.SubBands}`);
+      }
+      // HWVersion mapping
+      else if (key === "hw_version" || key === "device_hw_ver" || key === "device_device_hw_ver") {
+        dataforDB.HWVersion = typeof value === "string" ? value : String(value);
+        console.log(`Mapped HWVersion: ${dataforDB.HWVersion}`);
+      }
+      // FWVersion mapping
+      else if (key === "fw_version" || key === "device_fw_ver") {
+        dataforDB.FWVersion = typeof value === "string" ? value : String(value);
+        console.log(`Mapped FWVersion: ${dataforDB.FWVersion}`);
+      }
+      // SendPeriod mapping
+      else if (key === "send_period" || key === "lora_send_period") {
+        dataforDB.SendPeriod = typeof value === "string" ? value : String(value);
+        console.log(`Mapped SendPeriod: ${dataforDB.SendPeriod}`);
+      }
+      // ACK mapping
+      else if (key === "ack" || key === "lora_ack") {
+        dataforDB.ACK = typeof value === "string" ? value : String(value);
+        console.log(`Mapped ACK: ${dataforDB.ACK}`);
+      }
+      // MovementThreshold mapping
+      else if (key === "movement_threshold" || key === "device_mov_thr") {
+        dataforDB.MovementThreshold = typeof value === "string" ? value : String(value);
+        console.log(`Mapped MovementThreshold: ${dataforDB.MovementThreshold}`);
+      }
+      // DeviceType mapping from family_id and product_id
+      else if (key === "family_id" || key === "product_id") {
+        // We'll construct DeviceType from family_id and product_id
+        const currentFamily = current_sensor.data.family_id;
+        const currentProduct = current_sensor.data.product_id;
+        if (currentFamily && currentProduct) {
+
+          const foundSensor = GetSensorName.data?.find(
+            (sensor) =>
+              sensor.familyId === currentFamily &&
+              sensor.productId === currentProduct
+          );
+          if (foundSensor) {
+            dataforDB.DeviceType = foundSensor.sensorName;
+          }
+          console.log(`Mapped DeviceType: ${dataforDB.DeviceType}`);
+        }
+      }
+
+      // Generic mapping for exact field matches (fallback)
       if (key in dataforDB) {
         (dataforDB as Record<string, unknown>)[key] =
           typeof value === "string" ? value : String(value);
-        console.log("Data for DB", value?.toString());
+        console.log(`Generic mapping for ${key}: ${value}`);
       }
+
       if (parser.output.important) {
         important[key] = {
           value,
@@ -249,8 +343,59 @@ export function SensorCheckForm() {
       }
     });
 
-    return [important, unimportant];
-  }, [current_sensor, dataforDB, sensor_parsers]);
+    console.log("Final dataforDB object:", dataforDB);
+    console.log("Mapped database fields summary:");
+    console.log("  DevEUI:", dataforDB.DevEUI);
+    console.log("  AppEUI:", dataforDB.AppEUI);
+    console.log("  AppKey:", dataforDB.AppKey);
+    console.log("  DeviceType:", dataforDB.DeviceType);
+    console.log("  FrequencyRegion:", dataforDB.FrequencyRegion);
+    console.log("  SubBands:", dataforDB.SubBands);
+    console.log("  HWVersion:", dataforDB.HWVersion);
+    console.log("  FWVersion:", dataforDB.FWVersion);
+    console.log("  SendPeriod:", dataforDB.SendPeriod);
+    console.log("  ACK:", dataforDB.ACK);
+    console.log("  MovementThreshold:", dataforDB.MovementThreshold);
+
+    return [important, unimportant, dataforDB];
+  }, [current_sensor, sensor_parsers]);
+
+  // Define the mutation after dataforDB is available
+  const insertIntoDatabaseMutation = useMutation({
+    mutationKey: ["InsertintoDatabase"],
+    mutationFn: () => {
+      console.log("Mutation called with dataforDB:", dataforDB);
+
+      // Validate that we have critical data
+      if (!dataforDB.DevEUI || dataforDB.DevEUI.trim() === "") {
+        console.error("DevEUI validation failed:", dataforDB.DevEUI);
+        throw new Error("DevEUI is required but not found or empty in sensor data");
+      }
+
+      // Additional validation for other important fields
+      const validationErrors = [];
+      if (!dataforDB.DeviceType) validationErrors.push("DeviceType is missing");
+      if (!dataforDB.FrequencyRegion) validationErrors.push("FrequencyRegion is missing");
+
+      if (validationErrors.length > 0) {
+        console.warn("Validation warnings:", validationErrors);
+        // Don't throw error, just warn - these fields might be optional
+      }
+
+      console.log("Validation passed, inserting into database...");
+      return InsertintoDB(dataforDB);
+    },
+    onMutate: async () => {
+      console.log("onMutate - current dataforDB:", dataforDB);
+    },
+    onError: (error) => {
+      console.error("Error in InsertintoDB:", error);
+      console.error("Failed dataforDB was:", dataforDB);
+    },
+    onSuccess: (data) => {
+      console.log("onSuccess - data inserted:", data);
+    },
+  });
 
   function handleDynamicChange(name: string, value: ParsedSensorValue): void {
     if (!current_sensor) return;
@@ -594,7 +739,7 @@ export function SensorCheckForm() {
 
                     add_new_sensor(decoder, uint_array);
                     insertIntoDatabaseMutation.mutate();
-                    throw new Error("Data inserted into database");
+                    //throw new Error("Data inserted into database");
                   } catch (error) {
                     console.error("Error in submission:", error);
                     throw error;
