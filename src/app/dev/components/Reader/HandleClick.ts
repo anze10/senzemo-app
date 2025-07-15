@@ -1,3 +1,7 @@
+// Track operation state to prevent concurrent operations
+let isReadingInProgress = false;
+let isWritingInProgress = false;
+
 export const connectToPort = async (): Promise<SerialPort> => {
   try {
     console.log("Requesting port...", navigator.serial);
@@ -66,9 +70,22 @@ export async function readDataFromPort(port: SerialPort) {
     return;
   }
 
+  // Prevent concurrent read operations
+  if (isReadingInProgress) {
+    console.warn("Read operation already in progress, skipping...");
+    return;
+  }
+  isReadingInProgress = true;
+
   try {
     console.log("Getting writer for read command...");
-    const writer = port.writable.getWriter();
+    const writer = await getWriterSafely(port.writable);
+
+    if (!writer) {
+      console.error("Could not acquire writer - stream is locked");
+      isReadingInProgress = false;
+      return;
+    }
 
     console.log("Sending 'R' command...");
     const rCommand = new TextEncoder().encode("R");
@@ -79,15 +96,33 @@ export async function readDataFromPort(port: SerialPort) {
     console.log("Writer released after R command");
   } catch (error) {
     console.error("Error writing R command to port:", error);
+    isReadingInProgress = false;
     return;
   }
 
   const uint8ArrayStream = port.readable as ReadableStream<Uint8Array>;
-  const reader = uint8ArrayStream.getReader();
+
+  // Use the helper function to safely get a reader
+  const reader = await getReaderSafely(uint8ArrayStream);
+
+  if (!reader) {
+    console.error("Could not acquire reader - stream is locked");
+    isReadingInProgress = false;
+    return;
+  }
 
   console.log("Reading data...");
   try {
+    const readTimeout = 10000; // 10 second timeout
+    const startTime = Date.now();
+
     while (true) {
+      // Check for timeout
+      if (Date.now() - startTime > readTimeout) {
+        console.error("Read operation timed out");
+        break;
+      }
+
       const { value, done } = await reader.read();
       if (done) {
         console.log("Stream closed.");
@@ -102,6 +137,7 @@ export async function readDataFromPort(port: SerialPort) {
     console.error("Error reading data:", error);
   } finally {
     reader.releaseLock();
+    isReadingInProgress = false;
     console.log("Reader lock released.");
   }
 }
@@ -130,6 +166,13 @@ export async function writeDataToPort(
     writable: !!port.writable,
   });
 
+  // Prevent concurrent write operations
+  if (isWritingInProgress) {
+    console.warn("Write operation already in progress, skipping...");
+    return;
+  }
+  isWritingInProgress = true;
+
   try {
     // Double-check port streams are available
     if (!port.writable) {
@@ -137,7 +180,14 @@ export async function writeDataToPort(
     }
 
     console.log("Getting writer...");
-    const writer = port.writable.getWriter();
+    const writer = await getWriterSafely(port.writable);
+
+    if (!writer) {
+      console.error("Could not acquire writer - stream is locked");
+      isWritingInProgress = false;
+      return;
+    }
+
     console.log("Writer acquired successfully");
 
     // Send "W" command first (must be uppercase for sensor to recognize it)
@@ -183,5 +233,84 @@ export async function writeDataToPort(
       error instanceof Error ? error.message : String(error),
     );
     throw error; // Re-throw to be caught by caller
+  } finally {
+    isWritingInProgress = false;
   }
+}
+
+// Function to reset operation flags in case they get stuck
+export function resetOperationFlags() {
+  isReadingInProgress = false;
+  isWritingInProgress = false;
+  console.log("Operation flags reset");
+}
+
+// Function to get current operation status
+export function getOperationStatus() {
+  return {
+    isReadingInProgress,
+    isWritingInProgress,
+  };
+}
+
+// Helper function to safely get a reader from a potentially locked stream
+async function getReaderSafely(
+  stream: ReadableStream<Uint8Array>,
+  maxRetries = 3,
+  delay = 100,
+): Promise<ReadableStreamDefaultReader<Uint8Array> | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      if (!stream.locked) {
+        return stream.getReader();
+      }
+
+      console.log(
+        `Stream is locked, waiting... (attempt ${i + 1}/${maxRetries})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    } catch (error) {
+      console.error(`Error getting reader on attempt ${i + 1}:`, error);
+      if (i === maxRetries - 1) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  console.error(
+    `Failed to get reader after ${maxRetries} attempts - stream remains locked`,
+  );
+  return null;
+}
+
+// Helper function to safely get a writer from a potentially locked stream
+async function getWriterSafely(
+  stream: WritableStream<Uint8Array>,
+  maxRetries = 3,
+  delay = 100,
+): Promise<WritableStreamDefaultWriter<Uint8Array> | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      if (!stream.locked) {
+        return stream.getWriter();
+      }
+
+      console.log(
+        `Writable stream is locked, waiting... (attempt ${i + 1}/${maxRetries})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    } catch (error) {
+      console.error(`Error getting writer on attempt ${i + 1}:`, error);
+      if (i === maxRetries - 1) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  console.error(
+    `Failed to get writer after ${maxRetries} attempts - stream remains locked`,
+  );
+  return null;
 }
