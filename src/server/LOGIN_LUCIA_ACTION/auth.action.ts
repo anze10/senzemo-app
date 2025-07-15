@@ -10,13 +10,6 @@ import { cookies } from "next/headers";
 //import { redirect } from "next/navigation"
 import { generateCodeVerifier, generateState } from "arctic";
 import { google } from "~/server/LOGIN_LUCIA_ACTION/googleOauth";
-import { z } from "zod";
-// import { signInSchema } from "~/validators/auth_due";
-
-export const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
 // export const signUpSchema = z.object({
 //     name: z.string().min(5),
 //     email: z.string().email(),

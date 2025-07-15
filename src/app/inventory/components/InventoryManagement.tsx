@@ -827,7 +827,7 @@ export default function InventoryManagementPage() {
           updatedItem.sensorAssignments,
         );
 
-        // Osveži podatke iz baze!
+
         queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
 
         setSnackbar({
@@ -856,7 +856,7 @@ export default function InventoryManagementPage() {
       }
       if (invoiceFile) {
         await handleSubmit({
-          preventDefault: () => {},
+          preventDefault: () => { },
         } as React.FormEvent<HTMLFormElement>);
       }
       handleClose();
@@ -988,13 +988,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-                ...group,
-                frequencies: group.frequencies.map((freq) =>
-                  freq.frequency === frequency
-                    ? { ...freq, expanded: !freq.expanded }
-                    : freq,
-                ),
-              }
+              ...group,
+              frequencies: group.frequencies.map((freq) =>
+                freq.frequency === frequency
+                  ? { ...freq, expanded: !freq.expanded }
+                  : freq,
+              ),
+            }
             : group,
         ) || [],
     );
@@ -1076,137 +1076,7 @@ export default function InventoryManagementPage() {
           ) : activeTab === 0 ? (
             // Sensors tab
             <>
-              {/* Production Capacity Summary */}
-              {capacitySummary && (
-                <Paper elevation={3} className="mb-6">
-                  <Box className="p-4">
-                    <Box className="mb-4 flex items-center">
-                      <BuildIcon className="mr-2 text-blue-600" />
-                      <Typography
-                        variant="h6"
-                        className="font-bold text-blue-800"
-                      >
-                        Povzetek proizvodnih zmogljivosti
-                      </Typography>
-                    </Box>
 
-                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <Card>
-                        <CardContent className="text-center">
-                          <Typography color="textSecondary" gutterBottom>
-                            Skupno tipov senzorjev
-                          </Typography>
-                          <Typography variant="h4" component="div">
-                            {capacitySummary.totalSensorTypes}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="text-center">
-                          <Typography color="textSecondary" gutterBottom>
-                            S komponentami
-                          </Typography>
-                          <Typography
-                            variant="h4"
-                            component="div"
-                            className="text-green-600"
-                          >
-                            {capacitySummary.sensorsWithComponents}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="text-center">
-                          <Typography color="textSecondary" gutterBottom>
-                            Skupno lahko sestavimo
-                          </Typography>
-                          <Typography
-                            variant="h4"
-                            component="div"
-                            className="text-blue-600"
-                          >
-                            {capacitySummary.totalProducibleUnits}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            senzorjev
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Detailed breakdown per sensor */}
-                    {productionCapacity && productionCapacity.length > 0 && (
-                      <Box className="mt-4">
-                        <Typography
-                          variant="subtitle1"
-                          className="mb-3 font-semibold"
-                        >
-                          Podrobnosti po tipih senzorjev:
-                        </Typography>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                          {productionCapacity.map((sensor) => (
-                            <Card key={sensor.sensorId} variant="outlined">
-                              <CardContent className="p-3">
-                                <Box className="mb-2 flex items-center justify-between">
-                                  <Typography
-                                    variant="subtitle2"
-                                    className="font-medium"
-                                  >
-                                    {sensor.sensorName}
-                                  </Typography>
-                                  <Chip
-                                    label={`${sensor.maxProducible} kos`}
-                                    color={
-                                      sensor.maxProducible > 0
-                                        ? "success"
-                                        : "default"
-                                    }
-                                    size="small"
-                                  />
-                                </Box>
-
-                                {sensor.hasAllComponents ? (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="textSecondary"
-                                      className="mb-1 block"
-                                    >
-                                      Lahko sestavite{" "}
-                                      <strong>{sensor.maxProducible}</strong>{" "}
-                                      senzorjev
-                                    </Typography>
-                                    {sensor.componentDetails.map(
-                                      (comp, idx) => (
-                                        <Typography
-                                          key={idx}
-                                          variant="caption"
-                                          className={`block ${comp.isLimitingFactor ? "font-medium text-orange-600" : "text-gray-600"}`}
-                                        >
-                                          {comp.name}: {comp.available}/
-                                          {comp.required}
-                                          {comp.isLimitingFactor &&
-                                            " (omejuje)"}
-                                        </Typography>
-                                      ),
-                                    )}
-                                  </Box>
-                                ) : (
-                                  <Typography variant="caption" color="error">
-                                    Manjkajo komponente
-                                  </Typography>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </Box>
-                    )}
-                  </Box>
-                </Paper>
-              )}
 
               {/* Hierarhični prikaz senzorjev */}
               <Paper elevation={3} className="mb-8 overflow-hidden">
@@ -1391,6 +1261,93 @@ export default function InventoryManagementPage() {
                   )}
                 </Box>
               </Paper>
+              {/* Production Capacity Summary */}
+              {capacitySummary && (
+                <Paper elevation={3} className="mb-6">
+                  <Box className="p-4">
+                    <Box className="mb-4 flex items-center">
+                      <BuildIcon className="mr-2 text-blue-600" />
+                      <Typography
+                        variant="h6"
+                        className="font-bold text-blue-800"
+                      >
+                        Povzetek proizvodnih zmogljivosti
+                      </Typography>
+                    </Box>
+
+
+
+                    {/* Detailed breakdown per sensor */}
+                    {productionCapacity && productionCapacity.length > 0 && (
+                      <Box className="mt-4">
+                        <Typography
+                          variant="subtitle1"
+                          className="mb-3 font-semibold"
+                        >
+                          Podrobnosti po tipih senzorjev:
+                        </Typography>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          {productionCapacity.map((sensor) => (
+                            <Card key={sensor.sensorId} variant="outlined">
+                              <CardContent className="p-3">
+                                <Box className="mb-2 flex items-center justify-between">
+                                  <Typography
+                                    variant="subtitle2"
+                                    className="font-medium"
+                                  >
+                                    {sensor.sensorName}
+                                  </Typography>
+                                  <Chip
+                                    label={`${sensor.maxProducible} kos`}
+                                    color={
+                                      sensor.maxProducible > 0
+                                        ? "success"
+                                        : "default"
+                                    }
+                                    size="small"
+                                  />
+                                </Box>
+
+                                {sensor.hasAllComponents ? (
+                                  <Box>
+                                    <Typography
+                                      variant="caption"
+                                      color="textSecondary"
+                                      className="mb-1 block"
+                                    >
+                                      Lahko sestavite{" "}
+                                      <strong>{sensor.maxProducible}</strong>{" "}
+                                      senzorjev
+                                    </Typography>
+                                    {sensor.componentDetails.map(
+                                      (comp, idx) => (
+                                        <Typography
+                                          key={idx}
+                                          variant="caption"
+                                          className={`block ${comp.isLimitingFactor ? "font-medium text-orange-600" : "text-gray-600"}`}
+                                        >
+                                          {comp.name}: {comp.available}/
+                                          {comp.required}
+                                          {comp.isLimitingFactor &&
+                                            " (omejuje)"}
+                                        </Typography>
+                                      ),
+                                    )}
+                                  </Box>
+                                ) : (
+                                  <Typography variant="caption" color="error">
+                                    Manjkajo komponente
+                                  </Typography>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              )}
 
               <Box className="flex justify-end">
                 <Button
@@ -1505,13 +1462,13 @@ export default function InventoryManagementPage() {
                               </TableCell>
                               <TableCell>
                                 {Array.isArray(item1.sensorAssignments) &&
-                                item1.sensorAssignments.length > 0
+                                  item1.sensorAssignments.length > 0
                                   ? item1.sensorAssignments
-                                      .map(
-                                        (sa) =>
-                                          `${sa.sensorName} (${sa.requiredQuantity})`,
-                                      )
-                                      .join(", ")
+                                    .map(
+                                      (sa) =>
+                                        `${sa.sensorName} (${sa.requiredQuantity})`,
+                                    )
+                                    .join(", ")
                                   : "-"}
                               </TableCell>
                               <TableCell>
@@ -1681,8 +1638,8 @@ export default function InventoryManagementPage() {
                     variant="outlined"
                     value={
                       editItem &&
-                      "contactDetails" in editItem &&
-                      editItem.contactDetails?.supplier
+                        "contactDetails" in editItem &&
+                        editItem.contactDetails?.supplier
                         ? editItem.contactDetails.supplier
                         : ""
                     }
@@ -1900,11 +1857,10 @@ export default function InventoryManagementPage() {
                 )}
 
                 <div
-                  className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                    isDragging
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
+                  className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
+                    }`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}

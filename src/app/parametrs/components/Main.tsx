@@ -9,8 +9,8 @@ import {
   Box,
   Typography,
   Grid2,
-  //Checkbox,
-  //TextField,
+  Checkbox,
+  FormControlLabel,
   FormControl,
   type SelectChangeEvent,
 } from "@mui/material";
@@ -41,6 +41,7 @@ export default function Parameters() {
   const [formValues, setFormValues] = useState<ParsedSensorData>({});
   const [family_id, set_family_id] = useState<number>(1);
   const [company_name, set_company_name] = useState<string>("");
+  const [addToStock, setAddToStock] = useState<boolean>(false);
 
   const router = useRouter();
   const set_target_sensor_data = useSensorStore(
@@ -71,7 +72,29 @@ export default function Parameters() {
 
       const newValues: ParsedSensorData = {};
       selectedDevice?.decoder?.forEach((parser) => {
-        newValues[parser.output.name] = parser.output.default;
+        const defaultValue = parser.output.default;
+        // Ensure values are never undefined
+        if (defaultValue !== undefined) {
+          newValues[parser.output.name] = defaultValue;
+        } else {
+          // Provide appropriate default based on type
+          switch (parser.output.type) {
+            case "string":
+              newValues[parser.output.name] = "";
+              break;
+            case "number":
+              newValues[parser.output.name] = 0;
+              break;
+            case "boolean":
+              newValues[parser.output.name] = false;
+              break;
+            case "enum":
+              newValues[parser.output.name] = parser.output.enum_values?.[0]?.value ?? 0;
+              break;
+            default:
+              newValues[parser.output.name] = "";
+          }
+        }
       });
       setFormValues(newValues);
     },
@@ -120,24 +143,40 @@ export default function Parameters() {
             </FormControl>
 
             <FormControl fullWidth>
-              <InputLabel htmlFor="Company_name">Company Name</InputLabel>
-              <Input
-                id="Company_name"
-                value={company_name}
-                onChange={(e) => set_company_name(e.target.value)}
-                required
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={addToStock}
+                    onChange={(e) => setAddToStock(e.target.checked)}
+                  />
+                }
+                label="Add to stock inventory"
               />
             </FormControl>
 
-            <FormControl fullWidth>
-              <InputLabel htmlFor="serial-number">Order Number</InputLabel>
-              <Input
-                id="serial-number"
-                value={order_number}
-                onChange={(e) => set_order_number(e.target.value)}
-                required
-              />
-            </FormControl>
+            {!addToStock && (
+              <>
+                <FormControl fullWidth>
+                  <InputLabel htmlFor="Company_name">Company Name</InputLabel>
+                  <Input
+                    id="Company_name"
+                    value={company_name}
+                    onChange={(e) => set_company_name(e.target.value)}
+                    required
+                  />
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel htmlFor="serial-number">Order Number</InputLabel>
+                  <Input
+                    id="serial-number"
+                    value={order_number}
+                    onChange={(e) => set_order_number(e.target.value)}
+                    required
+                  />
+                </FormControl>
+              </>
+            )}
             <Grid2 container spacing={2} sx={{ mt: 1 }}>
               {decoder?.map((parser) => (
                 <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={parser.output.name}>
@@ -145,7 +184,13 @@ export default function Parameters() {
                     my_key={parser.output.name}
                     my_type={parser.output.type}
                     value={
-                      formValues[parser.output.name] ?? parser.output.default
+                      formValues[parser.output.name] ?? parser.output.default ?? (
+                        parser.output.type === "string" ? "" :
+                          parser.output.type === "number" ? 0 :
+                            parser.output.type === "boolean" ? false :
+                              parser.output.type === "enum" ? parser.output.enum_values?.[0]?.value ?? 0 :
+                                ""
+                      )
                     }
                     enum_values={parser.output.enum_values}
                     onValueChange={handleValueChange}
@@ -161,14 +206,16 @@ export default function Parameters() {
             variant="contained"
             color="primary"
             onClick={async () => {
-              if (company_name.trim() === "") {
+              if (!addToStock && company_name.trim() === "") {
                 alert("Company name must not be empty.");
                 return;
               }
+
               const formData = {
                 family_id,
-                company_name,
-                order_number,
+                addToStock,
+                company_name: addToStock ? "" : company_name,
+                order_number: addToStock ? "" : order_number,
                 ...formValues,
               };
 
@@ -176,8 +223,8 @@ export default function Parameters() {
               console.log("Data stored:", formData);
 
               const result = await createFolderAndSpreadsheet(
-                company_name,
-                order_number,
+                addToStock ? null : company_name,
+                addToStock ? null : order_number,
               );
 
               set_credentials(result);

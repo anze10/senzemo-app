@@ -8,12 +8,17 @@ import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
 // Funkcija za ustvarjanje mape
 async function createFolder(
   client: Auth.OAuth2Client,
-  customer_name: string,
-  order_number: string,
+  customer_name: string | null,
+  order_number: string | null,
 ) {
   const service = google.drive({ version: "v3", auth: client });
+  const folderName =
+    customer_name && order_number
+      ? `${customer_name}   ${order_number}`
+      : `Stock Inventory ${new Date().toISOString().split("T")[0]}`;
+
   const fileMetadata = {
-    name: customer_name + "   " + order_number,
+    name: folderName,
     mimeType: "application/vnd.google-apps.folder",
   };
   try {
@@ -33,8 +38,8 @@ async function createFolder(
 async function createSpreadsheet(
   client: Auth.OAuth2Client,
   folderId: string | null | undefined,
-  customer_name: string,
-  order_number: string,
+  customer_name: string | null,
+  order_number: string | null,
   currentTime: Date,
   name: string,
 ) {
@@ -42,8 +47,13 @@ async function createSpreadsheet(
 
   const sheets = google.sheets({ version: "v4", auth: client });
 
+  const spreadsheetName =
+    customer_name && order_number
+      ? `Order ${order_number}-Device list`
+      : `Stock Inventory-Device list ${currentTime.toISOString().split("T")[0]}`;
+
   const fileMetadata = {
-    name: "Order " + order_number + "-" + "Device list",
+    name: spreadsheetName,
     parents: folderId ? [folderId] : undefined,
     mimeType: "application/vnd.google-apps.spreadsheet",
   };
@@ -61,9 +71,9 @@ async function createSpreadsheet(
 
     const data = [
       { range: "A3", values: [["Customer Name:"]] },
-      { range: "B3", values: [[customer_name]] },
+      { range: "B3", values: [[customer_name ?? "Stock Inventory"]] },
       { range: "A4", values: [["Order No:"]] },
-      { range: "B4", values: [[order_number]] },
+      { range: "B4", values: [[order_number ?? "N/A"]] },
       { range: "A5", values: [["Date of production:"]] },
       { range: "B5", values: [[time]] },
       { range: "A7", values: [["Fulfilled by:"]] },
@@ -367,13 +377,16 @@ async function insertIntoSpreadsheet(
 async function createSpreadsheetCsv(
   client: Auth.OAuth2Client,
   folderId: string | null | undefined,
-  order_number: string,
+  order_number: string | null,
 ) {
   const service = google.drive({ version: "v3", auth: client });
-  const fileMetadata = {
-    name: "Order " + order_number + "-" + "TTN import" + ".csv",
-    parents: folderId ? [folderId] : undefined,
+  const csvName = order_number
+    ? `Order ${order_number}-TTN import.csv`
+    : `Stock Inventory-TTN import ${new Date().toISOString().split("T")[0]}.csv`;
 
+  const fileMetadata = {
+    name: csvName,
+    parents: folderId ? [folderId] : undefined,
     mimeType: "text/csv",
   };
 
@@ -443,8 +456,8 @@ async function insertIntoCsvFile(
 }
 // Glavna funkcija za izvajanje zgornjih korakov
 export async function createFolderAndSpreadsheet(
-  customer_name: string,
-  order_number: string,
+  customer_name: string | null,
+  order_number: string | null,
 ) {
   const session = await getCurrentSession();
   if (!session.session?.userId) {
