@@ -1,34 +1,34 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Button,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Snackbar,
-  Alert,
-  Typography,
-  Box,
-  Chip,
   Tabs,
-  Tab,
-  MenuItem,
-  Select,
-  Card,
-  CardContent,
+  TextField,
+  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -49,17 +49,17 @@ import {
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
+  getProductionByFrequency,
+  getProductionCapacitySummary,
+  getProductionDevices,
+  getProductionHierarchy,
+  getSensorProductionCapacity,
   getSensors,
   showAllComponents,
   showLogs,
   showSensorInInventory,
   updateComponentSensorAssignments,
   updateComponentStock,
-  getProductionHierarchy,
-  getProductionByFrequency,
-  getProductionDevices,
-  getSensorProductionCapacity,
-  getProductionCapacitySummary,
 } from "src/app/inventory/components/backent";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

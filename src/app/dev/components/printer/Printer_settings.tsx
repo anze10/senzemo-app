@@ -10,10 +10,10 @@ import {
   Card,
   CardContent,
   CardHeader,
-  TextField,
-  Typography,
   Checkbox,
   FormControlLabel,
+  TextField,
+  Typography,
 } from "@mui/material";
 
 interface PrinterSettingsProps {

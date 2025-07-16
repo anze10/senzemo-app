@@ -1,36 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TableContainer,
-  Paper,
+  Alert,
+  Box,
   Button,
-  TextField,
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
+  Paper,
   Snackbar,
-  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
   Typography,
-  Box,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import {
-  UpdateorAddSenor,
   DeleteSensor,
   GetSensors,
   InsertSensor,
+  UpdateorAddSenor,
 } from "./backend";
 import type { JsonValue } from "@prisma/client/runtime/library";
 

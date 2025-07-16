@@ -1,7 +1,7 @@
 "use server";
 import {
-  generateSessionToken,
   createSession,
+  generateSessionToken,
 } from "src/server/LOGIN_LUCIA_ACTION/validate_session";
 import { setSessionTokenCookie } from "src/server/LOGIN_LUCIA_ACTION/session";
 import { google } from "src/server/LOGIN_LUCIA_ACTION/googleOauth";

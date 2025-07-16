@@ -5,7 +5,7 @@
 import React from "react";
 // import { getGoogleOauthConsentUrl } from "src/server/auth.action";
 // import { toast } from "sonner";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 //import { signIn } from "src/server/auth_due.actions";
 
 import GoogleIcon from "@mui/icons-material/Google";

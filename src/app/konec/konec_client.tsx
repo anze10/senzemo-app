@@ -8,19 +8,19 @@ import {
 } from "../dev/components/SensorStore";
 import { useGoogleIDSstore } from "../parametrs/components/Credentisal";
 import {
+  Box,
   Button,
   Card,
-  CardContent,
   CardActions,
-  Typography,
-  Box,
-  Paper,
+  CardContent,
+  Chip,
   Divider,
   Grid,
-  Chip,
   List,
   ListItem,
   ListItemText,
+  Paper,
+  Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { GetSensors } from "../sensors/components/backend";

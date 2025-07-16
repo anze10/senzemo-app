@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import {
+import type {
   ParsedSensorData,
   ParsedSensorValue,
   //ParseSensorData,
@@ -10,12 +10,12 @@ import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { EncodeSensorData } from "./Reader/WriteSensorData";
 import {
-  connectToPort,
-  readDataFromPort,
-  writeDataToPort,
   checkPortStatus,
-  resetOperationFlags,
+  connectToPort,
   getOperationStatus,
+  readDataFromPort,
+  resetOperationFlags,
+  writeDataToPort,
 } from "./Reader/HandleClick";
 //import { convertSensorDataToBytes, validateSensorData, verifyConversion, compareOriginalWithReadback, debugConversionFlow, analyzeParserConfiguration, normalizeSensorData, detailedDataComparison, displayDetailedConversion, validateParserConfiguration, checkDecoderMatch, validateByteData, suggestSensorWriteFixes, checkSensorProtocol, generateDiagnosticReport } from "./ReprogramSensor";
 
@@ -31,7 +31,7 @@ import {
   InputLabel,
   Menu,
   Modal,
-  SelectChangeEvent,
+  type SelectChangeEvent,
   Toolbar,
   Tooltip,
 } from "@mui/material";
@@ -39,13 +39,13 @@ import { PrintSticker } from "./printer/printer_server_side";
 import {
   Box,
   Button,
-  Collapse,
-  Typography,
-  TextField,
   Checkbox,
+  Collapse,
   MenuItem,
   Paper,
   Select,
+  TextField,
+  Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -53,7 +53,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
-import { InsertintoDB, ProductionListWithoutId } from "./PrismaCode";
+import { InsertintoDB, type ProductionListWithoutId } from "./PrismaCode";
 import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
@@ -71,7 +71,6 @@ type ImportantSensorData = Record<
 
 export function SensorCheckForm() {
   const portRef = useRef<SerialPort | null>(null);
-  const [accepted, setAccepted] = useState<boolean>(false);
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
   const sensor_parsers = useSensorStore((state) => state.current_decoder);
   const [showUnimportantParameters, setShowUnimportantParameters] =
@@ -86,6 +85,9 @@ export function SensorCheckForm() {
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
+
+  // Check if current sensor is accepted (use the okay field from the sensor)
+  const isCurrentSensorAccepted = current_sensor?.okay ?? false;
 
   // Remove static dataforDB object - it will be created dynamically in useMemo
   const all_sensors = useSensorStore((state) => state.sensors);
@@ -361,22 +363,11 @@ export function SensorCheckForm() {
       }
     });
 
-    console.log("Final dataforDB object:", dataforDB);
-    console.log("Mapped database fields summary:");
-    console.log("  DevEUI:", dataforDB.DevEUI);
-    console.log("  AppEUI:", dataforDB.AppEUI);
-    console.log("  AppKey:", dataforDB.AppKey);
-    console.log("  DeviceType:", dataforDB.DeviceType);
-    console.log("  FrequencyRegion:", dataforDB.FrequencyRegion);
-    console.log("  SubBands:", dataforDB.SubBands);
-    console.log("  HWVersion:", dataforDB.HWVersion);
-    console.log("  FWVersion:", dataforDB.FWVersion);
-    console.log("  SendPeriod:", dataforDB.SendPeriod);
-    console.log("  ACK:", dataforDB.ACK);
-    console.log("  MovementThreshold:", dataforDB.MovementThreshold);
+
 
     return [important, unimportant, dataforDB];
   }, [GetSensorName.data, current_sensor, sensor_parsers]);
+
 
   // Define the mutation after dataforDB is available
   const insertIntoDatabaseMutation = useMutation({
@@ -737,59 +728,70 @@ export function SensorCheckForm() {
 
           <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={async () => {
-                console.log("Accept button clicked");
-                try {
-                  if (!current_sensor) {
-                    console.log("No current sensor available");
-                    return;
-                  }
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>            <Button
+            variant="contained"
+            color="success"
+            onClick={async () => {
+              console.log("Accept button clicked");
+              console.log("Current sensor index:", current_sensor_index);
+              console.log("Current sensor accepted state:", isCurrentSensorAccepted);
 
-                  console.log("Processing accept for current sensor");
-                  const data = current_sensor.data as ParsedSensorData;
-
-                  set_sensor_status(current_sensor_index, true);
-                  set_sensor_data(current_sensor_index, data);
-                  console.log("Data submitted for current sensor index:", current_sensor_index);
-
-                  // Insert current sensor data into database BEFORE adding new sensor
-                  console.log("Inserting current sensor data into database...");
-                  insertIntoDatabaseMutation.mutate();
-
-                  await PrintSticker(
-                    data.dev_eui as string,
-                    data.family_id as number,
-                    data.product_id as number,
-                    selectedPrinter
-                  );
-
-                  // Reset operation flags before reading to ensure clean state
-                  resetOperationFlags();
-
-                  const uint_array = await GetDataFromSensor();
-                  if (!uint_array || !sensors) return;
-
-                  const decoder = RightDecoder(uint_array, sensors);
-                  if (!decoder) return;
-
-                  console.log("Adding new sensor after database insertion");
-                  add_new_sensor(decoder, uint_array);
-                  setAccepted(true);
-                  console.log("New sensor added, current_sensor_index is now:", current_sensor_index + 1);
-                } catch (error) {
-                  console.error("Error in accept button:", error);
-                  // Reset flags on error to prevent getting stuck
-                  resetOperationFlags();
+              try {
+                if (!current_sensor) {
+                  console.log("No current sensor available");
+                  return;
                 }
-              }}
-              sx={{ flex: 1 }}
-            >
-              {accepted ? "Accepted" : "Accept"}
-            </Button>
+
+                console.log("Processing accept for current sensor");
+                const data = current_sensor.data as ParsedSensorData;
+
+                // Set sensor status to accepted FIRST
+                set_sensor_status(current_sensor_index, true);
+                set_sensor_data(current_sensor_index, data);
+                console.log("Sensor marked as accepted for index:", current_sensor_index);
+
+                // Insert current sensor data into database BEFORE adding new sensor
+                console.log("Inserting current sensor data into database...");
+                insertIntoDatabaseMutation.mutate();
+
+                await PrintSticker(
+                  data.dev_eui as string,
+                  data.family_id as number,
+                  data.product_id as number,
+                  selectedPrinter
+                );
+
+                // Reset operation flags before reading to ensure clean state
+                resetOperationFlags();
+
+                console.log("Reading new sensor data...");
+                const uint_array = await GetDataFromSensor();
+                if (!uint_array || !sensors) {
+                  console.log("Failed to get new sensor data");
+                  return;
+                }
+
+                const decoder = RightDecoder(uint_array, sensors);
+                if (!decoder) {
+                  console.log("Failed to decode new sensor data");
+                  return;
+                }
+
+                console.log("Adding new sensor (this will reset accepted state)");
+                add_new_sensor(decoder, uint_array);
+                console.log("New sensor added, current_sensor_index is now:", current_sensor_index + 1);
+                console.log("Button should now show 'Accept' for the new sensor");
+              } catch (error) {
+                console.error("Error in accept button:", error);
+                // Reset flags on error to prevent getting stuck
+                resetOperationFlags();
+              }
+            }}
+            sx={{ flex: 1 }}
+            disabled={isCurrentSensorAccepted}
+          >
+            {isCurrentSensorAccepted ? "Accepted" : "Accept"}
+          </Button>
 
             <Button
               variant="contained"
