@@ -181,37 +181,91 @@ export function SensorCheckForm() {
     add_new_sensor(decoder, uint_array);
   };
 
-
-
-  const GetDataFromSensor = async () => {
+  const GetDataFromSensor = async (maxRetries = 3) => {
     console.log("GetDataFromSensor called");
-    try {
-      // Check current operation status
-      const operationStatus = getOperationStatus();
-      console.log("Current operation status:", operationStatus);
 
-      if (!portRef.current) {
-        console.log("No port reference, connecting to port...");
-        portRef.current = await connectToPort();
-      } else {
-        console.log("Port reference exists, checking status...");
-        if (!checkPortStatus(portRef.current)) {
-          console.log("Port is not ready, reconnecting...");
+    let attempts = 0;
+    let lastError: Error | null = null;
+
+    while (attempts < maxRetries) {
+      attempts++;
+      console.log(`Read attempt ${attempts}/${maxRetries}`);
+
+      try {
+        // Always check and reset operation status first
+        const operationStatus = getOperationStatus();
+        console.log("Current operation status:", operationStatus);
+
+        // Reset flags if they're stuck
+        if (operationStatus.isReadingInProgress || operationStatus.isWritingInProgress) {
+          console.log("Resetting stuck operation flags before attempting read");
+          resetOperationFlags();
+          // Add a small delay to ensure flags are reset
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        if (!portRef.current) {
+          console.log("No port reference, connecting to port...");
           portRef.current = await connectToPort();
+        } else {
+          console.log("Port reference exists, checking status...");
+          if (!checkPortStatus(portRef.current)) {
+            console.log("Port is not ready, reconnecting...");
+
+            // Close the existing port properly before reconnecting
+            try {
+              await portRef.current.close();
+            } catch (closeError) {
+              console.warn("Error closing port before reconnect:", closeError);
+            }
+
+            // Small delay before reconnecting
+            await new Promise(resolve => setTimeout(resolve, 300));
+            portRef.current = await connectToPort();
+          }
+        }
+
+        console.log("Port ready, reading data...");
+
+        // Set a timeout in case the read operation gets stuck
+        const readPromise = readDataFromPort(portRef.current);
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          setTimeout(() => reject(new Error("Read operation timed out after 15 seconds")), 15000);
+        });
+
+        // Race the read operation against a timeout
+        const result = await Promise.race([readPromise, timeoutPromise]);
+
+        if (!result) {
+          console.warn("Read returned no data, will retry");
+          throw new Error("No data received from sensor");
+        }
+
+        console.log("Data read successfully:", result);
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`Failed to get data from sensor (attempt ${attempts}):`, error);
+
+        // Reset operation flags on error to prevent getting stuck
+        resetOperationFlags();
+
+        // Wait before retrying with exponential backoff
+        if (attempts < maxRetries) {
+          const backoffMs = 500 * Math.pow(2, attempts - 1); // 500ms, 1000ms, 2000ms...
+          console.log(`Waiting ${backoffMs}ms before next attempt...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
       }
-
-      console.log("Port ready, reading data...");
-      const result = await readDataFromPort(portRef.current);
-      console.log("Data read successfully:", result);
-      return result;
-    } catch (error) {
-      console.error("Failed to get data from sensor:", error);
-      // Reset operation flags on error to prevent getting stuck
-      resetOperationFlags();
-      throw error;
     }
-  }
+
+    // All attempts failed
+    console.error(`All ${maxRetries} attempts to get sensor data failed`);
+    if (lastError) {
+      throw lastError;
+    }
+    throw new Error("Failed to get sensor data after multiple attempts");
+  };
 
   // useEffect(() => {
   //   useSensorStore.setState({ start_time: Date.now() });
@@ -279,11 +333,11 @@ export function SensorCheckForm() {
         if (parser.output.enum_values) {
           let mappedValue: string | undefined;
           if (typeof value === "number") {
-            const enumEntry = parser.output.enum_values.find(e => e.value === value);
+            const enumEntry = parser.output.enum_values.find((e: { value: number; mapped: string }) => e.value === value);
             mappedValue = enumEntry?.mapped;
           } else if (typeof value === "string") {
             // If value is already a mapped string, use it directly
-            const enumEntry = parser.output.enum_values.find(e => e.mapped === value);
+            const enumEntry = parser.output.enum_values.find((e: { value: number; mapped: string }) => e.mapped === value);
             mappedValue = enumEntry?.mapped ?? value;
           }
           if (mappedValue) {
@@ -330,7 +384,7 @@ export function SensorCheckForm() {
         if (currentFamily && currentProduct) {
 
           const foundSensor = GetSensorName.data?.find(
-            (sensor) =>
+            (sensor: { familyId: number; productId: number; sensorName: string }) =>
               sensor.familyId === currentFamily &&
               sensor.productId === currentProduct
           );
@@ -350,20 +404,18 @@ export function SensorCheckForm() {
 
       if (parser.output.important) {
         important[key] = {
-          value,
+          value: value as ParsedSensorValue,
           my_type: parser.output.type,
           enum_values: parser.output.enum_values,
         };
       } else {
         unimportant[key] = {
-          value,
+          value: value as ParsedSensorValue,
           my_type: parser.output.type,
           enum_values: parser.output.enum_values,
         };
       }
     });
-
-
 
     return [important, unimportant, dataforDB];
   }, [GetSensorName.data, current_sensor, sensor_parsers]);
@@ -382,7 +434,7 @@ export function SensorCheckForm() {
       }
 
       // Additional validation for other important fields
-      const validationErrors = [];
+      const validationErrors: string[] = [];
       if (!dataforDB.DeviceType) validationErrors.push("DeviceType is missing");
       if (!dataforDB.FrequencyRegion) validationErrors.push("FrequencyRegion is missing");
 
@@ -413,9 +465,7 @@ export function SensorCheckForm() {
     if (!current_sensor) return;
     const new_data = { ...current_sensor.data, [name]: value };
     set_sensor_data(current_sensor_index, new_data);
-  } // Function to handle sensor reprogramming
-
-  // Function to handle sensor reprogramming
+  }
 
   async function handleSubmit(
     dataHandler: (data: ParsedSensorData) => Promise<void>
@@ -742,38 +792,71 @@ export function SensorCheckForm() {
                   return;
                 }
 
+                // Prevent accepting already accepted sensors
+                if (isCurrentSensorAccepted) {
+                  console.log("Sensor already accepted, skipping processing");
+                  return;
+                }
+
                 console.log("Processing accept for current sensor");
                 const data = current_sensor.data as ParsedSensorData;
 
-                // Set sensor status to accepted FIRST
+                // IMPORTANT: Set a loading state indicator
+                const acceptButton = document.querySelector('button[color="success"]');
+                if (acceptButton) {
+                  acceptButton.textContent = "Processing...";
+                  acceptButton.setAttribute('disabled', 'true');
+                }
+
+                // Set sensor status to accepted
                 set_sensor_status(current_sensor_index, true);
                 set_sensor_data(current_sensor_index, data);
                 console.log("Sensor marked as accepted for index:", current_sensor_index);
 
-                // Insert current sensor data into database BEFORE adding new sensor
+                // Insert current sensor data into database
                 console.log("Inserting current sensor data into database...");
-                insertIntoDatabaseMutation.mutate();
+                await insertIntoDatabaseMutation.mutateAsync();
 
-                await PrintSticker(
-                  data.dev_eui as string,
-                  data.family_id as number,
-                  data.product_id as number,
-                  selectedPrinter
-                );
+                try {
+                  await PrintSticker(
+                    data.dev_eui as string,
+                    data.family_id as number,
+                    data.product_id as number,
+                    selectedPrinter
+                  );
+                } catch (printError) {
+                  console.error("Error printing sticker:", printError);
+                  // Continue execution even if printing fails
+                }
 
-                // Reset operation flags before reading to ensure clean state
+                // Reset operation flags to ensure clean state before reading
                 resetOperationFlags();
 
-                console.log("Reading new sensor data...");
-                const uint_array = await GetDataFromSensor();
+                // Delay to ensure USB connection is stable
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Try to get data from the next sensor with robust retry mechanism
+                console.log("Reading new sensor data with retry mechanism...");
+                const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
                 if (!uint_array || !sensors) {
-                  console.log("Failed to get new sensor data");
+                  console.warn("Failed to get new sensor data after retries");
+                  // Ensure UI updates even if we couldn't get new sensor data
+                  if (acceptButton) {
+                    acceptButton.textContent = "Accept";
+                    acceptButton.removeAttribute('disabled');
+                  }
                   return;
                 }
 
                 const decoder = RightDecoder(uint_array, sensors);
                 if (!decoder) {
-                  console.log("Failed to decode new sensor data");
+                  console.warn("Failed to decode new sensor data");
+                  // Ensure UI updates
+                  if (acceptButton) {
+                    acceptButton.textContent = "Accept";
+                    acceptButton.removeAttribute('disabled');
+                  }
                   return;
                 }
 
@@ -781,10 +864,24 @@ export function SensorCheckForm() {
                 add_new_sensor(decoder, uint_array);
                 console.log("New sensor added, current_sensor_index is now:", current_sensor_index + 1);
                 console.log("Button should now show 'Accept' for the new sensor");
+
+                // Force a UI update to ensure the button shows "Accept" for the new sensor
+                if (acceptButton) {
+                  acceptButton.textContent = "Accept";
+                  acceptButton.removeAttribute('disabled');
+                }
               } catch (error) {
                 console.error("Error in accept button:", error);
+
                 // Reset flags on error to prevent getting stuck
                 resetOperationFlags();
+
+                // Ensure the UI is updated even after an error
+                const acceptButton = document.querySelector('button[color="success"]');
+                if (acceptButton) {
+                  acceptButton.textContent = "Accept";
+                  acceptButton.removeAttribute('disabled');
+                }
               }
             }}
             sx={{ flex: 1 }}
