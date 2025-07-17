@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import Image from "next/image";
 import {
   Alert,
   Box,
@@ -68,11 +69,14 @@ import { uploadPDFToB2 } from "src/app/inventory/components/aws";
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#15803d",
+      main: "#374151", // Dark gray
     },
     secondary: {
-      main: "#0369a1",
+      main: "#6b7280", // Medium gray
     },
+  },
+  typography: {
+    fontFamily: 'var(--font-montserrat), Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
 });
 
@@ -1003,7 +1007,7 @@ export default function InventoryManagementPage() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="min-h-screen bg-linear-to-br from-green-50 to-blue-50 p-8">
+      <div className="min-h-screen bg-gray-100 p-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1011,13 +1015,22 @@ export default function InventoryManagementPage() {
           className="mx-auto max-w-7xl"
         >
           <Box className="mb-8 flex items-center justify-between">
-            <Typography
-              variant="h3"
-              component="h1"
-              className="font-bold text-green-700"
-            >
-              Inventory Management
-            </Typography>
+            <Box className="flex flex-col items-start gap-2">
+              <Image
+                src="/senzemo-large-01 (9).png"
+                alt="Senzemo Logo"
+                width={80}
+                height={80}
+                className="h-16 w-auto"
+              />
+              <Typography
+                variant="h4"
+                component="h1"
+                className="font-medium text-gray-600"
+              >
+                Inventory
+              </Typography>
+            </Box>
           </Box>
 
           <Tabs value={activeTab} onChange={handleTabChange} className="mb-6">
@@ -1101,7 +1114,7 @@ export default function InventoryManagementPage() {
                         >
                           {/* Nivo 1: Device Type */}
                           <div
-                            className="flex cursor-pointer items-center justify-between bg-green-50 p-4 hover:bg-green-100"
+                            className="flex cursor-pointer items-center justify-between bg-slate-50 p-4 hover:bg-slate-100"
                             onClick={() =>
                               toggleSensorExpanded(sensorGroup.deviceType)
                             }
@@ -1114,10 +1127,10 @@ export default function InventoryManagementPage() {
                                   <ChevronRightIcon />
                                 )}
                               </IconButton>
-                              <MemoryIcon className="text-green-600" />
+                              <MemoryIcon className="text-slate-600" />
                               <Typography
                                 variant="h6"
-                                className="font-bold text-green-800"
+                                className="font-bold text-slate-800"
                               >
                                 {sensorGroup.deviceType}
                               </Typography>
@@ -1148,7 +1161,7 @@ export default function InventoryManagementPage() {
                                     className="border-b last:border-b-0"
                                   >
                                     <div
-                                      className="flex cursor-pointer items-center justify-between bg-blue-50 p-3 pl-12 hover:bg-blue-100"
+                                      className="flex cursor-pointer items-center justify-between bg-gray-50 p-3 pl-12 hover:bg-gray-100"
                                       onClick={() =>
                                         toggleFrequencyExpanded(
                                           sensorGroup.deviceType,
@@ -1164,10 +1177,10 @@ export default function InventoryManagementPage() {
                                             <ChevronRightIcon />
                                           )}
                                         </IconButton>
-                                        <RadioIcon className="text-blue-600" />
+                                        <RadioIcon className="text-gray-600" />
                                         <Typography
                                           variant="subtitle1"
-                                          className="font-semibold text-blue-800"
+                                          className="font-semibold text-gray-800"
                                         >
                                           {freqGroup.frequency}
                                         </Typography>
@@ -1266,10 +1279,10 @@ export default function InventoryManagementPage() {
                 <Paper elevation={3} className="mb-6">
                   <Box className="p-4">
                     <Box className="mb-4 flex items-center">
-                      <BuildIcon className="mr-2 text-blue-600" />
+                      <BuildIcon className="mr-2 text-gray-600" />
                       <Typography
                         variant="h6"
-                        className="font-bold text-blue-800"
+                        className="font-bold text-gray-800"
                       >
                         Povzetek proizvodnih zmogljivosti
                       </Typography>
@@ -1733,16 +1746,16 @@ export default function InventoryManagementPage() {
                 type="number"
                 fullWidth
                 variant="outlined"
-                value={editItem?.quantity || 1}
+                value={editItem?.quantity ?? 0}
                 onChange={(e) =>
                   editItem &&
                   setEditItem({
                     ...editItem,
-                    quantity: Math.max(1, parseInt(e.target.value) || 1),
+                    quantity: Math.max(0, parseInt(e.target.value) || 0),
                   })
                 }
                 className="mt-4 mb-4"
-                inputProps={{ min: 1 }}
+                inputProps={{ min: 0 }}
               />
             </div>
 
@@ -1858,7 +1871,7 @@ export default function InventoryManagementPage() {
 
                 <div
                   className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
-                    ? "border-blue-500 bg-blue-50"
+                    ? "border-gray-500 bg-gray-50"
                     : "border-gray-300 hover:border-gray-400"
                     }`}
                   onDragOver={handleDragOver}
