@@ -2,17 +2,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import CpuIcon from "@mui/icons-material/Memory";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import SalesIcon from "@mui/icons-material/BarChart";
 import OrdersIcon from "@mui/icons-material/ShoppingCart";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
+import { Box, Drawer, IconButton, useMediaQuery, useTheme } from "@mui/material";
 
 const navItems = [
   { name: "Sensors", href: "/", icon: <CpuIcon /> },
@@ -23,53 +25,136 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const [isHovered, setIsHovered] = useState<string | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <Paper
-      elevation={3}
-      className="w-64 bg-linear-to-b from-blue-600 to-purple-600 p-4 text-white"
-    >
-      <div className="mb-8 text-2xl font-bold">Inventory System</div>
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const NavContent = () => (
+    <Box sx={{ p: 2 }}>
+      <Box sx={{
+        mb: 4,
+        fontSize: { xs: '1.25rem', md: '1.5rem' },
+        fontWeight: 'bold',
+        color: 'primary.main',
+        textAlign: { xs: 'center', md: 'left' }
+      }}>
+        Inventory System
+      </Box>
       <List>
         {navItems.map((item) => (
           <ListItem key={item.name} disablePadding>
-            <Link href={item.href} passHref>
+            <Link href={item.href} passHref style={{ width: '100%', textDecoration: 'none' }}>
               <ListItemButton
-                component="a"
+                component="div"
                 selected={pathname === item.href}
-                onMouseEnter={() => setIsHovered(item.name)}
-                onMouseLeave={() => setIsHovered(null)}
+                onClick={() => isMobile && setMobileOpen(false)}
                 sx={{
-                  borderRadius: "8px",
+                  borderRadius: 2,
+                  mb: 1,
                   "&.Mui-selected": {
-                    bgcolor: "rgba(255, 255, 255, 0.2)",
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    "& .MuiListItemIcon-root": {
+                      color: "primary.contrastText",
+                    },
                   },
                   "&:hover": {
-                    transform: "scale(1.05)",
-                    transition: "transform 0.2s",
-                  },
-                  "&:active": {
-                    transform: "scale(0.95)",
+                    bgcolor: "primary.light",
+                    color: "primary.contrastText",
+                    transform: "scale(1.02)",
+                    transition: "all 0.2s ease-in-out",
+                    "& .MuiListItemIcon-root": {
+                      color: "primary.contrastText",
+                    },
                   },
                 }}
               >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.name} />
-                {isHovered === item.name && (
-                  <motion.div
-                    className="absolute left-0 h-full w-1 rounded-r-full bg-white"
-                    layoutId="navbar-highlight"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  />
-                )}
+                <ListItemIcon
+                  sx={{
+                    color: pathname === item.href ? "inherit" : "primary.main",
+                    minWidth: 40,
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.name}
+                  primaryTypographyProps={{
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                    fontWeight: pathname === item.href ? 600 : 500,
+                  }}
+                />
               </ListItemButton>
             </Link>
           </ListItem>
         ))}
       </List>
+    </Box>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <IconButton
+          color="inherit"
+          aria-label="open drawer"
+          edge="start"
+          onClick={handleDrawerToggle}
+          sx={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            zIndex: 1300,
+            bgcolor: 'primary.main',
+            color: 'white',
+            '&:hover': {
+              bgcolor: 'primary.dark',
+            }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
+          }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: 280,
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+            <IconButton onClick={handleDrawerToggle}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <NavContent />
+        </Drawer>
+      </>
+    );
+  }
+
+  return (
+    <Paper
+      elevation={3}
+      sx={{
+        width: 280,
+        height: 'fit-content',
+        bgcolor: 'background.paper',
+        borderRadius: 2,
+      }}
+    >
+      <NavContent />
     </Paper>
   );
 }

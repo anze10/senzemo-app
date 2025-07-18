@@ -8,6 +8,9 @@ import {
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import * as React from "react";
 import { ReactQueryStreamedHydration } from "@tanstack/react-query-next-experimental";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { globalTheme } from "./theme/globalTheme";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -39,11 +42,14 @@ export function Providers(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ReactQueryStreamedHydration>
-        {props.children}
-      </ReactQueryStreamedHydration>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ThemeProvider theme={globalTheme}>
+      <CssBaseline />
+      <QueryClientProvider client={queryClient}>
+        <ReactQueryStreamedHydration>
+          {props.children}
+        </ReactQueryStreamedHydration>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

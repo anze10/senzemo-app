@@ -18,8 +18,22 @@ model User {
   createdAt    DateTime       @default(now())
   session      Session[]
   GoogleTokens GoogleTokens[]
+  Mailing      Mailing[]
 
   @@index([googleId], name: "google_id_index") // Add the index here
+}
+
+model Mailing {
+  id                     Int       @id @default(autoincrement())
+  userId                 Int       @unique
+  Date_of_monthly_report DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  isSubscribed           Boolean   @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "mailing_user_id_index")
 }
 
 model Session {
@@ -73,6 +87,7 @@ model Component {
   name            String  @unique
   description     String?
   Component_price Float?
+  treshold        Int? // Dodano za prag
 
   // Relacije
   senzorComponent SenzorComponent[]
@@ -113,7 +128,7 @@ model SenzorStock {
 // Zaloga komponent
 model ComponentStock {
   id          Int      @id @default(autoincrement())
-  componentId Int
+  componentId Int      @unique
   quantity    Int
   location    String
   lastUpdated DateTime @default(now())
@@ -156,7 +171,6 @@ model InventoryLog {
   reason    String
   user      String
   details   String?
-
   invoiceId Int?
   invoice   Invoice? @relation(fields: [invoiceId], references: [id])
 
@@ -209,4 +223,6 @@ model ProductionList {
   MovementThreshold String?
   order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
   senzorStocks      SenzorStock[] // remains optional by default
+  DateCreated       DateTime      @default(now())
+  Batch             String?
 }

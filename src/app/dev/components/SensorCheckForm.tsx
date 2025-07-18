@@ -290,6 +290,8 @@ export function SensorCheckForm() {
       SendPeriod: null,
       ACK: null,
       MovementThreshold: null,
+      DateCreated: new Date(),
+      Batch: null
     };
 
     console.log("sensor_parsers", sensor_parsers);

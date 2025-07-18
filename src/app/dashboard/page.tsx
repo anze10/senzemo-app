@@ -1,5 +1,5 @@
 //import { getCurrentSession } from "~/server/session";
-import Buttonic from "./components/Buttonic";
+import Dashboard from "./components/Buttonic";
 
 export default async function Home() {
   // const { user } = await getCurrentSession();
@@ -8,7 +8,7 @@ export default async function Home() {
   // }
   return (
     <>
-      <Buttonic />
+      <Dashboard />
     </>
   );
 }

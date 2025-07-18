@@ -26,7 +26,6 @@ export async function addSensorToInventory(
   frequency: string | null = null,
   BN: number,
   dev_eui: string,
-  //deviceType?: string
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -71,46 +70,29 @@ export async function addSensorToInventory(
         }
       };
 
-      // 5. Create the dev_eui in productionList
-      await tx.productionList.create({
+      // 5. Create the dev_eui in productionList (orderId = null means it's in inventory)
+      const productionDevice = await tx.productionList.create({
         data: {
           DevEUI: dev_eui,
           DeviceType: finalDeviceType,
           FrequencyRegion: mapFrequencyToRegion(frequency),
+          orderId: null, // Null means it's available in inventory
         },
       });
 
-      // 4. Create the stock entry
-      const sensorStock = await tx.senzorStock.create({
-        data: {
-          senzorId: sensorId,
-          quantity,
-          location,
-          frequency,
-          productionBatch: BN,
-          productionListDevEUI: dev_eui,
-        },
-      });
-
-      // Fetch the sensor name for logging
-      const sensor = await tx.senzor.findUnique({
-        where: { id: sensorId },
-        select: { sensorName: true },
-      });
-
-      // 5. Log inventory
+      // 6. Log inventory addition
       await tx.inventoryLog.create({
         data: {
           itemType: "sensor",
-          itemName: sensor?.sensorName || "Unknown",
+          itemName: sensorInfo.sensorName,
           change: quantity,
           reason: "Proizvodnja",
           user: "Neznan uporabnik",
-          details: `Serijska številka proizvodne serije: ${BN || "Ni podatka"}`,
+          details: `DevEUI: ${dev_eui} | DeviceType: ${finalDeviceType} | Batch: ${BN}`,
         },
       });
 
-      return sensorStock;
+      return productionDevice;
     });
 
     return result;
@@ -120,106 +102,95 @@ export async function addSensorToInventory(
   }
 }
 
-export async function showSensorInInventory() {
-  try {
-    const sensors = await prisma.senzorStock.findMany({
-      include: {
-        senzor: {
-          select: { id: true, sensorName: true },
-        },
-        logs: {
-          orderBy: { timestamp: "desc" },
-          take: 5,
-          select: {
-            timestamp: true,
-            change: true,
-            reason: true,
-            user: true,
-            details: true,
-          },
-        },
-      },
-    });
+// export async function showSensorInInventory() {
+//   try {
+//     const sensors = await prisma.senzorStock.findMany({
+//       include: {
+//         senzor: {
+//           select: { id: true, sensorName: true },
+//         },
+//         logs: {
+//           orderBy: { timestamp: "desc" },
+//           take: 5,
+//           select: {
+//             timestamp: true,
+//             change: true,
+//             reason: true,
+//             user: true,
+//             details: true,
+//           },
+//         },
+//       },
+//     });
 
-    return sensors.map((stock) => ({
-      id: stock.id,
-      sensorId: stock.senzorId,
-      sensorName: stock.senzor.sensorName,
-      frequency: stock.frequency,
-      quantity: stock.quantity,
-      location: stock.location,
-      productionBatch: stock.productionBatch,
-      productionListDevEUI: stock.productionListDevEUI, // Dodano za DevEUI
-      lastUpdated: stock.lastUpdated,
-      recentLogs: stock.logs,
-    }));
-  } catch (error) {
-    console.error("Error fetching sensors in inventory:", error);
-    throw new Error("Failed to fetch sensors in inventory");
-  }
-}
+//     return sensors.map((stock) => ({
+//       id: stock.id,
+//       sensorId: stock.senzorId,
+//       sensorName: stock.senzor.sensorName,
+//       frequency: stock.frequency,
+//       quantity: stock.quantity,
+//       location: stock.location,
+//       productionBatch: stock.productionBatch,
+//       productionListDevEUI: stock.productionListDevEUI, // Dodano za DevEUI
+//       lastUpdated: stock.lastUpdated,
+//       recentLogs: stock.logs,
+//     }));
+//   } catch (error) {
+//     console.error("Error fetching sensors in inventory:", error);
+//     throw new Error("Failed to fetch sensors in inventory");
+//   }
+// }
 
 export async function adjustSensorStock(
-  stockId: number,
-  quantity: number,
+  devEUI: string,
   reason: string,
+  assignToOrderId?: number | null,
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Preveri trenutno stanje
-      const currentStock = await tx.senzorStock.findUnique({
-        where: { id: stockId },
-        include: {
-          senzor: {
-            select: { sensorName: true },
-          },
-        },
+      // Find the device in production list
+      const device = await tx.productionList.findUnique({
+        where: { DevEUI: devEUI },
       });
 
-      if (!currentStock) {
-        throw new Error("Stock item not found");
+      if (!device) {
+        throw new Error("Device not found");
       }
 
-      // Preveri, da količina ne postane negativna
-      const newQuantity = currentStock.quantity + quantity;
-      if (newQuantity < 0) {
-        throw new Error("Insufficient stock for this operation");
-      }
-
-      // Posodobi zalogo
-      const updatedStock = await tx.senzorStock.update({
-        where: { id: stockId },
+      // Update the order assignment
+      const updatedDevice = await tx.productionList.update({
+        where: { DevEUI: devEUI },
         data: {
-          quantity: newQuantity,
-          lastUpdated: new Date(),
+          orderId: assignToOrderId,
         },
       });
 
-      // Logiraj spremembo
+      // Log the change
+      const change = assignToOrderId ? -1 : 1; // -1 when assigned to order, +1 when released to inventory
       await tx.inventoryLog.create({
         data: {
           itemType: "sensor",
-          itemName: currentStock.senzor.sensorName,
-          change: quantity,
+          itemName: device.DeviceType || "Unknown",
+          change: change,
           reason: reason,
           user: "Neznan uporabnik",
-          details: `DevEUI: ${currentStock.productionListDevEUI || "N/A"} | Quantity: ${currentStock.quantity} → ${newQuantity}`,
-          senzorStockId: stockId,
+          details: `DevEUI: ${devEUI} | ${assignToOrderId ? `Assigned to order ${assignToOrderId}` : "Released to inventory"}`,
         },
       });
 
       return {
-        stock: updatedStock,
-        previousQuantity: currentStock.quantity,
-        newQuantity: newQuantity,
+        device: updatedDevice,
+        previousOrderId: device.orderId,
+        newOrderId: assignToOrderId,
+        isNowInInventory: !assignToOrderId,
       };
     });
 
     return result;
   } catch (error) {
-    console.error("Error updating sensor stock:", error);
+    console.error("Error updating sensor status:", error);
     throw new Error(
-      error instanceof Error ? error.message : "Failed to update sensor stock",
+      error instanceof Error ? error.message : "Failed to update sensor status",
     );
   }
 }
@@ -283,7 +254,7 @@ export async function adjustSensorStock(
 
 export async function showAllComponents() {
   try {
-    const sensors = await prisma.componentStock.findMany({
+    const componentStocks = await prisma.componentStock.findMany({
       include: {
         component: {
           select: {
@@ -291,13 +262,20 @@ export async function showAllComponents() {
             name: true,
             Component_price: true,
             senzorComponent: {
-              // <-- NESTED HERE, not at the same level as 'component'
               include: {
                 senzor: {
                   select: { id: true, sensorName: true },
                 },
               },
             },
+          },
+        },
+        invoice: {
+          select: {
+            invoiceNumber: true,
+            filename: true,
+            uploadDate: true,
+            amount: true,
           },
         },
         logs: {
@@ -309,36 +287,58 @@ export async function showAllComponents() {
             reason: true,
             user: true,
             details: true,
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                filename: true,
+              },
+            },
           },
         },
       },
     });
 
-    return sensors.map((stock) => ({
-      id: stock.id,
-      componentId: stock.componentId,
-      name: stock.component.name ?? "Unknown",
-      email: stock.email,
-      quantity: stock.quantity,
-      location: stock.location,
-      supplier: stock.supplier,
-      price: stock.component.Component_price,
-      lastUpdated: stock.lastUpdated,
-      recentLogs: stock.logs,
-      sensorAssignments: stock.component.senzorComponent.map((sc) => ({
-        sensorId: sc.senzorId,
-        sensorName: sc.senzor?.sensorName ?? "Unnamed Sensor",
-        requiredQuantity: sc.requiredQuantity,
-      })),
-      contactDetails: {
-        email: stock.email ?? "",
-        supplier: stock.supplier ?? "",
-        phone: stock.phone ?? "",
-      },
-    })) as ComponentStockItem[];
+    return componentStocks.map((stock) => {
+      // Get invoice number - prioritize direct invoice link, then most recent log invoice
+      const invoiceNumber =
+        stock.invoice?.invoiceNumber ||
+        stock.logs.find((log) => log.invoice?.invoiceNumber)?.invoice
+          ?.invoiceNumber;
+
+      // Get file information
+      const invoiceFile =
+        stock.invoice?.filename ||
+        stock.logs.find((log) => log.invoice?.filename)?.invoice?.filename;
+
+      return {
+        id: stock.id,
+        componentId: stock.componentId,
+        name: stock.component.name ?? "Unknown",
+        email: stock.email,
+        quantity: stock.quantity,
+        location: stock.location,
+        supplier: stock.supplier,
+        price: stock.component.Component_price,
+        lastUpdated: stock.lastUpdated,
+        recentLogs: stock.logs,
+        invoiceNumber: invoiceNumber,
+        invoiceFile: invoiceFile, // Add file information
+        invoiceFileKey: stock.invoiceFileKey, // Add B2 file key
+        sensorAssignments: stock.component.senzorComponent.map((sc) => ({
+          sensorId: sc.senzorId,
+          sensorName: sc.senzor?.sensorName ?? "Unnamed Sensor",
+          requiredQuantity: sc.requiredQuantity,
+        })),
+        contactDetails: {
+          email: stock.email ?? "",
+          supplier: stock.supplier ?? "",
+          phone: stock.phone ?? "",
+        },
+      };
+    }) as ComponentStockItem[];
   } catch (error) {
-    console.error("Error fetching sensors in inventory:", error);
-    throw new Error("Failed to fetch sensors in inventory");
+    console.error("Error fetching components in inventory:", error);
+    throw new Error("Failed to fetch components in inventory");
   }
 }
 
@@ -385,6 +385,30 @@ export async function adjustComponentStock(
         },
       });
 
+      // Create invoice record if provided and quantity increased
+      let invoiceRecord = null;
+      if (invoiceNumber && quantity > 0) {
+        invoiceRecord = await tx.invoice.upsert({
+          where: { invoiceNumber },
+          create: {
+            invoiceNumber,
+            amount: 0, // Amount not available in this function
+            supplier: currentStock.supplier || "",
+            uploadDate: new Date(),
+            filename: null,
+          },
+          update: {
+            supplier: currentStock.supplier || "",
+          },
+        });
+
+        // Link the component stock to the invoice if created
+        await tx.componentStock.update({
+          where: { id: stockId },
+          data: { invoiceId: invoiceRecord.id },
+        });
+      }
+
       await tx.inventoryLog.create({
         data: {
           itemType: "component",
@@ -395,6 +419,8 @@ export async function adjustComponentStock(
           details: invoiceNumber
             ? `Invoice: ${invoiceNumber}`
             : "No details provided",
+          invoiceId: invoiceRecord?.id,
+          componentStockId: stockId,
         },
       });
 
@@ -411,6 +437,119 @@ export async function adjustComponentStock(
   }
 }
 
+// New function for adjustments with full invoice support
+export async function adjustComponentStockWithInvoice(
+  stockId: number,
+  quantity: number,
+  reason: string,
+  invoiceNumber: string | null = null,
+  fileKey: string | null = null,
+  price: number | null = null,
+  supplier: string | null = null,
+) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const currentStock = await tx.componentStock.findUnique({
+        where: { id: stockId },
+        include: {
+          component: {
+            select: {
+              id: true,
+              name: true,
+              senzorComponent: {
+                include: {
+                  senzor: {
+                    select: {
+                      id: true,
+                      sensorName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!currentStock) throw new Error("Component stock item not found");
+
+      const newQuantity = currentStock.quantity + quantity;
+      if (newQuantity < 0) throw new Error("Insufficient stock");
+
+      // Update stock quantity and file key if provided
+      const updateData: {
+        quantity: number;
+        lastUpdated: Date;
+        supplier?: string | null;
+        invoiceFileKey?: string | null;
+      } = {
+        quantity: newQuantity,
+        lastUpdated: new Date(),
+      };
+
+      if (supplier !== undefined) updateData.supplier = supplier;
+      if (fileKey !== undefined && fileKey !== null)
+        updateData.invoiceFileKey = fileKey;
+
+      const updatedStock = await tx.componentStock.update({
+        where: { id: stockId },
+        data: updateData,
+      });
+
+      // Create invoice record if provided and quantity increased
+      let invoiceRecord = null;
+      if (invoiceNumber && quantity > 0) {
+        invoiceRecord = await tx.invoice.upsert({
+          where: { invoiceNumber },
+          create: {
+            invoiceNumber,
+            amount: (price || 0) * Math.abs(quantity),
+            supplier: supplier || currentStock.supplier || "",
+            uploadDate: new Date(),
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+          update: {
+            amount: (price || 0) * Math.abs(quantity),
+            supplier: supplier || currentStock.supplier || "",
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+        });
+
+        // Link the component stock to the invoice if created
+        await tx.componentStock.update({
+          where: { id: stockId },
+          data: { invoiceId: invoiceRecord.id },
+        });
+      }
+
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "component",
+          itemName: currentStock.component.name,
+          change: quantity,
+          reason,
+          user: "System",
+          details: invoiceNumber
+            ? `Adjustment | Invoice: ${invoiceNumber} | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`
+            : `Adjustment | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`,
+          invoiceId: invoiceRecord?.id,
+          componentStockId: stockId,
+        },
+      });
+
+      return {
+        ...updatedStock,
+        component: currentStock.component,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error adjusting component stock:", error);
+    throw new Error("Failed to adjust component stock");
+  }
+}
+
 export async function addComponentToInventory(
   componentId: number,
   quantity: number,
@@ -419,9 +558,13 @@ export async function addComponentToInventory(
   supplier: string | null = null,
   invoiceNumber: string | null = null,
   price: number | null = null,
+  phone: string | null = null,
+  sensorAssignments: { sensorId: number; requiredQuantity: number }[] = [],
+  fileKey: string | null = null, // Add file key for B2 storage
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Create component stock
       const componentStock = await tx.componentStock.create({
         data: {
           componentId,
@@ -429,6 +572,8 @@ export async function addComponentToInventory(
           location,
           email,
           supplier,
+          phone,
+          invoiceFileKey: fileKey, // Store the B2 file key
         },
       });
 
@@ -437,6 +582,51 @@ export async function addComponentToInventory(
         await tx.component.update({
           where: { id: componentId },
           data: { Component_price: price },
+        });
+      }
+
+      // Handle sensor assignments
+      if (sensorAssignments.length > 0) {
+        // Remove existing assignments for this component
+        await tx.senzorComponent.deleteMany({
+          where: { componentId },
+        });
+
+        // Add new assignments
+        for (const assignment of sensorAssignments) {
+          await tx.senzorComponent.create({
+            data: {
+              componentId,
+              senzorId: assignment.sensorId,
+              requiredQuantity: assignment.requiredQuantity,
+            },
+          });
+        }
+      }
+
+      // Create invoice record if provided
+      let invoiceRecord = null;
+      if (invoiceNumber) {
+        invoiceRecord = await tx.invoice.upsert({
+          where: { invoiceNumber },
+          create: {
+            invoiceNumber,
+            amount: (price || 0) * quantity,
+            supplier: supplier || "",
+            uploadDate: new Date(),
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+          update: {
+            amount: (price || 0) * quantity,
+            supplier: supplier || "",
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+        });
+
+        // Link the component stock to the invoice if created
+        await tx.componentStock.update({
+          where: { id: componentStock.id },
+          data: { invoiceId: invoiceRecord.id },
         });
       }
 
@@ -463,17 +653,21 @@ export async function addComponentToInventory(
           itemType: "component",
           itemName: component?.name ?? "Unknown",
           change: quantity,
-          reason: "Proizvodnja",
-          user: "Neznan uporabnik",
+          reason: "Added to inventory",
+          user: "System",
           details: invoiceNumber
-            ? `Komponenta ID: ${componentId} | Invoice: ${invoiceNumber}`
-            : `Komponenta ID: ${componentId}`,
+            ? `Component ID: ${componentId} | Invoice: ${invoiceNumber} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`
+            : `Component ID: ${componentId} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`,
+          invoiceId: invoiceRecord?.id,
+          componentStockId: componentStock.id,
         },
       });
 
       return {
         ...componentStock,
         component,
+        invoice: invoiceRecord,
+        fileKey,
       };
     });
 
@@ -494,38 +688,117 @@ export async function updateComponentStock(
   supplier?: string,
   phone?: string,
   price?: number,
+  fileKey?: string | null, // Add file key for B2 storage
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // First get the current stock to find the componentId
       const currentStock = await tx.componentStock.findUnique({
         where: { id: stockId },
-        select: { componentId: true },
+        include: {
+          component: { select: { name: true } },
+        },
       });
 
       if (!currentStock) {
         throw new Error("Component stock not found");
       }
 
-      const updated = await tx.componentStock.update({
+      const quantityChange = newQuantity - currentStock.quantity;
+
+      // Prepare update data
+      const updateData: Partial<{
+        quantity: number;
+        lastUpdated: Date;
+        location?: string;
+        email?: string;
+        supplier?: string;
+        phone?: string;
+        invoiceFileKey?: string;
+      }> = {
+        quantity: newQuantity,
+        lastUpdated: new Date(),
+      };
+
+      if (location !== undefined) updateData.location = location;
+      if (email !== undefined) updateData.email = email;
+      if (supplier !== undefined) updateData.supplier = supplier;
+      if (phone !== undefined) updateData.phone = phone;
+      if (fileKey !== undefined && fileKey !== null)
+        updateData.invoiceFileKey = fileKey;
+
+      await tx.componentStock.update({
         where: { id: stockId },
-        data: {
-          quantity: newQuantity,
-          location,
-          supplier: supplier ?? "",
-          email: email ?? "",
-          phone: phone ?? "",
-          lastUpdated: new Date(),
-        },
+        data: updateData,
       });
 
-      // Update the component price if provided
+      // Update component price if provided
       if (price !== undefined) {
         await tx.component.update({
           where: { id: currentStock.componentId },
           data: { Component_price: price },
         });
       }
+
+      // Create invoice record if provided and quantity increased
+      let invoiceRecord = null;
+      if (invoiceNumber && quantityChange > 0) {
+        invoiceRecord = await tx.invoice.upsert({
+          where: { invoiceNumber },
+          create: {
+            invoiceNumber,
+            amount: (price || 0) * quantityChange,
+            supplier: supplier || currentStock.supplier || "",
+            uploadDate: new Date(),
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+          update: {
+            amount: (price || 0) * quantityChange,
+            supplier: supplier || currentStock.supplier || "",
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+        });
+
+        // Link the component stock to the invoice if created
+        await tx.componentStock.update({
+          where: { id: stockId },
+          data: { invoiceId: invoiceRecord.id },
+        });
+      }
+
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "component",
+          itemName: currentStock.component.name,
+          change: quantityChange,
+          reason,
+          user: "System",
+          details: invoiceNumber
+            ? `Updated stock | Invoice: ${invoiceNumber} | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`
+            : `Updated stock | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`,
+          invoiceId: invoiceRecord?.id,
+          componentStockId: stockId,
+        },
+      });
+
+      const updated = await tx.componentStock.findUnique({
+        where: { id: stockId },
+        include: {
+          component: {
+            select: {
+              id: true,
+              name: true,
+              Component_price: true,
+              senzorComponent: {
+                include: {
+                  senzor: {
+                    select: { id: true, sensorName: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
 
       return updated;
     });
@@ -562,12 +835,43 @@ export async function updateComponentSensorAssignments(
   }
 }
 
-export async function deleteSensorFromInventory(stockId: number) {
+export async function deleteSensorFromInventory(devEUI: string) {
   try {
-    await prisma.senzorStock.delete({
-      where: { id: stockId },
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if device exists and is not assigned to an order
+      const device = await tx.productionList.findUnique({
+        where: { DevEUI: devEUI },
+      });
+
+      if (!device) {
+        throw new Error("Device not found");
+      }
+
+      if (device.orderId) {
+        throw new Error("Cannot delete device that is assigned to an order");
+      }
+
+      // Delete the device
+      await tx.productionList.delete({
+        where: { DevEUI: devEUI },
+      });
+
+      // Log the deletion
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "sensor",
+          itemName: device.DeviceType || "Unknown",
+          change: -1,
+          reason: "Deleted from inventory",
+          user: "System",
+          details: `DevEUI: ${devEUI} deleted from inventory`,
+        },
+      });
+
+      return device;
     });
-    return true;
+
+    return result;
   } catch (error) {
     console.error("Error deleting sensor from inventory:", error);
     throw new Error("Failed to delete sensor from inventory");
@@ -634,38 +938,37 @@ export async function getAllComponents() {
 // =====================================
 
 /**
- * Hierarhična struktura senzorjev po tipih in frekvencah
+ * Hierarhična struktura senzorjev po tipih in frekvencah (production table based)
  */
 export async function getSensorHierarchy() {
   try {
-    const sensors = await prisma.senzorStock.findMany({
-      include: {
-        senzor: {
-          select: { id: true, sensorName: true },
-        },
+    const devices = await prisma.productionList.findMany({
+      where: {
+        orderId: null, // Only devices not assigned to orders (in inventory)
+        DevEUI: { not: null },
       },
     });
 
-    // Grupiraj po senzorju (tip)
+    // Group by DeviceType (sensor type)
     const sensorGroups = new Map();
 
-    sensors.forEach((stock) => {
-      const sensorKey = `${stock.senzorId}-${stock.senzor.sensorName}`;
+    devices.forEach((device) => {
+      const deviceType = device.DeviceType || "Unknown";
+      const sensorKey = deviceType;
 
       if (!sensorGroups.has(sensorKey)) {
         sensorGroups.set(sensorKey, {
-          sensorId: stock.senzorId,
-          sensorName: stock.senzor.sensorName,
+          deviceType: deviceType,
           totalQuantity: 0,
           frequencies: new Map(),
         });
       }
 
       const group = sensorGroups.get(sensorKey);
-      group.totalQuantity += stock.quantity;
+      group.totalQuantity += 1;
 
-      // Grupiraj po frekvenci
-      const frequency = stock.frequency || "868 MHz";
+      // Group by frequency
+      const frequency = device.FrequencyRegion || "EU868";
       if (!group.frequencies.has(frequency)) {
         group.frequencies.set(frequency, {
           frequency,
@@ -675,21 +978,21 @@ export async function getSensorHierarchy() {
       }
 
       const freqGroup = group.frequencies.get(frequency);
-      freqGroup.totalQuantity += stock.quantity;
+      freqGroup.totalQuantity += 1;
       freqGroup.devices.push({
-        id: stock.id,
-        senzorId: stock.senzorId,
-        sensorName: stock.senzor.sensorName,
-        quantity: stock.quantity,
-        location: stock.location,
-        lastUpdated: stock.lastUpdated,
-        frequency: stock.frequency,
-        dev_eui: stock.productionListDevEUI,
-        productionBatch: stock.productionBatch,
+        id: device.id,
+        devEUI: device.DevEUI,
+        deviceType: device.DeviceType,
+        frequency: device.FrequencyRegion,
+        appEUI: device.AppEUI,
+        appKey: device.AppKey,
+        hwVersion: device.HWVersion,
+        fwVersion: device.FWVersion,
+        isAvailable: true, // All are available since orderId is null
       });
     });
 
-    // Pretvori v array format
+    // Convert to array format
     return Array.from(sensorGroups.values()).map((group) => ({
       ...group,
       frequencies: Array.from(group.frequencies.values()),
@@ -701,35 +1004,32 @@ export async function getSensorHierarchy() {
 }
 
 /**
- * Dobi senzorje po določeni frekvenci
+ * Dobi senzorje po določeni frekvenci in tipu
  */
 export async function getSensorsByFrequency(
-  sensorId: number,
+  deviceType: string,
   frequency: string,
 ) {
   try {
-    const sensors = await prisma.senzorStock.findMany({
+    const devices = await prisma.productionList.findMany({
       where: {
-        senzorId: sensorId,
-        frequency: frequency,
-      },
-      include: {
-        senzor: {
-          select: { id: true, sensorName: true },
-        },
+        DeviceType: deviceType,
+        FrequencyRegion: frequency,
+        orderId: null, // Only devices in inventory
+        DevEUI: { not: null },
       },
     });
 
-    return sensors.map((stock) => ({
-      id: stock.id,
-      senzorId: stock.senzorId,
-      sensorName: stock.senzor.sensorName,
-      quantity: stock.quantity,
-      location: stock.location,
-      lastUpdated: stock.lastUpdated,
-      frequency: stock.frequency,
-      dev_eui: stock.productionListDevEUI,
-      productionBatch: stock.productionBatch,
+    return devices.map((device) => ({
+      id: device.id,
+      devEUI: device.DevEUI,
+      deviceType: device.DeviceType,
+      frequency: device.FrequencyRegion,
+      appEUI: device.AppEUI,
+      appKey: device.AppKey,
+      hwVersion: device.HWVersion,
+      fwVersion: device.FWVersion,
+      isAvailable: true,
     }));
   } catch (error) {
     console.error("Error fetching sensors by frequency:", error);
@@ -738,52 +1038,15 @@ export async function getSensorsByFrequency(
 }
 
 /**
- * Dobi povzetek količin po senzorjih
+ * Dobi povzetek količin po tipih senzorjev
  */
 export async function getSensorQuantitySummary() {
   try {
-    const summary = await prisma.senzorStock.groupBy({
-      by: ["senzorId"],
-      _sum: {
-        quantity: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
-
-    // Dobi imena senzorjev
-    const sensorIds = summary.map((s) => s.senzorId);
-    const sensors = await prisma.senzor.findMany({
-      where: { id: { in: sensorIds } },
-      select: { id: true, sensorName: true },
-    });
-
-    return summary.map((item) => {
-      const sensor = sensors.find((s) => s.id === item.senzorId);
-      return {
-        sensorId: item.senzorId,
-        sensorName: sensor?.sensorName || "Unknown",
-        totalQuantity: item._sum.quantity || 0,
-        deviceCount: item._count.id || 0,
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching sensor quantity summary:", error);
-    throw new Error("Failed to fetch sensor quantity summary");
-  }
-}
-
-/**
- * Dobi povzetek količin po frekvencah za določen senzor
- */
-export async function getSensorFrequencySummary(sensorId: number) {
-  try {
-    const summary = await prisma.senzorStock.groupBy({
-      by: ["frequency"],
-      where: { senzorId: sensorId },
-      _sum: {
-        quantity: true,
+    const summary = await prisma.productionList.groupBy({
+      by: ["DeviceType"],
+      where: {
+        orderId: null, // Only devices in inventory
+        DevEUI: { not: null },
       },
       _count: {
         id: true,
@@ -791,8 +1054,36 @@ export async function getSensorFrequencySummary(sensorId: number) {
     });
 
     return summary.map((item) => ({
-      frequency: item.frequency || "868 MHz",
-      totalQuantity: item._sum.quantity || 0,
+      deviceType: item.DeviceType || "Unknown",
+      totalQuantity: item._count.id || 0,
+      deviceCount: item._count.id || 0,
+    }));
+  } catch (error) {
+    console.error("Error fetching sensor quantity summary:", error);
+    throw new Error("Failed to fetch sensor quantity summary");
+  }
+}
+
+/**
+ * Dobi povzetek količin po frekvencah za določen tip senzorja
+ */
+export async function getSensorFrequencySummary(deviceType: string) {
+  try {
+    const summary = await prisma.productionList.groupBy({
+      by: ["FrequencyRegion"],
+      where: {
+        DeviceType: deviceType,
+        orderId: null, // Only devices in inventory
+        DevEUI: { not: null },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    return summary.map((item) => ({
+      frequency: item.FrequencyRegion || "EU868",
+      totalQuantity: item._count.id || 0,
       deviceCount: item._count.id || 0,
     }));
   } catch (error) {
@@ -821,42 +1112,53 @@ export async function checkDevEUIExists(devEUI: string): Promise<boolean> {
  */
 export async function getSensorByDevEUI(devEUI: string) {
   try {
-    const sensor = await prisma.senzorStock.findFirst({
-      where: { productionListDevEUI: devEUI },
+    const device = await prisma.productionList.findUnique({
+      where: { DevEUI: devEUI },
       include: {
-        senzor: {
-          select: { id: true, sensorName: true, description: true },
-        },
-        logs: {
-          orderBy: { timestamp: "desc" },
-          take: 10,
-          select: {
-            timestamp: true,
-            change: true,
-            reason: true,
-            user: true,
-            details: true,
-          },
+        order: {
+          select: { id: true, customerName: true, orderDate: true },
         },
       },
     });
 
-    if (!sensor) {
-      throw new Error("Sensor not found");
+    if (!device) {
+      throw new Error("Device not found");
     }
 
+    // Get recent logs for this device
+    const recentLogs = await prisma.inventoryLog.findMany({
+      where: {
+        itemType: "sensor",
+        details: { contains: devEUI },
+      },
+      orderBy: { timestamp: "desc" },
+      take: 10,
+      select: {
+        timestamp: true,
+        change: true,
+        reason: true,
+        user: true,
+        details: true,
+      },
+    });
+
     return {
-      id: sensor.id,
-      senzorId: sensor.senzorId,
-      sensorName: sensor.senzor.sensorName,
-      quantity: sensor.quantity,
-      location: sensor.location,
-      lastUpdated: sensor.lastUpdated,
-      frequency: sensor.frequency,
-      dev_eui: sensor.productionListDevEUI,
-      productionBatch: sensor.productionBatch,
-      description: sensor.senzor.description,
-      recentLogs: sensor.logs,
+      id: device.id,
+      devEUI: device.DevEUI,
+      deviceType: device.DeviceType,
+      frequency: device.FrequencyRegion,
+      appEUI: device.AppEUI,
+      appKey: device.AppKey,
+      hwVersion: device.HWVersion,
+      fwVersion: device.FWVersion,
+      customFWVersion: device.CustomFWVersion,
+      sendPeriod: device.SendPeriod,
+      ack: device.ACK,
+      movementThreshold: device.MovementThreshold,
+      subBands: device.SubBands,
+      isAvailable: !device.orderId,
+      order: device.order,
+      recentLogs: recentLogs,
     };
   } catch (error) {
     console.error("Error fetching sensor by DevEUI:", error);
@@ -865,54 +1167,46 @@ export async function getSensorByDevEUI(devEUI: string) {
 }
 
 /**
- * Masovno posodobi zaloge senzorjev
+ * Masovno posodobi status senzorjev (assign/release from orders)
  */
 export async function bulkUpdateSensorStock(
   updates: Array<{
-    stockId: number;
-    quantity: number;
+    devEUI: string;
+    orderId: number | null;
     reason: string;
   }>,
 ) {
   try {
     const results = await prisma.$transaction(async (tx) => {
       const updatePromises = updates.map(async (update) => {
-        const currentStock = await tx.senzorStock.findUnique({
-          where: { id: update.stockId },
-          include: {
-            senzor: { select: { sensorName: true } },
-          },
+        const currentDevice = await tx.productionList.findUnique({
+          where: { DevEUI: update.devEUI },
         });
 
-        if (!currentStock) {
-          throw new Error(`Stock item ${update.stockId} not found`);
+        if (!currentDevice) {
+          throw new Error(`Device ${update.devEUI} not found`);
         }
 
-        const newQuantity = update.quantity;
-        if (newQuantity < 0) {
-          throw new Error(`Invalid quantity for stock ${update.stockId}`);
-        }
-
-        const updatedStock = await tx.senzorStock.update({
-          where: { id: update.stockId },
+        const updatedDevice = await tx.productionList.update({
+          where: { DevEUI: update.devEUI },
           data: {
-            quantity: newQuantity,
-            lastUpdated: new Date(),
+            orderId: update.orderId,
           },
         });
 
+        const change = update.orderId ? -1 : 1; // -1 when assigned, +1 when released
         await tx.inventoryLog.create({
           data: {
             itemType: "sensor",
-            itemName: currentStock.senzor.sensorName,
-            change: newQuantity - currentStock.quantity,
+            itemName: currentDevice.DeviceType || "Unknown",
+            change: change,
             reason: update.reason,
             user: "Bulk Update",
-            details: `Bulk quantity update: ${currentStock.quantity} → ${newQuantity}`,
+            details: `DevEUI: ${update.devEUI} | ${update.orderId ? `Assigned to order ${update.orderId}` : "Released to inventory"}`,
           },
         });
 
-        return updatedStock;
+        return updatedDevice;
       });
 
       return Promise.all(updatePromises);
@@ -929,12 +1223,11 @@ export async function bulkUpdateSensorStock(
  * Dodaj nov senzor v zalogo z DevEUI validacijo (optimizirano za hierarhični prikaz)
  */
 export async function addSensorToInventoryHierarchical(
-  sensorId: number,
-  quantity: number,
-  location: string,
+  deviceType: string,
   frequency: string,
   dev_eui: string,
-  productionBatch?: number,
+  appEUI?: string,
+  appKey?: string,
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -947,62 +1240,33 @@ export async function addSensorToInventoryHierarchical(
         if (existingDevEui) {
           throw new Error(`DevEUI ${dev_eui} že obstaja v sistemu.`);
         }
-
-        // 2. Ustvari DevEUI v ProductionList
-        await tx.productionList.create({
-          data: {
-            DevEUI: dev_eui,
-            FrequencyRegion:
-              frequency === "868 MHz"
-                ? "EU868"
-                : frequency === "915 MHz"
-                  ? "US915"
-                  : frequency === "433 MHz"
-                    ? "EU433"
-                    : "EU868",
-          },
-        });
       }
 
-      // 3. Preveri če senzor obstaja
-      const sensor = await tx.senzor.findUnique({
-        where: { id: sensorId },
-        select: { id: true, sensorName: true },
-      });
-
-      if (!sensor) {
-        throw new Error(`Senzor z ID ${sensorId} ne obstaja.`);
-      }
-
-      // 4. Ustvari zaloga vnos
-      const sensorStock = await tx.senzorStock.create({
+      // 2. Ustvari napravo v ProductionList
+      const device = await tx.productionList.create({
         data: {
-          senzorId: sensorId,
-          quantity,
-          location,
-          frequency,
-          productionBatch: productionBatch || null,
-          productionListDevEUI: dev_eui || null,
+          DevEUI: dev_eui,
+          DeviceType: deviceType,
+          FrequencyRegion: frequency,
+          AppEUI: appEUI || null,
+          AppKey: appKey || null,
+          orderId: null, // Null means it's available in inventory
         },
       });
 
-      // 5. Logiraj
+      // 3. Logiraj
       await tx.inventoryLog.create({
         data: {
           itemType: "sensor",
-          itemName: sensor.sensorName,
-          change: quantity,
+          itemName: deviceType,
+          change: 1,
           reason: "Dodajanje v zalogo",
           user: "System",
-          details: `Senzor: ${sensor.sensorName} | DevEUI: ${dev_eui || "N/A"} | Frekvenca: ${frequency} | Batch: ${productionBatch || "N/A"}`,
-          senzorStockId: sensorStock.id,
+          details: `DevEUI: ${dev_eui} | DeviceType: ${deviceType} | Frequency: ${frequency}`,
         },
       });
 
-      return {
-        ...sensorStock,
-        sensorName: sensor.sensorName,
-      };
+      return device;
     });
 
     return result;
@@ -1017,53 +1281,48 @@ export async function addSensorToInventoryHierarchical(
 }
 
 /**
- * Prenesi senzor iz ene lokacije v drugo
+ * Prenesi senzor iz enega naročila v drugo ali v zalogo
  */
 export async function transferSensorLocation(
-  stockId: number,
-  newLocation: string,
+  devEUI: string,
+  newOrderId: number | null,
   reason: string,
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const currentStock = await tx.senzorStock.findUnique({
-        where: { id: stockId },
-        include: {
-          senzor: { select: { sensorName: true } },
-        },
+      const currentDevice = await tx.productionList.findUnique({
+        where: { DevEUI: devEUI },
       });
 
-      if (!currentStock) {
-        throw new Error("Sensor stock not found");
+      if (!currentDevice) {
+        throw new Error("Device not found");
       }
 
-      const updatedStock = await tx.senzorStock.update({
-        where: { id: stockId },
+      const updatedDevice = await tx.productionList.update({
+        where: { DevEUI: devEUI },
         data: {
-          location: newLocation,
-          lastUpdated: new Date(),
+          orderId: newOrderId,
         },
       });
 
       await tx.inventoryLog.create({
         data: {
           itemType: "sensor",
-          itemName: currentStock.senzor.sensorName,
-          change: 0, // Ni spremembe količine
-          reason: `Location transfer: ${reason}`,
+          itemName: currentDevice.DeviceType || "Unknown",
+          change: 0, // No quantity change, just transfer
+          reason: `Transfer: ${reason}`,
           user: "System",
-          details: `DevEUI: ${currentStock.productionListDevEUI || "N/A"} | ${currentStock.location} → ${newLocation}`,
-          senzorStockId: stockId,
+          details: `DevEUI: ${devEUI} | ${currentDevice.orderId ? `Order ${currentDevice.orderId}` : "Inventory"} → ${newOrderId ? `Order ${newOrderId}` : "Inventory"}`,
         },
       });
 
-      return updatedStock;
+      return updatedDevice;
     });
 
     return result;
   } catch (error) {
-    console.error("Error transferring sensor location:", error);
-    throw new Error("Failed to transfer sensor location");
+    console.error("Error transferring sensor:", error);
+    throw new Error("Failed to transfer sensor");
   }
 }
 
@@ -1091,30 +1350,35 @@ export async function formatDevEUI(devEUI: string): Promise<string> {
 export async function getSensorStockStatistics() {
   try {
     const stats = await prisma.$transaction(async (tx) => {
-      // Skupna količina vseh senzorjev
-      const totalQuantity = await tx.senzorStock.aggregate({
-        _sum: { quantity: true },
+      // Skupno število naprav v zalogi
+      const totalInInventory = await tx.productionList.count({
+        where: {
+          orderId: null,
+          DevEUI: { not: null },
+        },
       });
 
-      // Število različnih tipov senzorjev
-      const sensorTypes = await tx.senzorStock.groupBy({
-        by: ["senzorId"],
+      // Število naprav po tipih
+      const deviceTypes = await tx.productionList.groupBy({
+        by: ["DeviceType"],
+        where: {
+          orderId: null,
+          DevEUI: { not: null },
+        },
         _count: { id: true },
       });
 
-      // Število različnih frekvenc
-      const frequencies = await tx.senzorStock.groupBy({
-        by: ["frequency"],
-        _sum: { quantity: true },
+      // Število naprav po frekvencah
+      const frequencies = await tx.productionList.groupBy({
+        by: ["FrequencyRegion"],
+        where: {
+          orderId: null,
+          DevEUI: { not: null },
+        },
+        _count: { id: true },
       });
 
-      // Število različnih lokacij
-      const locations = await tx.senzorStock.groupBy({
-        by: ["location"],
-        _sum: { quantity: true },
-      });
-
-      // Najnovejši vnosi
+      // Najnovejši dodatki v zalogo
       const recentAdditions = await tx.inventoryLog.findMany({
         where: {
           itemType: "sensor",
@@ -1131,15 +1395,15 @@ export async function getSensorStockStatistics() {
       });
 
       return {
-        totalQuantity: totalQuantity._sum.quantity || 0,
-        sensorTypeCount: sensorTypes.length,
+        totalQuantity: totalInInventory,
+        deviceTypeCount: deviceTypes.length,
         frequencyDistribution: frequencies.map((f) => ({
-          frequency: f.frequency || "868 MHz",
-          quantity: f._sum.quantity || 0,
+          frequency: f.FrequencyRegion || "EU868",
+          quantity: f._count.id || 0,
         })),
-        locationDistribution: locations.map((l) => ({
-          location: l.location,
-          quantity: l._sum.quantity || 0,
+        deviceTypeDistribution: deviceTypes.map((d) => ({
+          deviceType: d.DeviceType || "Unknown",
+          quantity: d._count.id || 0,
         })),
         recentAdditions,
       };
@@ -1153,31 +1417,33 @@ export async function getSensorStockStatistics() {
 }
 
 /**
- * Poišči senzorje z nizko zalogo
+ * Poišči tipe senzorjev z nizko zalogo
  */
 export async function getLowStockSensors(threshold: number = 5) {
   try {
-    const lowStockSensors = await prisma.senzorStock.findMany({
+    const deviceTypeCounts = await prisma.productionList.groupBy({
+      by: ["DeviceType"],
       where: {
-        quantity: { lte: threshold },
+        orderId: null, // Only devices in inventory
+        DevEUI: { not: null },
       },
-      include: {
-        senzor: {
-          select: { id: true, sensorName: true },
+      _count: {
+        id: true,
+      },
+      having: {
+        id: {
+          _count: {
+            lte: threshold,
+          },
         },
       },
-      orderBy: [{ quantity: "asc" }, { lastUpdated: "desc" }],
     });
 
-    return lowStockSensors.map((stock) => ({
-      id: stock.id,
-      sensorId: stock.senzorId,
-      sensorName: stock.senzor.sensorName,
-      quantity: stock.quantity,
-      location: stock.location,
-      frequency: stock.frequency,
-      dev_eui: stock.productionListDevEUI,
-      lastUpdated: stock.lastUpdated,
+    return deviceTypeCounts.map((item) => ({
+      deviceType: item.DeviceType || "Unknown",
+      availableCount: item._count.id,
+      threshold: threshold,
+      isLowStock: item._count.id <= threshold,
     }));
   } catch (error) {
     console.error("Error fetching low stock sensors:", error);
@@ -1195,27 +1461,15 @@ export async function getLowStockSensors(threshold: number = 5) {
  */
 export async function getInventorySensorHierarchy() {
   try {
-    // Dobi vse ProductionList zapise, ki NISO povezani z naročili
+    // Get all ProductionList records that are NOT linked to orders
     const availableDevices = await prisma.productionList.findMany({
       where: {
-        orderId: null, // Ni povezan z naročilom = na zalogi
-        DevEUI: { not: null }, // Ima DevEUI
-      },
-      include: {
-        senzorStocks: {
-          where: {
-            quantity: { gt: 0 }, // Samo če je na zalogi
-          },
-          include: {
-            senzor: {
-              select: { id: true, sensorName: true, description: true },
-            },
-          },
-        },
+        orderId: null, // Not linked to order = in inventory
+        DevEUI: { not: null }, // Has DevEUI
       },
     });
 
-    // Grupiraj po DeviceType (nivo 1)
+    // Group by DeviceType (level 1)
     const deviceGroups = new Map<
       string,
       {
@@ -1228,15 +1482,11 @@ export async function getInventorySensorHierarchy() {
             totalDevices: number;
             devices: {
               id: number;
-              devEUI: string;
+              devEUI: string | null;
               deviceType: string | null;
-              sensorId: number;
-              sensorName: string;
-              quantity: number;
-              location: string;
               frequency: string | null;
-              lastUpdated: Date;
-              productionBatch: number | null;
+              appEUI: string | null;
+              appKey: string | null;
               hwVersion: string | null;
               fwVersion: string | null;
             }[];
@@ -1247,12 +1497,9 @@ export async function getInventorySensorHierarchy() {
 
     availableDevices.forEach((device) => {
       const deviceType = device.DeviceType || "Unknown";
-      const frequency = device.FrequencyRegion || "868 MHz";
+      const frequency = device.FrequencyRegion || "EU868";
 
-      // Samo če ima povezane stock zapise
-      if (device.senzorStocks.length === 0) return;
-
-      // Inicializiraj group za DeviceType
+      // Initialize group for DeviceType
       if (!deviceGroups.has(deviceType)) {
         deviceGroups.set(deviceType, {
           deviceType,
@@ -1264,7 +1511,7 @@ export async function getInventorySensorHierarchy() {
       const deviceGroup = deviceGroups.get(deviceType)!;
       deviceGroup.totalDevices += 1;
 
-      // Inicializiraj group za frekvenco
+      // Initialize group for frequency
       if (!deviceGroup.frequencies.has(frequency)) {
         deviceGroup.frequencies.set(frequency, {
           frequency,
@@ -1276,26 +1523,20 @@ export async function getInventorySensorHierarchy() {
       const freqGroup = deviceGroup.frequencies.get(frequency)!;
       freqGroup.totalDevices += 1;
 
-      // Dodaj device podatke
-      device.senzorStocks.forEach((stock) => {
-        freqGroup.devices.push({
-          id: stock.id,
-          devEUI: device.DevEUI ?? "",
-          deviceType: device.DeviceType,
-          sensorId: stock.senzorId,
-          sensorName: stock.senzor.sensorName,
-          quantity: stock.quantity,
-          location: stock.location,
-          frequency: device.FrequencyRegion,
-          lastUpdated: stock.lastUpdated,
-          productionBatch: stock.productionBatch,
-          hwVersion: device.HWVersion,
-          fwVersion: device.FWVersion,
-        });
+      // Add device data
+      freqGroup.devices.push({
+        id: device.id,
+        devEUI: device.DevEUI,
+        deviceType: device.DeviceType,
+        frequency: device.FrequencyRegion,
+        appEUI: device.AppEUI,
+        appKey: device.AppKey,
+        hwVersion: device.HWVersion,
+        fwVersion: device.FWVersion,
       });
     });
 
-    // Pretvori v array format
+    // Convert to array format
     return Array.from(deviceGroups.values()).map((group) => ({
       deviceType: group.deviceType,
       totalDevices: group.totalDevices,
@@ -1317,65 +1558,29 @@ export async function getDevicesByTypeAndFrequency(
   try {
     const devices = await prisma.productionList.findMany({
       where: {
-        orderId: null, // Ni povezan z naročilom
+        orderId: null, // Not linked to order
         DeviceType: deviceType,
         FrequencyRegion: frequency,
         DevEUI: { not: null },
       },
-      include: {
-        senzorStocks: {
-          where: {
-            quantity: { gt: 0 },
-          },
-          include: {
-            senzor: {
-              select: { id: true, sensorName: true, description: true },
-            },
-          },
-        },
-      },
     });
 
-    type DeviceStockInfo = {
-      id: number;
-      devEUI: string | null;
-      deviceType: string | null;
-      sensorId: number;
-      sensorName: string;
-      quantity: number;
-      location: string;
-      frequency: string | null;
-      lastUpdated: Date;
-      productionBatch: number | null;
-      hwVersion: string | null;
-      fwVersion: string | null;
-      appEUI: string | null;
-      appKey: string | null;
-    };
-
-    const result: DeviceStockInfo[] = [];
-    devices.forEach((device) => {
-      device.senzorStocks.forEach((stock) => {
-        result.push({
-          id: stock.id,
-          devEUI: device.DevEUI,
-          deviceType: device.DeviceType,
-          sensorId: stock.senzorId,
-          sensorName: stock.senzor.sensorName,
-          quantity: stock.quantity,
-          location: stock.location,
-          frequency: device.FrequencyRegion,
-          lastUpdated: stock.lastUpdated,
-          productionBatch: stock.productionBatch,
-          hwVersion: device.HWVersion,
-          fwVersion: device.FWVersion,
-          appEUI: device.AppEUI,
-          appKey: device.AppKey,
-        });
-      });
-    });
-
-    return result;
+    return devices.map((device) => ({
+      id: device.id,
+      devEUI: device.DevEUI,
+      deviceType: device.DeviceType,
+      frequency: device.FrequencyRegion,
+      appEUI: device.AppEUI,
+      appKey: device.AppKey,
+      hwVersion: device.HWVersion,
+      fwVersion: device.FWVersion,
+      customFWVersion: device.CustomFWVersion,
+      sendPeriod: device.SendPeriod,
+      ack: device.ACK,
+      movementThreshold: device.MovementThreshold,
+      subBands: device.SubBands,
+      isAvailable: true,
+    }));
   } catch (error) {
     console.error("Error fetching devices by type and frequency:", error);
     throw new Error("Failed to fetch devices by type and frequency");
@@ -1389,71 +1594,40 @@ export async function getDevicesByType(deviceType: string) {
   try {
     const devices = await prisma.productionList.findMany({
       where: {
-        orderId: null, // Ni povezan z naročilom
+        orderId: null, // Not linked to order
         DeviceType: deviceType,
         DevEUI: { not: null },
       },
-      include: {
-        senzorStocks: {
-          where: {
-            quantity: { gt: 0 },
-          },
-          include: {
-            senzor: {
-              select: { id: true, sensorName: true, description: true },
-            },
-          },
-        },
-      },
     });
 
-    // Grupiraj po frekvencah
-    type FrequencyGroupDevice = {
-      id: number;
-      devEUI: string | null;
-      deviceType: string | null;
-      sensorId: number;
-      sensorName: string;
-      quantity: number;
-      location: string;
-      frequency: string | null;
-      lastUpdated: Date;
-      productionBatch: number | null;
-      hwVersion: string | null;
-      fwVersion: string | null;
-    };
-    const frequencyGroups = new Map<string, FrequencyGroupDevice[]>();
+    // Group by frequencies
+    const frequencyGroups = new Map<string, typeof devices>();
 
     devices.forEach((device) => {
-      const frequency = device.FrequencyRegion || "868 MHz";
+      const frequency = device.FrequencyRegion || "EU868";
 
       if (!frequencyGroups.has(frequency)) {
         frequencyGroups.set(frequency, []);
       }
 
-      device.senzorStocks.forEach((stock) => {
-        frequencyGroups.get(frequency)!.push({
-          id: stock.id,
-          devEUI: device.DevEUI,
-          deviceType: device.DeviceType,
-          sensorId: stock.senzorId,
-          sensorName: stock.senzor.sensorName,
-          quantity: stock.quantity,
-          location: stock.location,
-          frequency: device.FrequencyRegion,
-          lastUpdated: stock.lastUpdated,
-          productionBatch: stock.productionBatch,
-          hwVersion: device.HWVersion,
-          fwVersion: device.FWVersion,
-        });
-      });
+      frequencyGroups.get(frequency)!.push(device);
     });
 
     return Array.from(frequencyGroups.entries()).map(
       ([frequency, devices]) => ({
         frequency,
         totalDevices: devices.length,
-        devices,
+        devices: devices.map((device) => ({
+          id: device.id,
+          devEUI: device.DevEUI,
+          deviceType: device.DeviceType,
+          frequency: device.FrequencyRegion,
+          appEUI: device.AppEUI,
+          appKey: device.AppKey,
+          hwVersion: device.HWVersion,
+          fwVersion: device.FWVersion,
+          isAvailable: true,
+        })),
       }),
     );
   } catch (error) {
@@ -1478,36 +1652,29 @@ export async function getDeviceDetailsByDevEUI(devEUI: string) {
             quantity: true,
           },
         },
-        senzorStocks: {
-          include: {
-            senzor: {
-              select: {
-                id: true,
-                sensorName: true,
-                description: true,
-                familyId: true,
-                productId: true,
-              },
-            },
-            logs: {
-              orderBy: { timestamp: "desc" },
-              take: 10,
-              select: {
-                timestamp: true,
-                change: true,
-                reason: true,
-                user: true,
-                details: true,
-              },
-            },
-          },
-        },
       },
     });
 
     if (!device) {
       throw new Error("Device not found");
     }
+
+    // Get recent logs for this device
+    const recentLogs = await prisma.inventoryLog.findMany({
+      where: {
+        itemType: "sensor",
+        details: { contains: devEUI },
+      },
+      orderBy: { timestamp: "desc" },
+      take: 10,
+      select: {
+        timestamp: true,
+        change: true,
+        reason: true,
+        user: true,
+        details: true,
+      },
+    });
 
     return {
       devEUI: device.DevEUI,
@@ -1522,23 +1689,9 @@ export async function getDeviceDetailsByDevEUI(devEUI: string) {
       ack: device.ACK,
       movementThreshold: device.MovementThreshold,
       subBands: device.SubBands,
-      isAvailable: !device.orderId, // Ali je na zalogi
-      order: device.order, // Če je povezan z naročilom
-      stockInfo: device.senzorStocks.map((stock) => ({
-        id: stock.id,
-        sensorId: stock.senzorId,
-        sensorName: stock.senzor.sensorName,
-        quantity: stock.quantity,
-        location: stock.location,
-        lastUpdated: stock.lastUpdated,
-        productionBatch: stock.productionBatch,
-        recentLogs: stock.logs,
-        sensorDetails: {
-          familyId: stock.senzor.familyId,
-          productId: stock.senzor.productId,
-          description: stock.senzor.description,
-        },
-      })),
+      isAvailable: !device.orderId, // Available if not assigned to order
+      order: device.order, // If linked to order
+      recentLogs: recentLogs,
     };
   } catch (error) {
     console.error("Error fetching device details by DevEUI:", error);
@@ -1554,30 +1707,20 @@ export async function getAvailableDevicesSummary() {
     const summary = await prisma.productionList.groupBy({
       by: ["DeviceType"],
       where: {
-        orderId: null, // Ni povezan z naročilom
+        orderId: null, // Not linked to order
         DevEUI: { not: null },
-        senzorStocks: {
-          some: {
-            quantity: { gt: 0 },
-          },
-        },
       },
       _count: {
         id: true,
       },
     });
 
-    // Dodatne statistike po frekvencah
+    // Additional statistics by frequencies
     const frequencyStats = await prisma.productionList.groupBy({
       by: ["DeviceType", "FrequencyRegion"],
       where: {
         orderId: null,
         DevEUI: { not: null },
-        senzorStocks: {
-          some: {
-            quantity: { gt: 0 },
-          },
-        },
       },
       _count: {
         id: true,
@@ -1591,7 +1734,7 @@ export async function getAvailableDevicesSummary() {
       })),
       frequencyBreakdown: frequencyStats.map((item) => ({
         deviceType: item.DeviceType || "Unknown",
-        frequency: item.FrequencyRegion || "868 MHz",
+        frequency: item.FrequencyRegion || "EU868",
         count: item._count.id,
       })),
     };
@@ -1611,16 +1754,9 @@ export async function assignDeviceToOrder(
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Preveri če naprava obstaja in ni že dodeljena
+      // Check if device exists and is not already assigned
       const device = await tx.productionList.findUnique({
         where: { DevEUI: devEUI },
-        include: {
-          senzorStocks: {
-            include: {
-              senzor: { select: { sensorName: true } },
-            },
-          },
-        },
       });
 
       if (!device) {
@@ -1631,27 +1767,23 @@ export async function assignDeviceToOrder(
         throw new Error("Device is already assigned to an order");
       }
 
-      // Dodeli napravo naročilu
+      // Assign device to order
       const updatedDevice = await tx.productionList.update({
         where: { DevEUI: devEUI },
         data: { orderId: orderId },
       });
 
-      // Logiraj spremembo
-      if (device.senzorStocks.length > 0) {
-        const stock = device.senzorStocks[0];
-        await tx.inventoryLog.create({
-          data: {
-            itemType: "sensor",
-            itemName: stock?.senzor?.sensorName ?? "Unknown",
-            change: -1, // Iz zaloge
-            reason: reason,
-            user: "System",
-            details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
-            senzorStockId: stock?.id ?? null
-          },
-        });
-      }
+      // Log the change
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "sensor",
+          itemName: device.DeviceType || "Unknown",
+          change: -1, // Out of inventory
+          reason: reason,
+          user: "System",
+          details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
+        },
+      });
 
       return updatedDevice;
     });
@@ -1680,11 +1812,6 @@ export async function releaseDeviceFromOrder(
         where: { DevEUI: devEUI },
         include: {
           order: { select: { id: true, customerName: true } },
-          senzorStocks: {
-            include: {
-              senzor: { select: { sensorName: true } },
-            },
-          },
         },
       });
 
@@ -1696,27 +1823,23 @@ export async function releaseDeviceFromOrder(
         throw new Error("Device is not assigned to any order");
       }
 
-      // Sprosti napravo
+      // Release device
       const updatedDevice = await tx.productionList.update({
         where: { DevEUI: devEUI },
         data: { orderId: null },
       });
 
-      // Logiraj spremembo
-      if (device.senzorStocks.length > 0) {
-        const stock = device.senzorStocks[0];
-        await tx.inventoryLog.create({
-          data: {
-            itemType: "sensor",
-            itemName: stock?.senzor?.sensorName ?? "Unknown",
-            change: 1, // Nazaj v zalogo
-            reason: reason,
-            user: "System",
-            details: `DevEUI: ${devEUI} released from order ${device.orderId} (${device.order?.customerName})`,
-            senzorStockId: stock?.id,
-          },
-        });
-      }
+      // Log the change
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "sensor",
+          itemName: device.DeviceType || "Unknown",
+          change: 1, // Back to inventory
+          reason: reason,
+          user: "System",
+          details: `DevEUI: ${devEUI} released from order ${device.orderId} (${device.order?.customerName})`,
+        },
+      });
 
       return updatedDevice;
     });
@@ -1940,5 +2063,249 @@ export async function getProductionCapacitySummary() {
   } catch (error) {
     console.error("Error calculating production capacity summary:", error);
     throw new Error("Failed to calculate production capacity summary");
+  }
+}
+
+/**
+ * Get detailed sensor inventory for email reports - based on ProductionList
+ */
+export async function getDetailedSensorInventory() {
+  try {
+    const devices = await prisma.productionList.findMany({
+      where: {
+        orderId: null, // Only available devices (not assigned to orders)
+        DevEUI: { not: null }, // Must have DevEUI
+      },
+      include: {
+        order: {
+          select: { senzorId: true },
+        },
+      },
+    });
+
+    // Group by device type and frequency
+    const deviceGroups = new Map();
+
+    devices.forEach((device) => {
+      const deviceType = device.DeviceType || "Unknown";
+
+      if (!deviceGroups.has(deviceType)) {
+        deviceGroups.set(deviceType, {
+          sensorName: deviceType,
+          totalQuantity: 0,
+          frequencies: new Map(),
+        });
+      }
+
+      const group = deviceGroups.get(deviceType);
+      group.totalQuantity += 1; // Each device is 1 unit
+
+      // Group by frequency
+      const frequency = device.FrequencyRegion || "868 MHz";
+      if (!group.frequencies.has(frequency)) {
+        group.frequencies.set(frequency, 0);
+      }
+
+      group.frequencies.set(frequency, group.frequencies.get(frequency) + 1);
+    });
+
+    // Convert to array format
+    return Array.from(deviceGroups.values()).map((group) => ({
+      sensorName: group.sensorName,
+      totalQuantity: group.totalQuantity,
+      frequencies: Array.from(group.frequencies.entries()).map((entry) => {
+        const [frequency, quantity] = entry as [string, number];
+        return {
+          frequency,
+          quantity,
+        };
+      }),
+    }));
+  } catch (error) {
+    console.error("Error fetching detailed sensor inventory:", error);
+    throw new Error("Failed to fetch detailed sensor inventory");
+  }
+}
+
+/**
+ * Get detailed component inventory for email reports
+ */
+export async function getDetailedComponentInventory() {
+  try {
+    const components = await prisma.componentStock.findMany({
+      include: {
+        component: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    // Group by component type
+    const componentGroups = new Map();
+
+    components.forEach((stock) => {
+      const componentKey = stock.component.name;
+
+      if (!componentGroups.has(componentKey)) {
+        componentGroups.set(componentKey, {
+          name: stock.component.name,
+          totalQuantity: 0,
+          locations: new Map(),
+        });
+      }
+
+      const group = componentGroups.get(componentKey);
+      group.totalQuantity += stock.quantity;
+
+      // Group by location
+      const location = stock.location || "Unknown";
+      if (!group.locations.has(location)) {
+        group.locations.set(location, 0);
+      }
+
+      group.locations.set(
+        location,
+        group.locations.get(location) + stock.quantity,
+      );
+    });
+
+    // Convert to array format
+    return Array.from(componentGroups.values()).map((group) => ({
+      name: group.name,
+      totalQuantity: group.totalQuantity,
+      locations: Array.from(group.locations.entries()).map((entry) => {
+        const [location, quantity] = entry as [string, number];
+        return {
+          location,
+          quantity,
+        };
+      }),
+    }));
+  } catch (error) {
+    console.error("Error fetching detailed component inventory:", error);
+    throw new Error("Failed to fetch detailed component inventory");
+  }
+}
+
+export async function getSensorsSortedByFrequency() {
+  try {
+    // Aggregate sensors by DeviceType and FrequencyRegion, counting how many of each
+    const sensors = await prisma.productionList.groupBy({
+      by: ["DeviceType", "FrequencyRegion", "Batch"],
+      where: {
+        orderId: null, // Only devices in inventory
+        DevEUI: { not: null },
+      },
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        DeviceType: "asc",
+      },
+    });
+
+    return sensors.map((sensor) => ({
+      deviceType: sensor.DeviceType || "Unknown",
+      frequency: sensor.FrequencyRegion || "unknown",
+      count: sensor._count.id,
+      BatchNumber: sensor.Batch || "N/A",
+    }));
+  } catch (error) {
+    console.error("Error fetching sensors sorted by frequency:", error);
+    throw new Error("Failed to fetch sensors sorted by frequency");
+  }
+}
+
+/**
+ * Get download URL for invoice file from B2 storage
+ */
+export async function getInvoiceFileDownloadUrl(invoiceNumber: string) {
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { invoiceNumber },
+      select: {
+        filename: true,
+        uploadDate: true,
+      },
+    });
+
+    if (!invoice?.filename) {
+      throw new Error("Invoice file not found");
+    }
+
+    // For B2 integration, you would generate a presigned URL here
+    // This is a placeholder - you'd need to implement B2 presigned URL generation
+    return {
+      downloadUrl: `${process.env.B2_PUBLIC_URL}/${invoice.filename}`,
+      filename: invoice.filename,
+      uploadDate: invoice.uploadDate,
+    };
+  } catch (error) {
+    console.error("Error getting invoice file download URL:", error);
+    throw new Error("Failed to get invoice file download URL");
+  }
+}
+
+/**
+ * Get all invoice files for a component
+ */
+export async function getComponentInvoiceFiles(componentId: number) {
+  try {
+    const componentStocks = await prisma.componentStock.findMany({
+      where: { componentId },
+      include: {
+        invoice: {
+          select: {
+            invoiceNumber: true,
+            filename: true,
+            uploadDate: true,
+            amount: true,
+          },
+        },
+        logs: {
+          where: {
+            invoice: { isNot: null },
+          },
+          include: {
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                filename: true,
+                uploadDate: true,
+                amount: true,
+              },
+            },
+          },
+          orderBy: { timestamp: "desc" },
+        },
+      },
+    });
+
+    const allInvoices = new Map();
+
+    // Collect all unique invoices
+    componentStocks.forEach((stock) => {
+      if (stock.invoice) {
+        allInvoices.set(stock.invoice.invoiceNumber, stock.invoice);
+      }
+      stock.logs.forEach((log) => {
+        if (log.invoice) {
+          allInvoices.set(log.invoice.invoiceNumber, log.invoice);
+        }
+      });
+    });
+
+    return Array.from(allInvoices.values()).map((invoice) => ({
+      invoiceNumber: invoice.invoiceNumber,
+      filename: invoice.filename,
+      uploadDate: invoice.uploadDate,
+      amount: invoice.amount,
+      downloadUrl: invoice.filename
+        ? `${process.env.B2_PUBLIC_URL}/${invoice.filename}`
+        : null,
+    }));
+  } catch (error) {
+    console.error("Error fetching component invoice files:", error);
+    throw new Error("Failed to fetch component invoice files");
   }
 }

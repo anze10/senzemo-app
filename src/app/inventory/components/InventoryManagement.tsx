@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Image from "next/image";
 import {
@@ -35,21 +34,28 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
+import EmailIcon from "@mui/icons-material/Email";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MemoryIcon from "@mui/icons-material/Memory";
 import RadioIcon from "@mui/icons-material/Radio";
 import BuildIcon from "@mui/icons-material/Build";
+
+import DownloadIcon from "@mui/icons-material/Download";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+
 //import WarningIcon from '@mui/icons-material/Warning';
 //import InfoIcon from '@mui/icons-material/Info';
 import {
   addComponentToInventory,
   addSensorToInventory,
-  adjustComponentStock,
+  adjustComponentStockWithInvoice,
   adjustSensorStock,
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
+  getComponentInvoiceFiles,
+  getInvoiceFileDownloadUrl,
   getProductionByFrequency,
   getProductionCapacitySummary,
   getProductionDevices,
@@ -58,27 +64,16 @@ import {
   getSensors,
   showAllComponents,
   showLogs,
-  showSensorInInventory,
+  // showSensorInInventory,
   updateComponentSensorAssignments,
   updateComponentStock,
 } from "src/app/inventory/components/backent";
+
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { uploadPDFToB2 } from "src/app/inventory/components/aws";
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#374151", // Dark gray
-    },
-    secondary: {
-      main: "#6b7280", // Medium gray
-    },
-  },
-  typography: {
-    fontFamily: 'var(--font-montserrat), Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-});
+import EmailReportManager from "src/app/inventory/components/EmailReportManager";
+import { Container, useMediaQuery, useTheme } from "@mui/material";
 
 type Frequency = "868 MHz" | "915 MHz" | "433 MHz" | "2.4 GHz" | "Custom";
 
@@ -123,6 +118,8 @@ export type ComponentStockItem = {
     requiredQuantity: number;
   }[];
   invoiceNumber?: string;
+  invoiceFile?: string; // File path/name for display
+  invoiceFileKey?: string; // B2 storage key
   contactDetails: ContactDetails;
   price?: number; // Price per item
 };
@@ -163,6 +160,8 @@ type ProductionDevice = {
 };
 
 export default function InventoryManagementPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [activeTab, setActiveTab] = useState(0);
   const [sensorInventory, setSensorInventory] = useState<SenzorStockItem[]>([]);
   const [componentInventory, setComponentInventory] = useState<
@@ -181,15 +180,42 @@ export default function InventoryManagementPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [adjustmentReason, setAdjustmentReason] = useState("");
-  const [device_eui, set_device_eui] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  // Add state for invoice history
+  const [invoiceHistory, setInvoiceHistory] = useState<Array<{
+    invoiceNumber: string;
+    filename: string | null;
+    uploadDate: Date;
+    amount: number | null;
+    downloadUrl: string | null;
+  }>>([]);
+  const [loadingInvoiceHistory, setLoadingInvoiceHistory] = useState(false);
+
+  // Add adjustment dialog state
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
-  const [currentAdjustItem, setCurrentAdjustItem] =
-    useState<InventoryItem | null>(null);
-  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">(
-    "increase",
-  );
+  const [currentAdjustItem, setCurrentAdjustItem] = useState<InventoryItem | null>(null);
+  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">("increase");
   const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
+  const [adjustmentReason, setAdjustmentReason] = useState("");
+
+  // Add query to fetch invoice files for a component
+  const fetchComponentInvoiceHistory = useCallback(async (componentId: number) => {
+    if (!componentId) return [];
+
+    setLoadingInvoiceHistory(true);
+    try {
+      const invoices = await getComponentInvoiceFiles(componentId);
+      // Sort by uploadDate descending to get newest first
+      return invoices.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+    } catch (error) {
+      console.error('Failed to fetch invoice history:', error);
+      return [];
+    } finally {
+      setLoadingInvoiceHistory(false);
+    }
+  }, []);
+
   const queryClient = useQueryClient();
   const frequencyOptions: Frequency[] = [
     "868 MHz",
@@ -229,7 +255,6 @@ export default function InventoryManagementPage() {
       } as ComponentStockItem;
     }
   }, [activeTab]);
-  const [uploading, setUploading] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -240,12 +265,13 @@ export default function InventoryManagementPage() {
       // Create a new File object with the updated name
       const renamedFile = new File([file], newFileName, { type: file.type });
 
-      return await uploadPDFToB2(renamedFile, invoiceNumber);
+      await uploadPDFToB2(renamedFile, invoiceNumber);
+      return invoiceNumber; // Return the invoice number as the file key
     },
-    onSuccess: () => {
+    onSuccess: (fileKey) => {
       setSnackbar({
         open: true,
-        message: `Invoice uploaded successfully as: ${invoiceNumber}`,
+        message: `Invoice uploaded successfully as: ${fileKey}`,
         severity: "success",
       });
     },
@@ -258,19 +284,6 @@ export default function InventoryManagementPage() {
       });
     },
   });
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!invoiceFile) {
-      alert("Please select a file to upload.");
-      return;
-    }
-
-    setUploading(true);
-    await uploadMutation.mutateAsync(invoiceFile);
-    setUploading(false);
-  };
 
   const { data: allSensors = [] } = useQuery({
     queryKey: ["sensors"],
@@ -286,12 +299,6 @@ export default function InventoryManagementPage() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: rawInventory = [] } = useQuery({
-    queryKey: ["sensors-inventory"],
-    queryFn: showSensorInInventory,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
 
   const { data: logs = [] } = useQuery({
     queryKey: ["inventory-logs"],
@@ -305,14 +312,7 @@ export default function InventoryManagementPage() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-  // Debug: Track when rawInventory changes
-  useEffect(() => {
-    if (rawInventory) {
-      console.log("rawInventory changed, length:", rawInventory.length);
-    }
-  }, [rawInventory]);
 
-  // Use React Query for production hierarchy data with proper caching
   const { data: productionHierarchy = [] } = useQuery({
     queryKey: ["production-hierarchy"],
     queryFn: async () => {
@@ -450,6 +450,7 @@ export default function InventoryManagementPage() {
     setSensorOptions([]);
     setInvoiceFile(null);
     setInvoiceNumber("");
+    setInvoiceHistory([]); // Clear invoice history when closing dialog
   };
 
   const handleRequiredQuantityChange = (sensorId: number, value: number) => {
@@ -738,12 +739,18 @@ export default function InventoryManagementPage() {
       quantity: number;
       reason: string;
       invoiceNumber?: string;
+      fileKey?: string;
+      price?: number;
+      supplier?: string;
     }) => {
-      return adjustComponentStock(
+      return adjustComponentStockWithInvoice(
         params.stockId,
         params.quantity,
         params.reason,
         params.invoiceNumber || null,
+        params.fileKey || null,
+        params.price || null,
+        params.supplier || null,
       );
     },
     onSuccess: () => {
@@ -813,6 +820,19 @@ export default function InventoryManagementPage() {
     };
 
     try {
+      // Upload file if provided
+      let fileKey: string | null = null;
+      if (invoiceFile) {
+        setUploading(true);
+        try {
+          fileKey = await uploadMutation.mutateAsync(invoiceFile);
+        } catch (error) {
+          setUploading(false);
+          throw new Error(`File upload failed: ${(error as Error).message}`);
+        }
+        setUploading(false);
+      }
+
       if (editItem.id) {
         await updateComponentStock(
           editItem.id,
@@ -823,14 +843,14 @@ export default function InventoryManagementPage() {
           updatedItem.contactDetails.email,
           updatedItem.contactDetails.supplier,
           updatedItem.contactDetails.phone,
-          updatedItem.price, // <-- Add price parameter
+          updatedItem.price,
+          fileKey || undefined, // Pass file key to backend
         );
 
         await updateComponentSensorAssignments(
           updatedItem.componentId,
           updatedItem.sensorAssignments,
         );
-
 
         queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
 
@@ -847,7 +867,10 @@ export default function InventoryManagementPage() {
           updatedItem.contactDetails.email,
           updatedItem.contactDetails.supplier,
           updatedItem.invoiceNumber,
-          updatedItem.price, // <-- Add price parameter
+          updatedItem.price,
+          updatedItem.contactDetails.phone,
+          updatedItem.sensorAssignments,
+          fileKey || undefined, // Pass file key to backend
         );
 
         queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
@@ -858,11 +881,7 @@ export default function InventoryManagementPage() {
           severity: "success",
         });
       }
-      if (invoiceFile) {
-        await handleSubmit({
-          preventDefault: () => { },
-        } as React.FormEvent<HTMLFormElement>);
-      }
+
       handleClose();
     } catch (error) {
       setSnackbar({
@@ -878,7 +897,7 @@ export default function InventoryManagementPage() {
     if (!editItem) return;
     try {
       if ("senzorId" in editItem) {
-        await deleteSensorFromInventory(editItem.id!);
+        await deleteSensorFromInventory((editItem as SenzorStockItem).dev_eui!);
       } else {
         await deleteComponentFromInventory(editItem.id!);
       }
@@ -901,14 +920,14 @@ export default function InventoryManagementPage() {
   const adjustSensorStockMutation = useMutation({
     mutationFn: async ({
       stockId,
-      quantity,
+
       reason,
     }: {
-      stockId: number;
+      stockId: string;
       quantity: number;
       reason: string;
     }) => {
-      return adjustSensorStock(stockId, quantity, reason);
+      return adjustSensorStock(stockId, reason, null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sensors-inventory"] });
@@ -940,9 +959,22 @@ export default function InventoryManagementPage() {
       adjustmentType === "increase" ? adjustmentQuantity : -adjustmentQuantity;
 
     try {
+      // Upload file if provided and it's a component increase
+      let fileKey: string | null = null;
+      if (invoiceFile && adjustmentType === "increase" && "componentId" in currentAdjustItem) {
+        setUploading(true);
+        try {
+          fileKey = await uploadMutation.mutateAsync(invoiceFile);
+        } catch (error) {
+          setUploading(false);
+          throw new Error(`File upload failed: ${(error as Error).message}`);
+        }
+        setUploading(false);
+      }
+
       if ("senzorId" in currentAdjustItem) {
         await adjustSensorStockMutation.mutateAsync({
-          stockId: currentAdjustItem.id!,
+          stockId: String(currentAdjustItem.id!),
           quantity: change,
           reason: adjustmentReason,
         });
@@ -951,23 +983,44 @@ export default function InventoryManagementPage() {
           stockId: currentAdjustItem.id!,
           quantity: change,
           reason: adjustmentReason,
-          invoiceNumber: (currentAdjustItem as ComponentStockItem)
-            .invoiceNumber,
+          invoiceNumber: adjustmentType === "increase" ? invoiceNumber :
+            (currentAdjustItem as ComponentStockItem).invoiceNumber,
+          fileKey: fileKey || undefined,
+          price: undefined, // Could be added to UI later
+          supplier: undefined, // Could be added to UI later
         });
       }
 
       setAdjustmentDialogOpen(false);
+      // Clear file state after successful adjustment
+      setInvoiceFile(null);
+      setInvoiceNumber("");
     } catch (error) {
       console.error("Adjustment failed:", error);
+      setSnackbar({
+        open: true,
+        message: "Adjustment failed: " + (error as Error).message,
+        severity: "error",
+      });
     }
   };
-  const handleEditItem = (item: InventoryItem) => {
+  const handleEditItem = async (item: InventoryItem) => {
     // Če je komponenta, poišči najnovejši vnos iz allComponents
     if ("componentId" in item) {
       const freshComponent = allComponents.find((c) => c.id === item.id);
       setEditItem(freshComponent ?? item);
+
+      // Fetch invoice history for this component
+      try {
+        const history = await fetchComponentInvoiceHistory(item.componentId);
+        setInvoiceHistory(history);
+      } catch (error) {
+        console.error('Failed to fetch invoice history:', error);
+        setInvoiceHistory([]);
+      }
     } else {
       setEditItem(item);
+      setInvoiceHistory([]); // Clear invoice history for sensors
     }
     setOpen(true);
   };
@@ -1004,148 +1057,391 @@ export default function InventoryManagementPage() {
     );
   };
 
+  // Handle invoice file download
+  const handleDownloadInvoiceFile = async (invoiceNumber: string, filename: string) => {
+    try {
+      const { downloadUrl } = await getInvoiceFileDownloadUrl(invoiceNumber);
+
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setSnackbar({
+        open: true,
+        message: "Download started successfully!",
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Download failed: " + (error as Error).message,
+        severity: "error",
+      });
+    }
+  };
+
+  // Add report generation functions
+
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
-      <div className="min-h-screen bg-gray-100 p-8">
+      <Container maxWidth={false} sx={{
+        py: { xs: 2, md: 2 },
+        px: { xs: 2, md: 3 },
+        minHeight: "100vh",
+        bgcolor: "background.default"
+      }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="mx-auto max-w-7xl"
         >
-          <Box className="mb-8 flex items-center justify-between">
-            <Box className="flex flex-col items-start gap-2">
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            alignItems: { xs: 'center', md: 'flex-start' },
+            justifyContent: 'space-between',
+            mb: { xs: 4, md: 8 },
+            gap: { xs: 3, md: 0 }
+          }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'center', md: 'flex-start' },
+              gap: { xs: 1, md: 2 },
+              textAlign: { xs: 'center', md: 'left' }
+            }}>
               <Image
                 src="/senzemo-large-01 (9).png"
                 alt="Senzemo Logo"
-                width={80}
-                height={80}
-                className="h-16 w-auto"
+                width={isMobile ? 60 : 80}
+                height={isMobile ? 60 : 80}
+                className="h-auto w-auto"
               />
-              <Typography
-                variant="h4"
-                component="h1"
-                className="font-medium text-gray-600"
-              >
-                Inventory
-              </Typography>
+              <Box>
+                <Typography
+                  variant={isMobile ? "h5" : "h4"}
+                  component="h1"
+                  sx={{
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    mb: isMobile ? 0 : 1
+                  }}
+                >
+                  Inventory Management
+                </Typography>
+                {!isMobile && (
+                  <Typography variant="body2" color="text.secondary">
+                    Manage your device and component inventory
+                  </Typography>
+                )}
+              </Box>
             </Box>
+
+
+
           </Box>
 
-          <Tabs value={activeTab} onChange={handleTabChange} className="mb-6">
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            sx={{
+              mb: { xs: 3, md: 6 },
+              '& .MuiTab-root': {
+                minHeight: { xs: 48, md: 'auto' },
+                fontSize: { xs: '0.875rem', md: '1rem' },
+                fontWeight: 600
+              },
+              '& .MuiTabs-indicator': {
+                height: 3
+              }
+            }}
+            variant={isMobile ? "fullWidth" : "standard"}
+            scrollButtons={isMobile ? "auto" : false}
+          >
             <Tab label="Devices" />
             <Tab label="Components" />
-            <Tab label="Logs" icon={<HistoryIcon />} />
+            <Tab
+              label={isMobile ? "Logs" : "Activity Logs"}
+              icon={<HistoryIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label={isMobile ? "Reports" : "Email Reports"}
+              icon={<EmailIcon />}
+              iconPosition="start"
+            />
           </Tabs>
 
           {activeTab === 2 ? (
             // Logs tab
-            <Paper elevation={3} className="mb-8 overflow-hidden">
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Timestamp</TableCell>
-                      <TableCell>Item</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Change</TableCell>
-                      <TableCell>Reason</TableCell>
-                      <TableCell>User</TableCell>
-                      <TableCell>Invoice</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell>{log.timestamp.toLocaleString()}</TableCell>
-                        <TableCell>{log.itemName}</TableCell>
-                        <TableCell>{log.itemType}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={
-                              log.change > 0 ? `+${log.change}` : log.change
-                            }
-                            color={log.change > 0 ? "success" : "error"}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>{log.reason}</TableCell>
-                        <TableCell>{log.user}</TableCell>
-                        <TableCell>{log.invoiceNumber || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                    {logs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center">
-                          No logs available
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+            <>
+              {/* Mobile Card Layout for Logs */}
+              {isMobile ? (
+                <Box sx={{ mb: 3 }}>
+                  {logs.length > 0 ? (
+                    <AnimatePresence>
+                      {logs.map((log) => (
+                        <motion.div
+                          key={log.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Card
+                            elevation={2}
+                            sx={{
+                              mb: 2,
+                              borderRadius: 2,
+                              border: '1px solid',
+                              borderColor: 'divider'
+                            }}
+                          >
+                            <CardContent sx={{ p: 3 }}>
+                              {/* Header with item name and change */}
+                              <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                mb: 2
+                              }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography
+                                    variant="h6"
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: 'primary.main',
+                                      mb: 0.5
+                                    }}
+                                  >
+                                    {log.itemName}
+                                  </Typography>
+                                  <Chip
+                                    label={log.itemType}
+                                    size="small"
+                                    variant="outlined"
+                                    color="secondary"
+                                  />
+                                </Box>
+                                <Chip
+                                  label={log.change > 0 ? `+${log.change}` : log.change}
+                                  color={log.change > 0 ? "success" : "error"}
+                                  variant="filled"
+                                  size="medium"
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              </Box>
+
+                              {/* Details grid */}
+                              <Box sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr',
+                                gap: 2
+                              }}>
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Timestamp
+                                  </Typography>
+                                  <Typography variant="body2" fontWeight={500}>
+                                    {log.timestamp.toLocaleString()}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Reason
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {log.reason}
+                                  </Typography>
+                                </Box>
+
+                                {log.user && (
+                                  <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                      User
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      {log.user}
+                                    </Typography>
+                                  </Box>
+                                )}
+
+                                {log.invoiceNumber && (
+                                  <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Invoice Number
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      {log.invoiceNumber}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  ) : (
+                    <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                      <Typography color="text.secondary" variant="h6">
+                        No logs available
+                      </Typography>
+                      <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                        Activity logs will appear here when you make changes
+                      </Typography>
+                    </Card>
+                  )}
+                </Box>
+              ) : (
+                /* Desktop Table Layout for Logs */
+                <Paper elevation={3} className="mb-8 overflow-hidden">
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Timestamp</TableCell>
+                          <TableCell>Item</TableCell>
+                          <TableCell>Type</TableCell>
+                          <TableCell>Change</TableCell>
+                          <TableCell>Reason</TableCell>
+                          <TableCell>User</TableCell>
+                          <TableCell>Invoice</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {logs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell>{log.timestamp.toLocaleString()}</TableCell>
+                            <TableCell>{log.itemName}</TableCell>
+                            <TableCell>{log.itemType}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={
+                                  log.change > 0 ? `+${log.change}` : log.change
+                                }
+                                color={log.change > 0 ? "success" : "error"}
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell>{log.reason}</TableCell>
+                            <TableCell>{log.user}</TableCell>
+                            <TableCell>{log.invoiceNumber || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                        {logs.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} align="center">
+                              No logs available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
+            </>
+          ) : activeTab === 3 ? (
+            // Email Reports tab
+            <EmailReportManager />
           ) : activeTab === 0 ? (
             // Sensors tab
             <>
 
 
-              {/* Hierarhični prikaz senzorjev */}
-              <Paper elevation={3} className="mb-8 overflow-hidden">
-                <Box className="p-4">
-                  <Typography variant="h6" className="mb-4">
+              {/* Device Inventory - Hierarchical View */}
+              <Paper elevation={3} sx={{ mb: 4, overflow: 'hidden' }}>
+                <Box sx={{ p: { xs: 2, md: 4 } }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      mb: { xs: 2, md: 4 },
+                      fontWeight: 600,
+                      color: 'primary.main'
+                    }}
+                  >
                     Device Inventory - Hierarchical View
                   </Typography>
 
                   {productionHierarchy.length === 0 ? (
-                    <Typography
-                      color="textSecondary"
-                      className="py-8 text-center"
-                    >
-                      No devices in inventory
-                    </Typography>
+                    <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                      <Typography color="text.secondary" variant="h6">
+                        No devices in inventory
+                      </Typography>
+                      <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                        Add devices to see them organized by type and frequency
+                      </Typography>
+                    </Card>
                   ) : (
-                    <div className="space-y-2">
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {productionHierarchy.map((sensorGroup) => (
-                        <div
+                        <Card
                           key={sensorGroup.deviceType}
-                          className="rounded-lg border"
+                          elevation={1}
+                          sx={{
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: 'divider'
+                          }}
                         >
-                          {/* Nivo 1: Device Type */}
-                          <div
-                            className="flex cursor-pointer items-center justify-between bg-slate-50 p-4 hover:bg-slate-100"
-                            onClick={() =>
-                              toggleSensorExpanded(sensorGroup.deviceType)
-                            }
+                          {/* Level 1: Device Type */}
+                          <Box
+                            onClick={() => toggleSensorExpanded(sensorGroup.deviceType)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: { xs: 2, md: 3 },
+                              bgcolor: 'grey.50',
+                              cursor: 'pointer',
+                              minHeight: { xs: 60, md: 'auto' },
+                              '&:hover': {
+                                bgcolor: 'grey.100'
+                              }
+                            }}
                           >
-                            <div className="flex items-center space-x-3">
-                              <IconButton size="small">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
+                              <IconButton
+                                size={isMobile ? "medium" : "small"}
+                                sx={{
+                                  minWidth: { xs: 44, md: 'auto' },
+                                  minHeight: { xs: 44, md: 'auto' }
+                                }}
+                              >
                                 {sensorGroup.expanded ? (
                                   <ExpandMoreIcon />
                                 ) : (
                                   <ChevronRightIcon />
                                 )}
                               </IconButton>
-                              <MemoryIcon className="text-slate-600" />
+                              <MemoryIcon sx={{ color: 'text.secondary' }} />
                               <Typography
-                                variant="h6"
-                                className="font-bold text-slate-800"
+                                variant={isMobile ? "subtitle1" : "h6"}
+                                sx={{
+                                  fontWeight: 600,
+                                  color: 'text.primary'
+                                }}
                               >
                                 {sensorGroup.deviceType}
                               </Typography>
                               <Chip
-                                label={`Total: ${sensorGroup.totalDevices}`}
+                                label={`${sensorGroup.totalDevices} total`}
                                 color="primary"
-                                size="small"
+                                size={isMobile ? "medium" : "small"}
                               />
-                            </div>
-                            <Box className="flex items-center space-x-2">
-                              {/* Add button disabled for production list view */}
                             </Box>
-                          </div>
+                          </Box>
 
-                          {/* Nivo 2: Frekvence */}
+                          {/* Level 2: Frequencies */}
                           <AnimatePresence>
                             {sensorGroup.expanded && (
                               <motion.div
@@ -1153,34 +1449,51 @@ export default function InventoryManagementPage() {
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
                                 transition={{ duration: 0.3 }}
-                                className="border-t"
                               >
                                 {sensorGroup.frequencies.map((freqGroup) => (
-                                  <div
+                                  <Box
                                     key={freqGroup.frequency}
-                                    className="border-b last:border-b-0"
+                                    sx={{ borderTop: 1, borderColor: 'divider' }}
                                   >
-                                    <div
-                                      className="flex cursor-pointer items-center justify-between bg-gray-50 p-3 pl-12 hover:bg-gray-100"
+                                    <Box
                                       onClick={() =>
                                         toggleFrequencyExpanded(
                                           sensorGroup.deviceType,
                                           freqGroup.frequency,
                                         )
                                       }
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        p: { xs: 2, md: 3 },
+                                        pl: { xs: 3, md: 6 },
+                                        bgcolor: 'grey.25',
+                                        cursor: 'pointer',
+                                        minHeight: { xs: 56, md: 'auto' },
+                                        '&:hover': {
+                                          bgcolor: 'grey.50'
+                                        }
+                                      }}
                                     >
-                                      <div className="flex items-center space-x-3">
-                                        <IconButton size="small">
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
+                                        <IconButton
+                                          size={isMobile ? "medium" : "small"}
+                                          sx={{
+                                            minWidth: { xs: 44, md: 'auto' },
+                                            minHeight: { xs: 44, md: 'auto' }
+                                          }}
+                                        >
                                           {freqGroup.expanded ? (
                                             <ExpandMoreIcon />
                                           ) : (
                                             <ChevronRightIcon />
                                           )}
                                         </IconButton>
-                                        <RadioIcon className="text-gray-600" />
+                                        <RadioIcon sx={{ color: 'text.secondary' }} />
                                         <Typography
-                                          variant="subtitle1"
-                                          className="font-semibold text-gray-800"
+                                          variant={isMobile ? "body1" : "subtitle1"}
+                                          sx={{ fontWeight: 500 }}
                                         >
                                           {freqGroup.frequency}
                                         </Typography>
@@ -1190,59 +1503,78 @@ export default function InventoryManagementPage() {
                                           size="small"
                                           variant="outlined"
                                         />
-                                      </div>
-                                    </div>
+                                      </Box>
+                                    </Box>
 
-                                    {/* Nivo 3: Posamezni senzorji (device EUI) */}
+                                    {/* Level 3: Individual devices */}
                                     <AnimatePresence>
                                       {freqGroup.expanded && (
                                         <motion.div
                                           initial={{ opacity: 0, height: 0 }}
-                                          animate={{
-                                            opacity: 1,
-                                            height: "auto",
-                                          }}
+                                          animate={{ opacity: 1, height: "auto" }}
                                           exit={{ opacity: 0, height: 0 }}
                                           transition={{ duration: 0.3 }}
-                                          className="bg-gray-50"
                                         >
-                                          {freqGroup.devices.map((device) => (
-                                            <div
-                                              key={device.id}
-                                              className="border-b p-3 pl-20 last:border-b-0 hover:bg-gray-100"
-                                            >
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-3">
-                                                  <Typography
-                                                    variant="body2"
-                                                    className="font-mono"
-                                                  >
-                                                    DevEUI:{" "}
-                                                    {device.devEUI || "N/A"}
-                                                  </Typography>
-                                                  <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
-                                                  >
-                                                    AppEUI:{" "}
-                                                    {device.appEUI || "N/A"}
-                                                  </Typography>
-                                                  <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
-                                                  >
-                                                    HW:{" "}
-                                                    {device.hwVersion || "N/A"}
-                                                  </Typography>
-                                                  <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
-                                                  >
-                                                    FW:{" "}
-                                                    {device.fwVersion || "N/A"}
-                                                  </Typography>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
+                                          <Box sx={{ bgcolor: 'grey.25' }}>
+                                            {freqGroup.devices.map((device) => (
+                                              <Box
+                                                key={device.id}
+                                                sx={{
+                                                  p: { xs: 2, md: 3 },
+                                                  pl: { xs: 4, md: 10 },
+                                                  borderTop: '1px solid',
+                                                  borderColor: 'divider',
+                                                  '&:hover': {
+                                                    bgcolor: 'grey.50'
+                                                  }
+                                                }}
+                                              >
+                                                <Box sx={{
+                                                  display: 'flex',
+                                                  flexDirection: { xs: 'column', md: 'row' },
+                                                  alignItems: { xs: 'flex-start', md: 'center' },
+                                                  justifyContent: 'space-between',
+                                                  gap: { xs: 1, md: 2 }
+                                                }}>
+                                                  <Box sx={{
+                                                    display: 'flex',
+                                                    flexDirection: { xs: 'column', sm: 'row' },
+                                                    gap: { xs: 1, sm: 2 },
+                                                    flex: 1
+                                                  }}>
+                                                    <Typography
+                                                      variant="body2"
+                                                      sx={{
+                                                        fontFamily: 'monospace',
+                                                        fontWeight: 500,
+                                                        color: 'primary.main'
+                                                      }}
+                                                    >
+                                                      DevEUI: {device.devEUI || "N/A"}
+                                                    </Typography>
+                                                    {!isMobile && (
+                                                      <>
+                                                        <Typography
+                                                          variant="body2"
+                                                          color="text.secondary"
+                                                        >
+                                                          AppEUI: {device.appEUI || "N/A"}
+                                                        </Typography>
+                                                        <Typography
+                                                          variant="body2"
+                                                          color="text.secondary"
+                                                        >
+                                                          HW: {device.hwVersion || "N/A"}
+                                                        </Typography>
+                                                        <Typography
+                                                          variant="body2"
+                                                          color="text.secondary"
+                                                        >
+                                                          FW: {device.fwVersion || "N/A"}
+                                                        </Typography>
+                                                      </>
+                                                    )}
+                                                  </Box>
                                                   <Chip
                                                     label={
                                                       device.isAvailable
@@ -1256,118 +1588,185 @@ export default function InventoryManagementPage() {
                                                     }
                                                     size="small"
                                                   />
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
+                                                </Box>
+                                                {isMobile && (
+                                                  <Box sx={{
+                                                    mt: 1,
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr',
+                                                    gap: 1
+                                                  }}>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                      AppEUI: {device.appEUI || "N/A"}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                      HW: {device.hwVersion || "N/A"}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
+                                                      FW: {device.fwVersion || "N/A"}
+                                                    </Typography>
+                                                  </Box>
+                                                )}
+                                              </Box>
+                                            ))}
+                                          </Box>
                                         </motion.div>
                                       )}
                                     </AnimatePresence>
-                                  </div>
+                                  </Box>
                                 ))}
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </div>
+                        </Card>
                       ))}
-                    </div>
+                    </Box>
                   )}
                 </Box>
               </Paper>
               {/* Production Capacity Summary */}
               {capacitySummary && (
-                <Paper elevation={3} className="mb-6">
-                  <Box className="p-4">
-                    <Box className="mb-4 flex items-center">
-                      <BuildIcon className="mr-2 text-gray-600" />
+                <Paper elevation={3} sx={{ mb: 3 }}>
+                  <Box sx={{ p: { xs: 2, md: 4 } }}>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      mb: { xs: 2, md: 3 },
+                      gap: 1
+                    }}>
+                      <BuildIcon sx={{ color: 'text.secondary' }} />
                       <Typography
-                        variant="h6"
-                        className="font-bold text-gray-800"
+                        variant={isMobile ? "h6" : "h5"}
+                        sx={{
+                          fontWeight: 600,
+                          color: 'primary.main'
+                        }}
                       >
-                        Povzetek proizvodnih zmogljivosti
+                        Production Capacity Summary
                       </Typography>
                     </Box>
 
-
-
                     {/* Detailed breakdown per sensor */}
                     {productionCapacity && productionCapacity.length > 0 && (
-                      <Box className="mt-4">
+                      <Box>
                         <Typography
                           variant="subtitle1"
-                          className="mb-3 font-semibold"
+                          sx={{
+                            mb: { xs: 2, md: 3 },
+                            fontWeight: 600,
+                            color: 'text.primary'
+                          }}
                         >
-                          Podrobnosti po tipih senzorjev:
+                          Breakdown by sensor type:
                         </Typography>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <Box sx={{
+                          display: 'grid',
+                          gridTemplateColumns: {
+                            xs: '1fr',
+                            sm: 'repeat(2, 1fr)',
+                            lg: 'repeat(3, 1fr)'
+                          },
+                          gap: { xs: 2, md: 3 }
+                        }}>
                           {productionCapacity.map((sensor) => (
-                            <Card key={sensor.sensorId} variant="outlined">
-                              <CardContent className="p-3">
-                                <Box className="mb-2 flex items-center justify-between">
+                            <Card
+                              key={sensor.sensorId}
+                              variant="outlined"
+                              sx={{
+                                borderRadius: 2,
+                                '&:hover': {
+                                  boxShadow: 2
+                                }
+                              }}
+                            >
+                              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                                <Box sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  mb: 2
+                                }}>
                                   <Typography
                                     variant="subtitle2"
-                                    className="font-medium"
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: 'text.primary',
+                                      flex: 1,
+                                      mr: 1
+                                    }}
                                   >
                                     {sensor.sensorName}
                                   </Typography>
                                   <Chip
-                                    label={`${sensor.maxProducible} kos`}
+                                    label={`${sensor.maxProducible} units`}
                                     color={
                                       sensor.maxProducible > 0
                                         ? "success"
                                         : "default"
                                     }
-                                    size="small"
+                                    size={isMobile ? "medium" : "small"}
+                                    sx={{ fontWeight: 600 }}
                                   />
                                 </Box>
 
                                 {sensor.hasAllComponents ? (
                                   <Box>
                                     <Typography
-                                      variant="caption"
-                                      color="textSecondary"
-                                      className="mb-1 block"
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{ mb: 1 }}
                                     >
-                                      Lahko sestavite{" "}
-                                      <strong>{sensor.maxProducible}</strong>{" "}
-                                      senzorjev
+                                      Can assemble <strong>{sensor.maxProducible}</strong> sensors
                                     </Typography>
-                                    {sensor.componentDetails.map(
-                                      (comp, idx) => (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                      {sensor.componentDetails.map((comp, idx) => (
                                         <Typography
                                           key={idx}
                                           variant="caption"
-                                          className={`block ${comp.isLimitingFactor ? "font-medium text-orange-600" : "text-gray-600"}`}
+                                          sx={{
+                                            color: comp.isLimitingFactor
+                                              ? 'warning.main'
+                                              : 'text.secondary',
+                                            fontWeight: comp.isLimitingFactor ? 600 : 400
+                                          }}
                                         >
-                                          {comp.name}: {comp.available}/
-                                          {comp.required}
-                                          {comp.isLimitingFactor &&
-                                            " (omejuje)"}
+                                          {comp.name}: {comp.available}/{comp.required}
+                                          {comp.isLimitingFactor && " (limiting)"}
                                         </Typography>
-                                      ),
-                                    )}
+                                      ))}
+                                    </Box>
                                   </Box>
                                 ) : (
-                                  <Typography variant="caption" color="error">
-                                    Manjkajo komponente
+                                  <Typography
+                                    variant="body2"
+                                    color="error.main"
+                                    sx={{ fontWeight: 500 }}
+                                  >
+                                    Missing components
                                   </Typography>
                                 )}
                               </CardContent>
                             </Card>
                           ))}
-                        </div>
+                        </Box>
                       </Box>
                     )}
                   </Box>
                 </Paper>
               )}
 
-              <Box className="flex justify-end">
+              <Box sx={{
+                display: 'flex',
+                justifyContent: { xs: 'center', md: 'flex-end' },
+                width: '100%'
+              }}>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleClickOpen}
                   startIcon={<AddIcon />}
+                  size={isMobile ? "large" : "medium"}
+                  sx={{ minWidth: { xs: '200px', md: 'auto' } }}
                 >
                   Add Device
                 </Button>
@@ -1376,139 +1775,452 @@ export default function InventoryManagementPage() {
           ) : (
             // Components tab
             <>
-              <Paper elevation={3} className="mb-8 overflow-hidden">
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Quantity</TableCell>
-                        <TableCell>Price per Item</TableCell>
-                        <TableCell>Supplier</TableCell>
-                        <TableCell>Supplier Contact</TableCell>
-                        <TableCell>Sensor Requirements</TableCell>
-                        <TableCell>Last Updated</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <AnimatePresence>
-                        {allComponents.length > 0 &&
-                          allComponents.map((item1) => (
-                            <motion.tr
-                              key={item1.id}
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <TableCell className="font-bold">
-                                {item1.name || "-"}
-                              </TableCell>
-                              <TableCell>
-                                <Box className="flex items-center">
+              {/* Mobile Card Layout */}
+              {isMobile ? (
+                <Box sx={{ mb: 3 }}>
+                  <AnimatePresence>
+                    {allComponents.length > 0 ? (
+                      allComponents.map((item1) => (
+                        <motion.div
+                          key={item1.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Card
+                            elevation={2}
+                            sx={{
+                              mb: 2,
+                              borderRadius: 2,
+                              border: '1px solid',
+                              borderColor: 'divider'
+                            }}
+                          >
+                            <CardContent sx={{ p: 3 }}>
+                              {/* Header with name and edit button */}
+                              <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                mb: 2
+                              }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: 'primary.main',
+                                    flex: 1,
+                                    mr: 1
+                                  }}
+                                >
+                                  {item1.name || "Unnamed Component"}
+                                </Typography>
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => handleEditItem(item1)}
+                                  sx={{ p: 1 }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Box>
+
+                              {/* Quantity controls */}
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                mb: 2,
+                                p: 2,
+                                bgcolor: 'grey.50',
+                                borderRadius: 1
+                              }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Quantity
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                   <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      openAdjustmentDialog(item1, "decrease")
-                                    }
+                                    size="medium"
+                                    onClick={() => openAdjustmentDialog(item1, "decrease")}
+                                    sx={{
+                                      bgcolor: 'error.main',
+                                      color: 'white',
+                                      '&:hover': { bgcolor: 'error.dark' },
+                                      minWidth: 44,
+                                      minHeight: 44
+                                    }}
                                   >
                                     <RemoveIcon />
                                   </IconButton>
-                                  <Typography className="mx-2">
-                                    {item1.quantity ?? "-"}
+                                  <Typography
+                                    variant="h6"
+                                    sx={{
+                                      mx: 3,
+                                      minWidth: 40,
+                                      textAlign: 'center',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    {item1.quantity ?? "0"}
                                   </Typography>
                                   <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      openAdjustmentDialog(item1, "increase")
-                                    }
+                                    size="medium"
+                                    onClick={() => openAdjustmentDialog(item1, "increase")}
+                                    sx={{
+                                      bgcolor: 'success.main',
+                                      color: 'white',
+                                      '&:hover': { bgcolor: 'success.dark' },
+                                      minWidth: 44,
+                                      minHeight: 44
+                                    }}
                                   >
                                     <AddIcon />
                                   </IconButton>
                                 </Box>
-                              </TableCell>
-                              <TableCell>
-                                {item1.price
-                                  ? `€${item1.price.toFixed(2)}`
-                                  : "-"}
-                              </TableCell>
-                              <TableCell>
-                                {item1.contactDetails?.supplier || "-"}
-                              </TableCell>
-                              <TableCell>
-                                {item1.contactDetails?.email ? (
-                                  item1.contactDetails.email.includes("@") ? (
-                                    <a
-                                      href={`mailto:${item1.contactDetails.email}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{
-                                        color: "#0369a1",
-                                        textDecoration: "underline",
-                                      }}
-                                    >
-                                      {item1.contactDetails.email}
-                                    </a>
-                                  ) : (
-                                    <a
-                                      href={
-                                        item1.contactDetails.email.startsWith(
-                                          "http",
-                                        )
-                                          ? item1.contactDetails.email
-                                          : `https://${item1.contactDetails.email}`
-                                      }
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{
-                                        color: "#0369a1",
-                                        textDecoration: "underline",
-                                      }}
-                                    >
-                                      {item1.contactDetails.email}
-                                    </a>
-                                  )
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {Array.isArray(item1.sensorAssignments) &&
-                                  item1.sensorAssignments.length > 0
-                                  ? item1.sensorAssignments
-                                    .map(
-                                      (sa) =>
-                                        `${sa.sensorName} (${sa.requiredQuantity})`,
-                                    )
-                                    .join(", ")
-                                  : "-"}
-                              </TableCell>
-                              <TableCell>
-                                {item1.lastUpdated?.toLocaleString?.() || "-"}
-                              </TableCell>
-                              <TableCell>
-                                <IconButton
-                                  color="primary"
-                                  onClick={() => handleEditItem(item1)}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              </TableCell>
-                            </motion.tr>
-                          ))}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
+                              </Box>
 
-              <Box className="flex justify-end">
+                              {/* Component details grid */}
+                              <Box sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: 2,
+                                mb: 2
+                              }}>
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Price per Item
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight={500}>
+                                    {item1.price ? `€${item1.price.toFixed(2)}` : "-"}
+                                  </Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Last Updated
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {item1.lastUpdated ?
+                                      new Date(item1.lastUpdated).toLocaleDateString() : "-"}
+                                  </Typography>
+                                </Box>
+                              </Box>
+
+                              {/* Supplier information */}
+                              <Box sx={{ mb: 2 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Supplier
+                                </Typography>
+                                <Typography variant="body1" fontWeight={500}>
+                                  {item1.contactDetails?.supplier || "-"}
+                                </Typography>
+                                {item1.contactDetails?.email && (
+                                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                    {item1.contactDetails.email.includes("@") ? (
+                                      <a
+                                        href={`mailto:${item1.contactDetails.email}`}
+                                        style={{
+                                          color: "#0369a1",
+                                          textDecoration: "none"
+                                        }}
+                                      >
+                                        {item1.contactDetails.email}
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={
+                                          item1.contactDetails.email.startsWith("http")
+                                            ? item1.contactDetails.email
+                                            : `https://${item1.contactDetails.email}`
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          color: "#0369a1",
+                                          textDecoration: "none"
+                                        }}
+                                      >
+                                        {item1.contactDetails.email}
+                                      </a>
+                                    )}
+                                  </Typography>
+                                )}
+                              </Box>
+
+                              {/* Sensor requirements */}
+                              {Array.isArray(item1.sensorAssignments) &&
+                                item1.sensorAssignments.length > 0 && (
+                                  <Box sx={{ mb: 2 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Sensor Requirements
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                      {item1.sensorAssignments.map((sa, index) => (
+                                        <Chip
+                                          key={index}
+                                          label={`${sa.sensorName} (${sa.requiredQuantity})`}
+                                          size="small"
+                                          variant="outlined"
+                                          color="primary"
+                                        />
+                                      ))}
+                                    </Box>
+                                  </Box>
+                                )}
+
+                              {/* Invoice file information */}
+                              <Box sx={{ mb: 2 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Invoice Information
+                                </Typography>
+                                {item1.invoiceFile ? (
+                                  <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    mt: 0.5,
+                                    p: 1,
+                                    bgcolor: 'grey.50',
+                                    borderRadius: 1
+                                  }}>
+                                    <AttachFileIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                    <Box sx={{ flex: 1 }}>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {item1.invoiceNumber || "Unknown Invoice"}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {item1.invoiceFile}
+                                      </Typography>
+                                    </Box>
+                                    <Button
+                                      size="small"
+                                      startIcon={<DownloadIcon />}
+                                      onClick={() => handleDownloadInvoiceFile(
+                                        item1.invoiceNumber || '',
+                                        item1.invoiceFile || ''
+                                      )}
+                                      sx={{
+                                        textTransform: 'none',
+                                        fontSize: '0.75rem'
+                                      }}
+                                    >
+                                      Download
+                                    </Button>
+                                  </Box>
+                                ) : item1.invoiceNumber ? (
+                                  <Box sx={{
+                                    mt: 0.5,
+                                    p: 1,
+                                    bgcolor: 'warning.light',
+                                    borderRadius: 1
+                                  }}>
+                                    <Typography variant="body2" color="warning.dark">
+                                      Invoice: {item1.invoiceNumber}
+                                    </Typography>
+                                    <Typography variant="caption" color="warning.dark">
+                                      No file uploaded
+                                    </Typography>
+                                  </Box>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    No invoice information
+                                  </Typography>
+                                )}
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                        <Typography color="text.secondary" variant="h6">
+                          No components in inventory
+                        </Typography>
+                        <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                          Add your first component to get started
+                        </Typography>
+                      </Card>
+                    )}
+                  </AnimatePresence>
+                </Box>
+              ) : (
+                /* Desktop Table Layout */
+                <Paper elevation={3} className="mb-8 overflow-hidden">
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Name</TableCell>
+                          <TableCell>Quantity</TableCell>
+                          <TableCell>Price per Item</TableCell>
+                          <TableCell>Supplier</TableCell>
+                          <TableCell>Supplier Contact</TableCell>
+                          <TableCell>Sensor Requirements</TableCell>
+                          <TableCell>Invoice File</TableCell>
+                          <TableCell>Last Updated</TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <AnimatePresence>
+                          {allComponents.length > 0 &&
+                            allComponents.map((item1) => (
+                              <motion.tr
+                                key={item1.id}
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <TableCell className="font-bold">
+                                  {item1.name || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <Box className="flex items-center">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        openAdjustmentDialog(item1, "decrease")
+                                      }
+                                    >
+                                      <RemoveIcon />
+                                    </IconButton>
+                                    <Typography className="mx-2">
+                                      {item1.quantity ?? "-"}
+                                    </Typography>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        openAdjustmentDialog(item1, "increase")
+                                      }
+                                    >
+                                      <AddIcon />
+                                    </IconButton>
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  {item1.price
+                                    ? `€${item1.price.toFixed(2)}`
+                                    : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {item1.contactDetails?.supplier || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {item1.contactDetails?.email ? (
+                                    item1.contactDetails.email.includes("@") ? (
+                                      <a
+                                        href={`mailto:${item1.contactDetails.email}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          color: "#0369a1",
+                                          textDecoration: "underline",
+                                        }}
+                                      >
+                                        {item1.contactDetails.email}
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={
+                                          item1.contactDetails.email.startsWith(
+                                            "http",
+                                          )
+                                            ? item1.contactDetails.email
+                                            : `https://${item1.contactDetails.email}`
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          color: "#0369a1",
+                                          textDecoration: "underline",
+                                        }}
+                                      >
+                                        {item1.contactDetails.email}
+                                      </a>
+                                    )
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {Array.isArray(item1.sensorAssignments) &&
+                                    item1.sensorAssignments.length > 0
+                                    ? item1.sensorAssignments
+                                      .map(
+                                        (sa) =>
+                                          `${sa.sensorName} (${sa.requiredQuantity})`,
+                                      )
+                                      .join(", ")
+                                    : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {item1.invoiceFile ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <AttachFileIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                      <Button
+                                        size="small"
+                                        startIcon={<DownloadIcon />}
+                                        onClick={() => handleDownloadInvoiceFile(
+                                          item1.invoiceNumber || '',
+                                          item1.invoiceFile || ''
+                                        )}
+                                        sx={{
+                                          textTransform: 'none',
+                                          fontSize: '0.75rem',
+                                          minWidth: 'auto'
+                                        }}
+                                      >
+                                        {item1.invoiceFile.length > 20
+                                          ? `${item1.invoiceFile.substring(0, 17)}...`
+                                          : item1.invoiceFile
+                                        }
+                                      </Button>
+                                    </Box>
+                                  ) : item1.invoiceNumber ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {item1.invoiceNumber}
+                                      </Typography>
+                                      <Typography variant="caption" color="warning.main">
+                                        (No file)
+                                      </Typography>
+                                    </Box>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {item1.lastUpdated?.toLocaleString?.() || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <IconButton
+                                    color="primary"
+                                    onClick={() => handleEditItem(item1)}
+                                  >
+                                    <EditIcon />
+                                  </IconButton>
+                                </TableCell>
+                              </motion.tr>
+                            ))}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
+
+              <Box sx={{
+                display: 'flex',
+                justifyContent: { xs: 'center', md: 'flex-end' },
+                width: '100%'
+              }}>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleClickOpen}
                   startIcon={<AddIcon />}
+                  size={isMobile ? "large" : "medium"}
+                  sx={{ minWidth: { xs: '200px', md: 'auto' } }}
                 >
                   Add {activeTab === 0 ? "Device" : "Component"}
                 </Button>
@@ -1516,541 +2228,832 @@ export default function InventoryManagementPage() {
             </>
           )}
         </motion.div>
-      </div>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editItem?.id ? "Edit Item" : "Add Inventory Item"}
-        </DialogTitle>
-        <DialogContent className="p-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              {activeTab === 0 ? (
-                <>
-                  <Select
-                    value={
-                      editItem
-                        ? (editItem as SenzorStockItem).senzorId || ""
-                        : ""
-                    }
-                    onChange={(e) => {
-                      const sensorId = Number(e.target.value);
-                      const selectedSensor = allSensors.find(
-                        (s) => s.id === sensorId,
-                      );
-                      if (selectedSensor) {
+
+        <Dialog
+          open={open}
+          onClose={handleClose}
+          maxWidth="md"
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, md: 2 },
+              m: { xs: 0, md: 2 },
+              maxHeight: { xs: '100vh', md: '90vh' }
+            }
+          }}
+        >
+          <DialogTitle sx={{
+            backgroundColor: 'primary.main',
+            color: 'primary.contrastText',
+            fontWeight: 600,
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <Typography variant={isMobile ? "h6" : "h5"} component="div">
+              {editItem?.id ? "Edit Item" : "Add Inventory Item"}
+            </Typography>
+            {isMobile && (
+              <IconButton
+                onClick={handleClose}
+                sx={{ color: 'primary.contrastText' }}
+              >
+                <ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />
+              </IconButton>
+            )}
+          </DialogTitle>
+          <DialogContent sx={{
+            p: { xs: 2, md: 4 },
+            overflow: 'auto'
+          }}>
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: activeTab === 1 ? '1fr 1fr' : '1fr' },
+              gap: { xs: 3, md: 4 },
+              mt: 2
+            }}>
+              <Box>
+                {activeTab === 0 ? (
+                  <>
+                    <Select
+                      value={
+                        editItem
+                          ? (editItem as SenzorStockItem).senzorId || ""
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const sensorId = Number(e.target.value);
+                        const selectedSensor = allSensors.find(
+                          (s) => s.id === sensorId,
+                        );
+                        if (selectedSensor) {
+                          setEditItem({
+                            ...editItem,
+                            senzorId: selectedSensor.id,
+                            sensorName: selectedSensor.sensorName,
+                          } as SenzorStockItem);
+                        }
+                      }}
+                      label="Sensor"
+                      fullWidth
+                      required
+                      className="mb-4"
+                      displayEmpty
+                    >
+                      <MenuItem value="" disabled>
+                        Select a sensor
+                      </MenuItem>
+                      {allSensors.map((sensor) => (
+                        <MenuItem key={sensor.id} value={sensor.id}>
+                          {sensor.sensorName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+
+                    {/* Frequency dropdown for sensors */}
+                    <Select
+                      value={
+                        editItem && "frequency" in editItem
+                          ? (editItem as SenzorStockItem).frequency || ""
+                          : ""
+                      }
+                      onChange={(e) => {
+                        if (!editItem) return;
                         setEditItem({
                           ...editItem,
-                          senzorId: selectedSensor.id,
-                          sensorName: selectedSensor.sensorName,
+                          frequency: e.target.value as Frequency,
                         } as SenzorStockItem);
+                      }}
+                      label="Frequency"
+                      fullWidth
+                      required
+                      className="mb-4"
+                    >
+                      {frequencyOptions.map((freq) => (
+                        <MenuItem key={freq} value={freq}>
+                          {freq}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <TextField
+                      margin="dense"
+                      id="dev_eui"
+                      label="dev_eui"
+                      type="text"
+                      fullWidth
+                      variant="outlined"
+                      value={
+                        "dev_eui" in (editItem ?? {})
+                          ? (editItem as SenzorStockItem).dev_eui || ""
+                          : ""
                       }
-                    }}
-                    label="Sensor"
-                    fullWidth
-                    required
-                    className="mb-4"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select a sensor
-                    </MenuItem>
-                    {allSensors.map((sensor) => (
-                      <MenuItem key={sensor.id} value={sensor.id}>
-                        {sensor.sensorName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-
-                  {/* Frequency dropdown for sensors */}
-                  <Select
-                    value={
-                      editItem && "frequency" in editItem
-                        ? (editItem as SenzorStockItem).frequency || ""
-                        : ""
-                    }
-                    onChange={(e) => {
-                      if (!editItem) return;
-                      setEditItem({
-                        ...editItem,
-                        frequency: e.target.value as Frequency,
-                      } as SenzorStockItem);
-                    }}
-                    label="Frequency"
-                    fullWidth
-                    required
-                    className="mb-4"
-                  >
-                    {frequencyOptions.map((freq) => (
-                      <MenuItem key={freq} value={freq}>
-                        {freq}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <TextField
-                    margin="dense"
-                    id="dev_eui"
-                    label="dev_eui"
-                    type="text"
-                    fullWidth
-                    variant="outlined"
-                    value={
-                      "dev_eui" in (editItem ?? {})
-                        ? (editItem as SenzorStockItem).dev_eui || ""
-                        : ""
-                    }
-                    onChange={(e) =>
-                      editItem &&
-                      setEditItem({
-                        ...editItem,
-                        dev_eui: e.target.value,
-                      })
-                    }
-                    placeholder="Main Warehouse"
-                  />
-                </>
-              ) : (
-                <>
-                  <Select
-                    value={(editItem as ComponentStockItem)?.componentId || ""}
-                    onChange={(e) => {
-                      const componentId = Number(e.target.value);
-                      const selectedComponent = componentOptions.find(
-                        (c) => c.id === componentId,
-                      );
-                      if (selectedComponent) {
+                      onChange={(e) =>
+                        editItem &&
                         setEditItem({
                           ...editItem,
-                          componentId: selectedComponent.id,
-                          name: selectedComponent.name,
-                        } as ComponentStockItem);
+                          dev_eui: e.target.value,
+                        })
                       }
-                    }}
-                    label="Component"
-                    fullWidth
-                    required
-                    className="mb-4"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select a component
-                    </MenuItem>
-                    {componentOptions.map((component) => (
-                      <MenuItem key={component.id} value={component.id}>
-                        {component.name}
+                      placeholder="Main Warehouse"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Select
+                      value={(editItem as ComponentStockItem)?.componentId || ""}
+                      onChange={(e) => {
+                        const componentId = Number(e.target.value);
+                        const selectedComponent = componentOptions.find(
+                          (c) => c.id === componentId,
+                        );
+                        if (selectedComponent) {
+                          setEditItem({
+                            ...editItem,
+                            componentId: selectedComponent.id,
+                            name: selectedComponent.name,
+                          } as ComponentStockItem);
+                        }
+                      }}
+                      label="Component"
+                      fullWidth
+                      required
+                      className="mb-4"
+                      displayEmpty
+                    >
+                      <MenuItem value="" disabled>
+                        Select a component
                       </MenuItem>
-                    ))}
-                  </Select>
+                      {componentOptions.map((component) => (
+                        <MenuItem key={component.id} value={component.id}>
+                          {component.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
 
-                  <TextField
-                    margin="dense"
-                    id="supplier"
-                    label="Supplier *"
-                    type="text"
-                    fullWidth
-                    variant="outlined"
-                    value={
-                      editItem &&
-                        "contactDetails" in editItem &&
-                        editItem.contactDetails?.supplier
-                        ? editItem.contactDetails.supplier
-                        : ""
-                    }
-                    onChange={(e) => {
-                      if (!editItem) return;
-                      setEditItem({
-                        ...editItem,
-                        contactDetails: {
-                          ...(editItem as ComponentStockItem).contactDetails,
-                          supplier: e.target.value,
-                        },
-                      } as ComponentStockItem);
-                    }}
-                    className="mt-4 mb-4"
-                    required
-                  />
-                  <Typography variant="subtitle1" className="mt-4 mb-2">
-                    Supplier Contact
-                  </Typography>
-                  <TextField
-                    margin="dense"
-                    id="email"
-                    label="Email"
-                    type="email"
-                    fullWidth
-                    variant="outlined"
-                    value={
-                      (editItem as ComponentStockItem)?.contactDetails?.email ||
-                      ""
-                    }
-                    onChange={(e) => {
-                      if (!editItem) return;
-                      setEditItem({
-                        ...editItem,
-                        contactDetails: {
-                          ...(editItem as ComponentStockItem).contactDetails,
-                          email: e.target.value,
-                        },
-                      } as ComponentStockItem);
-                    }}
-                    className="mb-2"
-                  />
-                  <TextField
-                    margin="dense"
-                    id="phone"
-                    label="Phone"
-                    type="tel"
-                    fullWidth
-                    variant="outlined"
-                    value={
-                      (editItem as ComponentStockItem)?.contactDetails?.phone ||
-                      ""
-                    }
-                    onChange={(e) => {
-                      if (!editItem) return;
-                      setEditItem({
-                        ...editItem,
-                        contactDetails: {
-                          ...(editItem as ComponentStockItem).contactDetails,
-                          phone: e.target.value,
-                        },
-                      } as ComponentStockItem);
-                    }}
-                  />
-
-                  <TextField
-                    margin="dense"
-                    id="price"
-                    label="Price per Item (€)"
-                    type="number"
-                    fullWidth
-                    variant="outlined"
-                    value={(editItem as ComponentStockItem)?.price || ""}
-                    onChange={(e) => {
-                      if (!editItem) return;
-                      setEditItem({
-                        ...editItem,
-                        price: parseFloat(e.target.value) || 0,
-                      } as ComponentStockItem);
-                    }}
-                    className="mb-4"
-                    inputProps={{ min: 0, step: 0.01 }}
-                  />
-                </>
-              )}
-
-              <TextField
-                margin="dense"
-                id="quantity"
-                label="Quantity"
-                type="number"
-                fullWidth
-                variant="outlined"
-                value={editItem?.quantity ?? 0}
-                onChange={(e) =>
-                  editItem &&
-                  setEditItem({
-                    ...editItem,
-                    quantity: Math.max(0, parseInt(e.target.value) || 0),
-                  })
-                }
-                className="mt-4 mb-4"
-                inputProps={{ min: 0 }}
-              />
-            </div>
-
-            {activeTab === 1 && (
-              <div className="border-l pl-4">
-                <Typography variant="h6" className="mb-3">
-                  Assign to Sensors
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  className="mb-4"
-                >
-                  Specify how many of this component are needed for each sensor
-                </Typography>
-
-                <div className="mb-6">
-                  <Select
-                    multiple
-                    fullWidth
-                    value={sensorOptions
-                      .filter((opt) => opt.selected)
-                      .map((opt) => opt.id)}
-                    onChange={(e) => {
-                      const selectedIds = e.target.value as number[];
-                      setSensorOptions((prev) =>
-                        prev.map((opt) => ({
-                          ...opt,
-                          selected: selectedIds.includes(opt.id),
-                        })),
-                      );
-                    }}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {(selected as number[]).map((id) => {
-                          const sensor = allSensors.find((s) => s.id === id);
-                          return sensor ? (
-                            <Chip key={id} label={sensor.sensorName} />
-                          ) : null;
-                        })}
-                      </Box>
-                    )}
-                  >
-                    {allSensors.map((sensor) => (
-                      <MenuItem key={sensor.id} value={sensor.id}>
-                        {sensor.sensorName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="mb-6 max-h-48 overflow-y-auto">
-                  {sensorOptions
-                    .filter((option) => option.selected)
-                    .map((option) => (
-                      <div
-                        key={option.id}
-                        className="mb-3 flex items-center justify-between rounded bg-gray-50 p-2"
-                      >
-                        <Typography>{option.name}</Typography>
-                        <TextField
-                          size="small"
-                          type="number"
-                          label="Qty per sensor"
-                          value={option.requiredQuantity}
-                          onChange={(e) =>
-                            handleRequiredQuantityChange(
-                              option.id,
-                              parseInt(e.target.value) || 1,
-                            )
-                          }
-                          className="w-24"
-                          inputProps={{ min: 1 }}
-                        />
-                      </div>
-                    ))}
-                </div>
-
-                <Typography variant="h6" className="mb-3">
-                  Invoice Information
-                </Typography>
-
-                <TextField
-                  label="Invoice Number *"
-                  fullWidth
-                  value={invoiceNumber}
-                  onChange={(e) => handleInvoiceNumberChange(e.target.value)}
-                  className="mb-4"
-                  placeholder="Required for stock increases"
-                  required
-                />
-
-                {/* File upload section with better UI */}
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  className="mb-2"
-                >
-                  Upload invoice file (optional):
-                </Typography>
-
-                {invoiceFile && (
-                  <div className="mb-4 rounded border bg-gray-50 p-3">
-                    <Typography variant="body2" className="mb-1">
-                      <strong>Selected file:</strong> {invoiceFile.name}
+                    <TextField
+                      margin="dense"
+                      id="supplier"
+                      label="Supplier *"
+                      type="text"
+                      fullWidth
+                      variant="outlined"
+                      value={
+                        editItem &&
+                          "contactDetails" in editItem &&
+                          editItem.contactDetails?.supplier
+                          ? editItem.contactDetails.supplier
+                          : ""
+                      }
+                      onChange={(e) => {
+                        if (!editItem) return;
+                        setEditItem({
+                          ...editItem,
+                          contactDetails: {
+                            ...(editItem as ComponentStockItem).contactDetails,
+                            supplier: e.target.value,
+                          },
+                        } as ComponentStockItem);
+                      }}
+                      className="mt-4 mb-4"
+                      required
+                    />
+                    <Typography variant="subtitle1" className="mt-4 mb-2">
+                      Supplier Contact
                     </Typography>
-                    <Typography variant="body2" color="primary">
-                      <strong>Will be saved as:</strong> {invoiceNumber}.
-                      {invoiceFile.name.split(".").pop()}
-                    </Typography>
-                  </div>
+                    <TextField
+                      margin="dense"
+                      id="email"
+                      label="Email"
+                      type="email"
+                      fullWidth
+                      variant="outlined"
+                      value={
+                        (editItem as ComponentStockItem)?.contactDetails?.email ||
+                        ""
+                      }
+                      onChange={(e) => {
+                        if (!editItem) return;
+                        setEditItem({
+                          ...editItem,
+                          contactDetails: {
+                            ...(editItem as ComponentStockItem).contactDetails,
+                            email: e.target.value,
+                          },
+                        } as ComponentStockItem);
+                      }}
+                      className="mb-2"
+                    />
+                    <TextField
+                      margin="dense"
+                      id="phone"
+                      label="Phone"
+                      type="tel"
+                      fullWidth
+                      variant="outlined"
+                      value={
+                        (editItem as ComponentStockItem)?.contactDetails?.phone ||
+                        ""
+                      }
+                      onChange={(e) => {
+                        if (!editItem) return;
+                        setEditItem({
+                          ...editItem,
+                          contactDetails: {
+                            ...(editItem as ComponentStockItem).contactDetails,
+                            phone: e.target.value,
+                          },
+                        } as ComponentStockItem);
+                      }}
+                    />
+
+                    <TextField
+                      margin="dense"
+                      id="price"
+                      label="Price per Item (€)"
+                      type="number"
+                      fullWidth
+                      variant="outlined"
+                      value={(editItem as ComponentStockItem)?.price || ""}
+                      onChange={(e) => {
+                        if (!editItem) return;
+                        setEditItem({
+                          ...editItem,
+                          price: parseFloat(e.target.value) || 0,
+                        } as ComponentStockItem);
+                      }}
+                      className="mb-4"
+                      inputProps={{ min: 0, step: 0.01 }}
+                    />
+                  </>
                 )}
 
-                <div
-                  className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
-                    ? "border-gray-500 bg-gray-50"
-                    : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() =>
-                    document.getElementById("invoice-upload")?.click()
+                <TextField
+                  margin="dense"
+                  id="quantity"
+                  label="Quantity"
+                  type="number"
+                  fullWidth
+                  variant="outlined"
+                  value={editItem?.quantity ?? 0}
+                  onChange={(e) =>
+                    editItem &&
+                    setEditItem({
+                      ...editItem,
+                      quantity: Math.max(0, parseInt(e.target.value) || 0),
+                    })
                   }
-                >
-                  <Typography variant="body1" className="mb-2">
-                    {invoiceFile
-                      ? "Change file"
-                      : "Drop invoice file here or click to browse"}
+                  className="mt-4 mb-4"
+                  inputProps={{ min: 0 }}
+                />
+              </Box>
+
+              {activeTab === 1 && (
+                <Box sx={{
+                  borderLeft: 1,
+                  borderColor: 'divider',
+                  pl: { xs: 0, md: 2 },
+                  mt: { xs: 3, md: 0 }
+                }}>
+                  <Typography variant="h6" className="mb-3">
+                    Assign to Sensors
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    PDF files only
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    className="mb-4"
+                  >
+                    Specify how many of this component are needed for each sensor
                   </Typography>
-                  <input
-                    id="invoice-upload"
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    style={{ display: "none" }}
+
+                  <Box sx={{ mb: 3 }}>
+                    <Select
+                      multiple
+                      fullWidth
+                      value={sensorOptions
+                        .filter((opt) => opt.selected)
+                        .map((opt) => opt.id)}
+                      onChange={(e) => {
+                        const selectedIds = e.target.value as number[];
+                        setSensorOptions((prev) =>
+                          prev.map((opt) => ({
+                            ...opt,
+                            selected: selectedIds.includes(opt.id),
+                          })),
+                        );
+                      }}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {(selected as number[]).map((id) => {
+                            const sensor = allSensors.find((s) => s.id === id);
+                            return sensor ? (
+                              <Chip key={id} label={sensor.sensorName} />
+                            ) : null;
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {allSensors.map((sensor) => (
+                        <MenuItem key={sensor.id} value={sensor.id}>
+                          {sensor.sensorName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Box>
+
+                  <Box sx={{ mb: 3, maxHeight: 200, overflowY: 'auto' }}>
+                    {sensorOptions
+                      .filter((option) => option.selected)
+                      .map((option) => (
+                        <Box
+                          key={option.id}
+                          sx={{
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderRadius: 1,
+                            bgcolor: 'grey.50',
+                            p: 1
+                          }}
+                        >
+                          <Typography>{option.name}</Typography>
+                          <TextField
+                            size="small"
+                            type="number"
+                            label="Qty per sensor"
+                            value={option.requiredQuantity}
+                            onChange={(e) =>
+                              handleRequiredQuantityChange(
+                                option.id,
+                                parseInt(e.target.value) || 1,
+                              )
+                            }
+                            sx={{ width: 100 }}
+                            inputProps={{ min: 1 }}
+                          />
+                        </Box>
+                      ))}
+                  </Box>
+
+                  <Typography variant="h6" className="mb-3">
+                    Invoice Information
+                  </Typography>
+
+                  {/* Display newest invoice information when editing */}
+                  {editItem?.id && "componentId" in editItem && (
+                    <Box sx={{
+                      mb: 3,
+                      p: 2,
+                      borderRadius: 1,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'primary.50'
+                    }}>
+                      <Typography variant="subtitle2" color="primary" className="mb-2">
+                        📄 Current Invoice Information
+                      </Typography>
+
+                      {loadingInvoiceHistory ? (
+                        <Typography variant="body2" color="textSecondary">
+                          Loading invoice history...
+                        </Typography>
+                      ) : invoiceHistory.length > 0 ? (
+                        <Box>
+                          {invoiceHistory[0] && (
+                            <>
+                              <Typography variant="body2" className="mb-1">
+                                <strong>Latest Invoice:</strong> {invoiceHistory[0].invoiceNumber}
+                              </Typography>
+                              {invoiceHistory[0].uploadDate && (
+                                <Typography variant="body2" className="mb-1">
+                                  <strong>Date:</strong> {new Date(invoiceHistory[0].uploadDate).toLocaleDateString()}
+                                </Typography>
+                              )}
+                              {invoiceHistory[0].amount && (
+                                <Typography variant="body2" className="mb-1">
+                                  <strong>Amount:</strong> €{invoiceHistory[0].amount.toFixed(2)}
+                                </Typography>
+                              )}
+                              {invoiceHistory[0].filename ? (
+                                <Typography variant="body2" color="success.main">
+                                  ✓ Invoice file available
+                                </Typography>
+                              ) : (
+                                <Typography variant="body2" color="warning.main">
+                                  ⚠ No file attached
+                                </Typography>
+                              )}
+                            </>
+                          )}
+                          {invoiceHistory.length > 1 && (
+                            <Typography variant="caption" color="textSecondary" className="mt-1" display="block">
+                              ({invoiceHistory.length - 1} older invoice{invoiceHistory.length > 2 ? 's' : ''} available)
+                            </Typography>
+                          )}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          No previous invoices found for this component
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
+                  <TextField
+                    label="Invoice Number *"
+                    fullWidth
+                    value={invoiceNumber}
+                    onChange={(e) => handleInvoiceNumberChange(e.target.value)}
+                    className="mb-4"
+                    placeholder="Required for stock increases"
+                    required
                   />
-                </div>
-              </div>
+
+                  {/* File upload section with better UI */}
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    className="mb-2"
+                  >
+                    Upload invoice file (optional):
+                  </Typography>
+
+                  {invoiceFile && (
+                    <Box sx={{
+                      mb: 2,
+                      borderRadius: 1,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'grey.50',
+                      p: 1.5
+                    }}>
+                      <Typography variant="body2" className="mb-1">
+                        <strong>Selected file:</strong> {invoiceFile.name}
+                      </Typography>
+                      <Typography variant="body2" color="primary">
+                        <strong>Will be saved as:</strong> {invoiceNumber}.
+                        {invoiceFile.name.split(".").pop()}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  <Box
+                    sx={{
+                      cursor: 'pointer',
+                      borderRadius: 2,
+                      border: 2,
+                      borderStyle: 'dashed',
+                      borderColor: isDragging ? 'grey.500' : 'grey.300',
+                      bgcolor: isDragging ? 'grey.50' : 'transparent',
+                      p: 3,
+                      textAlign: 'center',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: 'grey.400'
+                      }
+                    }}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() =>
+                      document.getElementById("invoice-upload")?.click()
+                    }
+                  >
+                    <Typography variant="body1" className="mb-2">
+                      {invoiceFile
+                        ? "Change file"
+                        : "Drop invoice file here or click to browse"}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      PDF files only
+                    </Typography>
+                    <input
+                      id="invoice-upload"
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      style={{ display: "none" }}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{
+            p: { xs: 2, md: 3 },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 1, md: 2 },
+            position: { xs: 'sticky', md: 'static' },
+            bottom: { xs: 0, md: 'auto' },
+            bgcolor: 'background.paper',
+            borderTop: { xs: '1px solid', md: 'none' },
+            borderColor: { xs: 'divider', md: 'transparent' }
+          }}>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={handleDeleteItem}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Delete Item
+            </Button>
+            <Button
+              onClick={handleClose}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={
+                activeTab === 0
+                  ? handleAddOrUpdateSensor
+                  : handleAddOrUpdateComponent
+              }
+              disabled={uploading}
+              variant="contained"
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              {uploading
+                ? "Uploading..."
+                : `${editItem?.id ? "Update" : "Add"} Item`}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, md: 2 },
+              m: { xs: 0, md: 2 }
+            }
+          }}
+        >
+          <DialogTitle sx={{
+            color: 'error.main',
+            fontWeight: 600,
+            fontSize: { xs: '1.25rem', md: '1.5rem' }
+          }}>
+            Are you sure you want to delete this item?
+          </DialogTitle>
+          <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Typography color="error" variant="body1">
+              This action cannot be undone!
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{
+            p: { xs: 2, md: 3 },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 1, md: 2 }
+          }}>
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={handleDeleteItem}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={adjustmentDialogOpen}
+          onClose={() => setAdjustmentDialogOpen(false)}
+          fullScreen={isMobile}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, md: 2 },
+              m: { xs: 0, md: 2 },
+              maxHeight: { xs: '100vh', md: '90vh' }
+            }
+          }}
+        >
+          <DialogTitle sx={{
+            fontWeight: 600,
+            fontSize: { xs: '1.25rem', md: '1.5rem' },
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            bgcolor: 'background.paper',
+            borderBottom: { xs: '1px solid', md: 'none' },
+            borderColor: { xs: 'divider', md: 'transparent' }
+          }}>
+            {adjustmentType === "increase"
+              ? "Increase Quantity"
+              : "Decrease Quantity"}
+          </DialogTitle>
+          <DialogContent sx={{
+            p: { xs: 2, md: 3 },
+            overflow: 'auto'
+          }}>
+            {currentAdjustItem && (
+              <Box sx={{
+                mb: 3,
+                p: { xs: 2, md: 3 },
+                bgcolor: 'grey.50',
+                borderRadius: 2
+              }}>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  {"sensorName" in currentAdjustItem
+                    ? currentAdjustItem.sensorName
+                    : currentAdjustItem.name}
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Current Quantity: <strong>{currentAdjustItem.quantity}</strong>
+                </Typography>
+              </Box>
             )}
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <Button color="error" variant="contained" onClick={handleDeleteItem}>
-            Delete Item
-          </Button>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button
-            onClick={
-              activeTab === 0
-                ? handleAddOrUpdateSensor
-                : handleAddOrUpdateComponent
-            }
-            disabled={uploading}
-          >
-            {uploading
-              ? "Uploading..."
-              : `${editItem?.id ? "Update" : "Add"} Item`}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Are you sure you want to delete this item?</DialogTitle>
-        <DialogContent>
-          <Typography color="error">This action cannot be undone!</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleDeleteItem}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      <Dialog
-        open={adjustmentDialogOpen}
-        onClose={() => setAdjustmentDialogOpen(false)}
-      >
-        <DialogTitle>
-          {adjustmentType === "increase"
-            ? "Increase Quantity"
-            : "Decrease Quantity"}
-        </DialogTitle>
-        <DialogContent>
-          {currentAdjustItem && (
-            <div className="mb-4">
-              <Typography variant="h6">
-                {"sensorName" in currentAdjustItem
-                  ? currentAdjustItem.sensorName
-                  : currentAdjustItem.name}
-              </Typography>
-              <Typography>
-                Current Quantity: {currentAdjustItem.quantity}
-              </Typography>
-            </div>
-          )}
+            <TextField
+              autoFocus
+              margin="dense"
+              label={
+                adjustmentType === "increase"
+                  ? "Amount to Add"
+                  : "Amount to Remove"
+              }
+              type="number"
+              fullWidth
+              variant="outlined"
+              value={adjustmentQuantity}
+              onChange={(e) =>
+                setAdjustmentQuantity(Math.max(1, parseInt(e.target.value) || 1))
+              }
+              inputProps={{ min: 1 }}
+              sx={{ mb: 3 }}
+            />
 
-          <TextField
-            autoFocus
-            margin="dense"
-            label={
-              adjustmentType === "increase"
-                ? "Amount to Add"
-                : "Amount to Remove"
-            }
-            type="number"
-            fullWidth
-            variant="outlined"
-            value={adjustmentQuantity}
-            onChange={(e) =>
-              setAdjustmentQuantity(Math.max(1, parseInt(e.target.value) || 1))
-            }
-            inputProps={{ min: 1 }}
-            className="mb-4"
-          />
-
-          <TextField
-            label={
-              adjustmentType === "increase"
-                ? "Reason for increase (e.g. purchase reference)"
-                : "Reason for decrease (required)"
-            }
-            fullWidth
-            multiline
-            rows={3}
-            value={adjustmentReason}
-            onChange={(e) => setAdjustmentReason(e.target.value)}
-            required
-          />
-          {activeTab === 0 && (
             <TextField
               label={
                 adjustmentType === "increase"
-                  ? "device eui of new sensor "
+                  ? "Reason for increase (e.g. purchase reference)"
                   : "Reason for decrease (required)"
               }
               fullWidth
               multiline
               rows={3}
-              value={device_eui}
-              onChange={(e) => set_device_eui(e.target.value)}
+              value={adjustmentReason}
+              onChange={(e) => setAdjustmentReason(e.target.value)}
               required
+              sx={{ mb: 3 }}
             />
-          )}
-
-          {adjustmentType === "increase" &&
-            currentAdjustItem &&
-            "componentId" in currentAdjustItem && (
-              <>
-                <TextField
-                  label="Invoice Number *"
-                  fullWidth
-                  value={invoiceNumber}
-                  onChange={(e) => handleInvoiceNumberChange(e.target.value)}
-                  className="mb-4"
-                  required
-                />
-              </>
+            {activeTab === 0 && (
+              <TextField
+                label={
+                  adjustmentType === "increase"
+                    ? "device eui of new sensor "
+                    : "Reason for decrease (required)"
+                }
+                fullWidth
+                multiline
+                rows={3}
+                value={adjustmentReason}
+                onChange={(e) => setAdjustmentReason(e.target.value)}
+                required
+                sx={{ mb: 3 }}
+              />
             )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAdjustmentDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={confirmAdjustment}
-            disabled={
-              !adjustmentReason ||
-              (adjustmentType === "increase" &&
-                "componentId" in (currentAdjustItem ?? {}) &&
-                !invoiceNumber)
-            }
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
+            {adjustmentType === "increase" &&
+              currentAdjustItem &&
+              "componentId" in currentAdjustItem && (
+                <>
+                  <TextField
+                    label="Invoice Number *"
+                    fullWidth
+                    value={invoiceNumber}
+                    onChange={(e) => handleInvoiceNumberChange(e.target.value)}
+                    required
+                    sx={{ mb: 3 }}
+                  />
+
+                  {/* File upload section for adjustments */}
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                      Upload invoice file (optional):
+                    </Typography>
+
+                    {invoiceFile && (
+                      <Box sx={{
+                        mb: 2,
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: 'divider',
+                        bgcolor: 'grey.50',
+                        p: 1.5
+                      }}>
+                        <Typography variant="body2">
+                          <strong>Selected file:</strong> {invoiceFile.name}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    <Box
+                      sx={{
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        border: 2,
+                        borderStyle: 'dashed',
+                        borderColor: isDragging ? 'grey.500' : 'grey.300',
+                        bgcolor: isDragging ? 'grey.50' : 'transparent',
+                        p: 2,
+                        textAlign: 'center',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: 'grey.400'
+                        }
+                      }}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById("adjustment-invoice-upload")?.click()}
+                    >
+                      <Typography variant="body2">
+                        {invoiceFile ? "Change file" : "Drop invoice file here or click to browse"}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        PDF files only
+                      </Typography>
+                      <input
+                        id="adjustment-invoice-upload"
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        style={{ display: "none" }}
+                      />
+                    </Box>
+                  </Box>
+                </>
+              )}
+          </DialogContent>
+          <DialogActions sx={{
+            p: { xs: 2, md: 3 },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 1, md: 2 },
+            position: { xs: 'sticky', md: 'static' },
+            bottom: { xs: 0, md: 'auto' },
+            bgcolor: 'background.paper',
+            borderTop: { xs: '1px solid', md: 'none' },
+            borderColor: { xs: 'divider', md: 'transparent' }
+          }}>
+            <Button
+              onClick={() => setAdjustmentDialogOpen(false)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAdjustment}
+              disabled={
+                !adjustmentReason ||
+                (adjustmentType === "increase" &&
+                  "componentId" in (currentAdjustItem ?? {}) &&
+                  !invoiceNumber)
+              }
+              variant="contained"
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </ThemeProvider>
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Container>
+    </>
   );
 }

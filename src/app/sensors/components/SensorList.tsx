@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import {
   Alert,
   Box,
   Button,
+  Container,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -22,6 +22,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -33,13 +35,6 @@ import {
   UpdateorAddSenor,
 } from "./backend";
 import type { JsonValue } from "@prisma/client/runtime/library";
-
-const theme = createTheme({
-  palette: {
-    primary: { main: "#3f51b5" },
-    secondary: { main: "#9c27b0" },
-  },
-});
 
 type FrontendSensor = {
   id: number;
@@ -54,6 +49,9 @@ type FrontendSensor = {
 };
 
 export default function SensorList() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingSensor, setEditingSensor] = useState<FrontendSensor | null>(
@@ -195,111 +193,167 @@ export default function SensorList() {
   if (isError) return <div>Napaka pri nalaganju senzorjev</div>;
 
   return (
-    <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-linear-to-br from-indigo-50 to-purple-50 p-8">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto max-w-7xl"
-        >
-          <Box className="mb-8 flex items-center justify-between">
-            <Typography variant="h3" className="font-bold text-purple-700">
-              Seznam senzorjev
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setEditingSensor(null);
-                setOpen(true);
-              }}
-            >
-              Dodaj nov senzor
-            </Button>
-          </Box>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'stretch', md: 'center' },
+          justifyContent: 'space-between',
+          mb: { xs: 3, md: 4 },
+          gap: { xs: 2, md: 0 }
+        }}>
+          <Typography
+            variant={isMobile ? "h4" : "h3"}
+            sx={{
+              fontWeight: 'bold',
+              color: 'primary.main',
+              textAlign: { xs: 'center', md: 'left' }
+            }}
+          >
+            Seznam senzorjev
+          </Typography>
 
-          <TableContainer component={Paper} elevation={3}>
-            <Table>
-              <TableHead>
-                <TableRow
-                  style={{
-                    background: "linear-gradient(to right, #3f51b5, #9c27b0)",
-                  }}
-                >
-                  {[
-                    "ID",
-                    "Ime senzorja",
-                    "ID družine",
-                    "ID produkta",
-                    "Fotografija",
-                    "Payload Decoder",
-                    "Decoder",
-                    "Opis",
-                    "Akcije",
-                  ].map((header) => (
-                    <TableCell key={header} style={{ color: "white" }}>
-                      {header}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditingSensor(null);
+              setOpen(true);
+            }}
+            size={isMobile ? "large" : "medium"}
+            sx={{
+              minWidth: { xs: '100%', md: 'auto' },
+              py: { xs: 1.5, md: 1 }
+            }}
+          >
+            Dodaj nov senzor
+          </Button>
+        </Box>
+
+        <TableContainer
+          component={Paper}
+          elevation={3}
+          sx={{
+            borderRadius: 2,
+            overflow: 'hidden',
+            '& .MuiTable-root': {
+              minWidth: { xs: 800, md: 'auto' }
+            }
+          }}
+        >
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow>
+                {[
+                  "ID",
+                  "Ime senzorja",
+                  "ID družine",
+                  "ID produkta",
+                  "Fotografija",
+                  "Payload Decoder",
+                  "Decoder",
+                  "Opis",
+                  "Akcije",
+                ].map((header) => (
+                  <TableCell
+                    key={header}
+                    sx={{
+                      backgroundColor: 'primary.main',
+                      color: 'primary.contrastText',
+                      fontWeight: 600,
+                      fontSize: { xs: '0.875rem', md: '1rem' }
+                    }}
+                  >
+                    {header}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <AnimatePresence>
+                {sensors?.map((sensor) => (
+                  <motion.tr
+                    key={sensor.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <TableCell>{sensor.id}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>{sensor.sensorName}</TableCell>
+                    <TableCell>{sensor.familyId}</TableCell>
+                    <TableCell>{sensor.productId}</TableCell>
+                    <TableCell>{sensor.photograph}</TableCell>
+                    <TableCell sx={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {sensor.payloadDecoder}
                     </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <AnimatePresence>
-                  {sensors?.map((sensor) => (
-                    <motion.tr
-                      key={sensor.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <TableCell>{sensor.id}</TableCell>
-                      <TableCell>{sensor.sensorName}</TableCell>
-                      <TableCell>{sensor.familyId}</TableCell>
-                      <TableCell>{sensor.productId}</TableCell>
-                      <TableCell>{sensor.photograph}</TableCell>
-                      <TableCell className="max-w-xs break-all">
-                        {sensor.payloadDecoder}
-                      </TableCell>
-                      <TableCell className="max-w-xl">
-                        <pre className="max-h-32 overflow-auto text-xs">
-                          {JSON.stringify(sensor.decoder, null, 2)}
-                        </pre>
-                      </TableCell>
-                      <TableCell>{sensor.description}</TableCell>
-                      <TableCell>
+                    <TableCell sx={{ maxWidth: '300px' }}>
+                      <Box sx={{
+                        maxHeight: 100,
+                        overflow: 'auto',
+                        fontSize: '0.75rem',
+                        fontFamily: 'monospace',
+                        backgroundColor: 'grey.50',
+                        p: 1,
+                        borderRadius: 1
+                      }}>
+                        {JSON.stringify(sensor.decoder, null, 2)}
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: '200px' }}>{sensor.description}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <IconButton
                           onClick={() => {
                             setEditingSensor(sensor);
                             setOpen(true);
                           }}
+                          color="primary"
+                          size={isMobile ? "large" : "medium"}
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
+                          color="error"
                           onClick={() => deleteMutation.mutate(sensor.id)}
+                          size={isMobile ? "large" : "medium"}
                         >
                           <DeleteIcon />
                         </IconButton>
-                      </TableCell>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </motion.div>
+                      </Box>
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </motion.div>
 
-        <Dialog
-          open={open}
-          onClose={() => setOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            {editingSensor ? "Uredi senzor" : "Dodaj nov senzor"}
-          </DialogTitle>
-          <DialogContent>
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          backgroundColor: 'primary.main',
+          color: 'primary.contrastText',
+          fontWeight: 600
+        }}>
+          {editingSensor ? "Uredi senzor" : "Dodaj nov senzor"}
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
               <TextField
                 fullWidth
                 name="sensorName"
@@ -307,22 +361,24 @@ export default function SensorList() {
                 defaultValue={editingSensor?.sensorName}
                 required
               />
-              <TextField
-                fullWidth
-                name="familyId"
-                label="ID družine"
-                type="number"
-                defaultValue={editingSensor?.familyId}
-                required
-              />
-              <TextField
-                fullWidth
-                name="productId"
-                label="ID produkta"
-                type="number"
-                defaultValue={editingSensor?.productId}
-                required
-              />
+              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField
+                  fullWidth
+                  name="familyId"
+                  label="ID družine"
+                  type="number"
+                  defaultValue={editingSensor?.familyId}
+                  required
+                />
+                <TextField
+                  fullWidth
+                  name="productId"
+                  label="ID produkta"
+                  type="number"
+                  defaultValue={editingSensor?.productId}
+                  required
+                />
+              </Box>
               <TextField
                 fullWidth
                 name="photograph"
@@ -371,23 +427,33 @@ export default function SensorList() {
                 multiline
                 rows={3}
               />
-              <Button type="submit" variant="contained" fullWidth size="large">
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                size="large"
+                sx={{
+                  py: { xs: 1.5, md: 2 },
+                  fontSize: { xs: '1rem', md: '1.1rem' },
+                  fontWeight: 600
+                }}
+              >
                 {editingSensor ? "Shrani spremembe" : "Dodaj senzor"}
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        >
-          <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </div>
-    </ThemeProvider>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 }
