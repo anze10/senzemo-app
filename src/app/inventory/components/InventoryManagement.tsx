@@ -9,11 +9,13 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -28,6 +30,7 @@ import {
   TableRow,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -40,7 +43,8 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MemoryIcon from "@mui/icons-material/Memory";
 import RadioIcon from "@mui/icons-material/Radio";
 import BuildIcon from "@mui/icons-material/Build";
-
+import WarningIcon from "@mui/icons-material/Warning";
+import InfoIcon from "@mui/icons-material/Info";
 import DownloadIcon from "@mui/icons-material/Download";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 
@@ -122,6 +126,8 @@ export type ComponentStockItem = {
   invoiceFileKey?: string; // B2 storage key
   contactDetails: ContactDetails;
   price?: number; // Price per item
+  lowStockThreshold?: number; // Threshold for low stock warning
+  isCritical?: boolean; // Whether this component is critical for sensor assembly
 };
 
 type InventoryItem = SenzorStockItem | ComponentStockItem;
@@ -225,6 +231,12 @@ export default function InventoryManagementPage() {
     "Custom",
   ];
 
+  // Helper function to check if component is below threshold
+  const isComponentBelowThreshold = (component: ComponentStockItem) => {
+    const threshold = component.lowStockThreshold || 5; // Default threshold of 5
+    return component.quantity <= threshold;
+  };
+
   const initializeNewItem = useCallback(() => {
     if (activeTab === 0) {
       return {
@@ -247,6 +259,8 @@ export default function InventoryManagementPage() {
         sensorAssignments: [],
         invoiceNumber: "",
         price: 0,
+        lowStockThreshold: 5, // Default threshold
+        isCritical: false, // Default not critical
         contactDetails: {
           supplier: "",
           email: "",
@@ -812,6 +826,8 @@ export default function InventoryManagementPage() {
         })),
       invoiceNumber: invoiceNumber,
       price: (editItem as ComponentStockItem).price ?? 0,
+      lowStockThreshold: (editItem as ComponentStockItem).lowStockThreshold ?? 5,
+      isCritical: (editItem as ComponentStockItem).isCritical ?? false,
       contactDetails: (editItem as ComponentStockItem).contactDetails ?? {
         supplier: "",
         email: "",
@@ -1089,6 +1105,16 @@ export default function InventoryManagementPage() {
 
   return (
     <>
+      {/* Add CSS for pulse animation */}
+      <style>
+        {`
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+          }
+        `}
+      </style>
       <CssBaseline />
       <Container maxWidth={false} sx={{
         py: { xs: 2, md: 2 },
@@ -1798,24 +1824,57 @@ export default function InventoryManagementPage() {
                             }}
                           >
                             <CardContent sx={{ p: 3 }}>
-                              {/* Header with name and edit button */}
+                              {/* Header with name, warning light, and edit button */}
                               <Box sx={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'flex-start',
                                 mb: 2
                               }}>
-                                <Typography
-                                  variant="h6"
-                                  sx={{
-                                    fontWeight: 600,
-                                    color: 'primary.main',
-                                    flex: 1,
-                                    mr: 1
-                                  }}
-                                >
-                                  {item1.name || "Unnamed Component"}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, mr: 1 }}>
+                                  {/* Warning Light */}
+                                  {isComponentBelowThreshold(item1) && (
+                                    <Box sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      mr: 1,
+                                      animation: 'pulse 2s infinite'
+                                    }}>
+                                      <WarningIcon
+                                        sx={{
+                                          color: 'error.main',
+                                          fontSize: 24,
+                                          filter: 'drop-shadow(0 0 4px rgba(255, 152, 0, 0.8))'
+                                        }}
+                                      />
+                                    </Box>
+                                  )}
+                                  {/* Critical Component Indicator */}
+                                  {item1.isCritical && (
+                                    <Box sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      mr: 1
+                                    }}>
+                                      <Chip
+                                        label="Critical"
+                                        size="small"
+                                        color="error"
+                                        variant="filled"
+                                        sx={{ fontSize: '0.6rem', height: 20 }}
+                                      />
+                                    </Box>
+                                  )}
+                                  <Typography
+                                    variant="h6"
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: 'primary.main'
+                                    }}
+                                  >
+                                    {item1.name || "Unnamed Component"}
+                                  </Typography>
+                                </Box>
                                 <IconButton
                                   color="primary"
                                   onClick={() => handleEditItem(item1)}
@@ -1946,6 +2005,28 @@ export default function InventoryManagementPage() {
                                 )}
                               </Box>
 
+                              {/* Threshold and Critical Status Information */}
+                              <Box sx={{ mb: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                  <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Low Stock Threshold
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      {item1.lowStockThreshold || 5} units
+                                    </Typography>
+                                  </Box>
+                                  {isComponentBelowThreshold(item1) && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <WarningIcon sx={{ color: 'error.main', fontSize: 16 }} />
+                                      <Typography variant="caption" color="error.main" fontWeight={600}>
+                                        BELOW THRESHOLD
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+
                               {/* Sensor requirements */}
                               {Array.isArray(item1.sensorAssignments) &&
                                 item1.sensorAssignments.length > 0 && (
@@ -2072,7 +2153,30 @@ export default function InventoryManagementPage() {
                                 transition={{ duration: 0.3 }}
                               >
                                 <TableCell className="font-bold">
-                                  {item1.name || "-"}
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {/* Warning Light */}
+                                    {isComponentBelowThreshold(item1) && (
+                                      <WarningIcon
+                                        sx={{
+                                          color: 'error.main',
+                                          fontSize: 20,
+                                          filter: 'drop-shadow(0 0 4px rgba(255, 152, 0, 0.8))',
+                                          animation: 'pulse 2s infinite'
+                                        }}
+                                      />
+                                    )}
+                                    {/* Critical Component Indicator */}
+                                    {item1.isCritical && (
+                                      <Chip
+                                        label="Critical"
+                                        size="small"
+                                        color="error"
+                                        variant="filled"
+                                        sx={{ fontSize: '0.6rem', height: 18, mr: 0.5 }}
+                                      />
+                                    )}
+                                    {item1.name || "-"}
+                                  </Box>
                                 </TableCell>
                                 <TableCell>
                                   <Box className="flex items-center">
@@ -2510,6 +2614,58 @@ export default function InventoryManagementPage() {
                   className="mt-4 mb-4"
                   inputProps={{ min: 0 }}
                 />
+
+                {/* Add threshold and critical component fields for components */}
+                {activeTab === 1 && (
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      margin="dense"
+                      id="lowStockThreshold"
+                      label="Low Stock Threshold"
+                      type="number"
+                      fullWidth
+                      variant="outlined"
+                      value={(editItem as ComponentStockItem)?.lowStockThreshold ?? 5}
+                      onChange={(e) => {
+                        if (!editItem) return;
+                        setEditItem({
+                          ...editItem,
+                          lowStockThreshold: Math.max(1, parseInt(e.target.value) || 5),
+                        } as ComponentStockItem);
+                      }}
+                      className="mb-3"
+                      inputProps={{ min: 1 }}
+                      helperText="Component will show warning when quantity falls below this threshold"
+                    />
+
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={(editItem as ComponentStockItem)?.isCritical ?? false}
+                          onChange={(e) => {
+                            if (!editItem) return;
+                            setEditItem({
+                              ...editItem,
+                              isCritical: e.target.checked,
+                            } as ComponentStockItem);
+                          }}
+                          color="error"
+                        />
+                      }
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">
+                            Critical Component
+                          </Typography>
+                          <Tooltip title="Mark this component as critical if it's essential for sensor assembly and production cannot continue without it">
+                            <InfoIcon fontSize="small" color="action" />
+                          </Tooltip>
+                        </Box>
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                )}
               </Box>
 
               {activeTab === 1 && (

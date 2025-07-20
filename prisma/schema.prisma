@@ -134,11 +134,11 @@ model ComponentStock {
   lastUpdated DateTime @default(now())
 
   // Kontaktni podatki dobavitelja
-  supplier String?
-  email    String?
-  phone    String?
-  category String? // Kategorija komponent
-
+  supplier       String?
+  email          String?
+  phone          String?
+  category       String? // Kategorija komponent
+  required       Boolean  @default(true) // Ali je komponenta obvezna za senzor
   // Povezava z računom
   invoiceFileKey String?
   invoiceId      Int?
