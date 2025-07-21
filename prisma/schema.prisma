@@ -31,9 +31,18 @@ model Mailing {
   updatedAt              DateTime  @updatedAt
   isSubscribed           Boolean   @default(true)
 
+  // Enhanced email settings
+  dayOfMonth        Int       @default(1)
+  recipients        Json? // Stored as JSON string array of recipient objects
+  subject           String?   @default("Monthly Inventory Report - {date}")
+  includeReportUrl  Boolean   @default(true)
+  lowStockThreshold Int       @default(5)
+  lastSentAt        DateTime?
+
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId], name: "mailing_user_id_index")
+  @@index([dayOfMonth, isSubscribed], name: "mailing_schedule_index")
 }
 
 model Session {
