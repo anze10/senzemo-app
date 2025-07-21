@@ -201,7 +201,7 @@ export async function adjustSensorStock(
 //     sensorId: number,
 //     quantity: number,
 //     productionBatch: number,
-//     location = "Proizvodna linja 1"
+//     location = "Proizvodna linija 1"
 // ) {
 //     try {
 //         const sensor = await prisma.senzor.findUnique({
@@ -2571,5 +2571,48 @@ export async function getLowComponents() {
   } catch (error) {
     console.error("Error fetching low components:", error);
     throw new Error("Failed to fetch low components");
+  }
+}
+
+/**
+ * Get all orders
+ */
+export async function getAllOrders() {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { orderDate: "desc" },
+      include: {
+        senzor: {
+          select: { sensorName: true },
+        },
+        productionLists: {
+          select: {
+            id: true,
+            DevEUI: true,
+            DeviceType: true,
+          },
+        },
+      },
+    });
+
+    return orders.map((order) => ({
+      id: order.id,
+      customerName: order.customerName,
+      assemblerName: order.assemblerName,
+      senzorId: order.senzorId,
+      sensorName: order.senzor.sensorName,
+      quantity: order.quantity,
+      frequency: order.frequency,
+      orderDate: order.orderDate,
+      otherParameters: order.otherParameters,
+      assignedDevices: order.productionLists.length,
+      remainingToAssign: Math.max(
+        0,
+        order.quantity - order.productionLists.length,
+      ),
+    }));
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    throw new Error("Failed to fetch orders");
   }
 }

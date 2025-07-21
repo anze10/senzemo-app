@@ -50,6 +50,9 @@ import WarningIcon from "@mui/icons-material/Warning";
 import InfoIcon from "@mui/icons-material/Info";
 import DownloadIcon from "@mui/icons-material/Download";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import EmailReportManager from "./EmailReportManager";
 import { uploadPDFToB2 } from "./aws";
 import {
@@ -57,9 +60,11 @@ import {
   addSensorToInventory,
   adjustComponentStockWithInvoice,
   adjustSensorStock,
+  assignDeviceToOrder,
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
+  getAllOrders,
   getInvoiceFileDownloadUrl,
   getLowComponents,
   getProductionByFrequency,
@@ -68,6 +73,7 @@ import {
   getProductionHierarchy,
   getSensorProductionCapacity,
   getSensors,
+  releaseDeviceFromOrder,
   showAllComponents,
   showLogs,
   // showSensorInInventory,
@@ -219,6 +225,12 @@ export default function InventoryManagementPage() {
   const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">("increase");
   const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
   const [adjustmentReason, setAdjustmentReason] = useState("");
+
+  // Add device action dialog state
+  const [deviceActionDialogOpen, setDeviceActionDialogOpen] = useState(false);
+  const [currentDevice, setCurrentDevice] = useState<ProductionDevice | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [deviceActionReason, setDeviceActionReason] = useState("");
 
   // Add query to fetch invoice files for a component
   const fetchComponentInvoiceHistory = useCallback(async (componentId: number) => {
@@ -375,6 +387,14 @@ export default function InventoryManagementPage() {
   const { data: logs = [] } = useQuery({
     queryKey: ["inventory-logs"],
     queryFn: showLogs,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Query to fetch all orders for device assignment
+  const { data: allOrders = [] } = useQuery({
+    queryKey: ["orders"],
+    queryFn: getAllOrders,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -1165,6 +1185,87 @@ export default function InventoryManagementPage() {
 
   // Add report generation functions
 
+  // Device action functions
+  const handleRemoveDevice = async (device: ProductionDevice) => {
+    try {
+      await deleteSensorFromInventory(device.devEUI);
+      // Refresh the production hierarchy data
+      queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
+      setSnackbar({
+        open: true,
+        message: `Device ${device.devEUI} removed successfully!`,
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to remove device: " + (error as Error).message,
+        severity: "error",
+      });
+    }
+  };
+
+  const handleAssignToOrder = async (device: ProductionDevice, orderId: number, reason: string) => {
+    try {
+      await assignDeviceToOrder(device.devEUI, orderId, reason);
+      // Refresh the production hierarchy data
+      queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setSnackbar({
+        open: true,
+        message: `Device ${device.devEUI} assigned to order successfully!`,
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to assign device: " + (error as Error).message,
+        severity: "error",
+      });
+    }
+  };
+
+  const handleReleaseFromOrder = async (device: ProductionDevice, reason: string) => {
+    try {
+      await releaseDeviceFromOrder(device.devEUI, reason);
+      // Refresh the production hierarchy data
+      queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setSnackbar({
+        open: true,
+        message: `Device ${device.devEUI} released from order successfully!`,
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to release device: " + (error as Error).message,
+        severity: "error",
+      });
+    }
+  };
+
+  const openDeviceActionDialog = (device: ProductionDevice) => {
+    setCurrentDevice(device);
+    setDeviceActionReason("");
+    setSelectedOrderId(null);
+    setDeviceActionDialogOpen(true);
+  };
+
+  const confirmDeviceAction = async (action: 'remove' | 'assign' | 'release') => {
+    if (!currentDevice) return;
+
+    if (action === 'remove') {
+      await handleRemoveDevice(currentDevice);
+    } else if (action === 'assign' && selectedOrderId) {
+      await handleAssignToOrder(currentDevice, selectedOrderId, deviceActionReason || 'Assigned to order');
+    } else if (action === 'release') {
+      await handleReleaseFromOrder(currentDevice, deviceActionReason || 'Released from order');
+    }
+
+    setDeviceActionDialogOpen(false);
+  };
+
   return (
     <>
       {/* Add CSS for pulse animation */}
@@ -1714,19 +1815,64 @@ export default function InventoryManagementPage() {
                                                       </>
                                                     )}
                                                   </Box>
-                                                  <Chip
-                                                    label={
-                                                      device.isAvailable
-                                                        ? "Available"
-                                                        : "Assigned"
-                                                    }
-                                                    color={
-                                                      device.isAvailable
-                                                        ? "success"
-                                                        : "warning"
-                                                    }
-                                                    size="small"
-                                                  />
+
+                                                  <Box sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 1
+                                                  }}>
+                                                    <Chip
+                                                      label={
+                                                        device.isAvailable
+                                                          ? "Available"
+                                                          : "Assigned"
+                                                      }
+                                                      color={
+                                                        device.isAvailable
+                                                          ? "success"
+                                                          : "warning"
+                                                      }
+                                                      size="small"
+                                                    />
+
+                                                    {/* Device Action Buttons */}
+                                                    <Box sx={{
+                                                      display: 'flex',
+                                                      gap: 0.5
+                                                    }}>
+                                                      <Tooltip title="Device Actions">
+                                                        <IconButton
+                                                          size="small"
+                                                          onClick={() => openDeviceActionDialog(device)}
+                                                          sx={{
+                                                            color: 'primary.main',
+                                                            '&:hover': {
+                                                              bgcolor: 'primary.main',
+                                                              color: 'primary.contrastText'
+                                                            }
+                                                          }}
+                                                        >
+                                                          <AssignmentIcon fontSize="small" />
+                                                        </IconButton>
+                                                      </Tooltip>
+
+                                                      <Tooltip title="Remove from Inventory">
+                                                        <IconButton
+                                                          size="small"
+                                                          onClick={() => handleRemoveDevice(device)}
+                                                          sx={{
+                                                            color: 'error.main',
+                                                            '&:hover': {
+                                                              bgcolor: 'error.main',
+                                                              color: 'error.contrastText'
+                                                            }
+                                                          }}
+                                                        >
+                                                          <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                      </Tooltip>
+                                                    </Box>
+                                                  </Box>
                                                 </Box>
                                                 {isMobile && (
                                                   <Box sx={{
@@ -2417,10 +2563,7 @@ export default function InventoryManagementPage() {
                                   {Array.isArray(item1.sensorAssignments) &&
                                     item1.sensorAssignments.length > 0
                                     ? item1.sensorAssignments
-                                      .map(
-                                        (sa) =>
-                                          `${sa.sensorName} (${sa.requiredQuantity})`,
-                                      )
+
                                       .join(", ")
                                     : "-"}
                                 </TableCell>
@@ -3406,6 +3549,142 @@ export default function InventoryManagementPage() {
               size={isMobile ? "large" : "medium"}
             >
               Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Device Action Dialog */}
+        <Dialog
+          open={deviceActionDialogOpen}
+          onClose={() => setDeviceActionDialogOpen(false)}
+          fullScreen={isMobile}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, md: 2 },
+              m: { xs: 0, md: 2 }
+            }
+          }}
+        >
+          <DialogTitle sx={{
+            fontWeight: 600,
+            fontSize: { xs: '1.25rem', md: '1.5rem' }
+          }}>
+            Device Actions - {currentDevice?.devEUI}
+          </DialogTitle>
+          <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Choose an action for this device:
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Assign to Order */}
+                <Button
+                  variant="outlined"
+                  startIcon={<ShoppingCartIcon />}
+                  onClick={() => {
+                    // Show order selection
+                    setDeviceActionDialogOpen(false);
+                    // We'll handle this inline for simplicity
+                  }}
+                  disabled={!currentDevice?.isAvailable}
+                  fullWidth
+                  sx={{ justifyContent: 'flex-start' }}
+                >
+                  Assign to Order
+                  {!currentDevice?.isAvailable && " (Already Assigned)"}
+                </Button>
+
+                {/* Release from Order */}
+                <Button
+                  variant="outlined"
+                  startIcon={<AssignmentIcon />}
+                  onClick={() => confirmDeviceAction('release')}
+                  disabled={currentDevice?.isAvailable}
+                  fullWidth
+                  sx={{ justifyContent: 'flex-start' }}
+                >
+                  Release from Order
+                  {currentDevice?.isAvailable && " (Not Assigned)"}
+                </Button>
+
+                {/* Remove from Inventory */}
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => confirmDeviceAction('remove')}
+                  fullWidth
+                  sx={{ justifyContent: 'flex-start' }}
+                >
+                  Remove from Inventory
+                </Button>
+              </Box>
+
+              {/* Order Selection for Assignment */}
+              {!currentDevice?.isAvailable ? null : (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Select Order (for assignment):
+                  </Typography>
+                  <Select
+                    value={selectedOrderId || ""}
+                    onChange={(e) => setSelectedOrderId(Number(e.target.value))}
+                    fullWidth
+                    size="small"
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Select an order...</em>
+                    </MenuItem>
+                    {allOrders.map((order) => (
+                      <MenuItem key={order.id} value={order.id}>
+                        Order #{order.id} - {order.customerName} ({order.remainingToAssign} remaining)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Box>
+              )}
+
+              {/* Reason Input */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Reason (optional):
+                </Typography>
+                <TextField
+                  value={deviceActionReason}
+                  onChange={(e) => setDeviceActionReason(e.target.value)}
+                  placeholder="Enter reason for this action..."
+                  multiline
+                  rows={2}
+                  fullWidth
+                  size="small"
+                />
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{
+            p: { xs: 2, md: 3 },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 1, md: 2 }
+          }}>
+            <Button
+              onClick={() => setDeviceActionDialogOpen(false)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => confirmDeviceAction('assign')}
+              disabled={!selectedOrderId || !currentDevice?.isAvailable}
+              variant="contained"
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Assign to Selected Order
             </Button>
           </DialogActions>
         </Dialog>
