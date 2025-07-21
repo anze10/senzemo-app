@@ -1119,6 +1119,9 @@ export async function showLogs() {
           },
         },
       },
+      orderBy: {
+        timestamp: "desc",
+      },
     });
     return result.map((log) => ({
       user: log.user,
