@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function Dashboard() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const cards = [
     {
@@ -113,17 +113,16 @@ export default function Dashboard() {
               }}
             />
             <CardContent sx={{ flexGrow: 1, pt: 0 }}>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mb: 2 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {card.description}
               </Typography>
               <Link
                 href={card.href}
                 passHref
-                {...(card.external && { target: "_blank", rel: "noopener noreferrer" })}
+                {...(card.external && {
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                })}
               >
                 <Button
                   fullWidth

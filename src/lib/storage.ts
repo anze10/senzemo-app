@@ -10,7 +10,7 @@ export const createSafeStorage = () => {
       removeItem: () => {},
     }));
   }
-  
+
   // Client-side: return localStorage
   return createJSONStorage(() => localStorage);
 };

@@ -1,169 +1,168 @@
-import React from 'react';
-import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
-
+import React from "react";
+import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
-    flexDirection: 'column',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
     padding: 30,
-    fontFamily: 'Helvetica'
+    fontFamily: "Helvetica",
   },
   header: {
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
     borderBottom: 2,
-    borderBottomColor: '#374151',
-    paddingBottom: 15
+    borderBottomColor: "#374151",
+    paddingBottom: 15,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 5
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 10
+    color: "#6B7280",
+    marginBottom: 10,
   },
   reportDate: {
     fontSize: 10,
-    color: '#9CA3AF'
+    color: "#9CA3AF",
   },
   section: {
-    marginBottom: 20
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#374151',
+    fontWeight: "bold",
+    color: "#374151",
     marginBottom: 10,
     borderBottom: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingBottom: 5
+    borderBottomColor: "#E5E7EB",
+    paddingBottom: 5,
   },
   tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
+    flexDirection: "row",
+    backgroundColor: "#F3F4F6",
     padding: 8,
     borderBottom: 1,
-    borderBottomColor: '#D1D5DB',
-    fontWeight: 'bold',
-    fontSize: 10
+    borderBottomColor: "#D1D5DB",
+    fontWeight: "bold",
+    fontSize: 10,
   },
   tableRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 8,
     borderBottom: 1,
-    borderBottomColor: '#E5E7EB',
-    fontSize: 9
+    borderBottomColor: "#E5E7EB",
+    fontSize: 9,
   },
   tableRowAlt: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 8,
     borderBottom: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    fontSize: 9
+    borderBottomColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    fontSize: 9,
   },
   tableCell: {
     flex: 1,
-    textAlign: 'left'
+    textAlign: "left",
   },
   tableCellCenter: {
     flex: 1,
-    textAlign: 'center'
+    textAlign: "center",
   },
   tableCellRight: {
     flex: 1,
-    textAlign: 'right'
+    textAlign: "right",
   },
   summaryCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     padding: 15,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 5
+    borderColor: "#E2E8F0",
+    borderRadius: 5,
   },
   summaryTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 8
+    fontWeight: "bold",
+    color: "#1E293B",
+    marginBottom: 8,
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 10,
-    color: '#475569'
+    color: "#475569",
   },
   summaryValue: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#0F172A'
+    fontWeight: "bold",
+    color: "#0F172A",
   },
   lowStockWarning: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
     borderWidth: 1,
     padding: 10,
     marginBottom: 15,
-    borderRadius: 5
+    borderRadius: 5,
   },
   warningTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#DC2626',
-    marginBottom: 5
+    fontWeight: "bold",
+    color: "#DC2626",
+    marginBottom: 5,
   },
   warningText: {
     fontSize: 9,
-    color: '#7F1D1D'
+    color: "#7F1D1D",
   },
   footer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     left: 30,
     right: 30,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 8,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     borderTop: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 10
+    borderTopColor: "#E5E7EB",
+    paddingTop: 10,
   },
   frequencySection: {
     marginTop: 15,
     padding: 10,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: "#F0F9FF",
     borderWidth: 1,
-    borderColor: '#BAE6FD'
+    borderColor: "#BAE6FD",
   },
   frequencyTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#0C4A6E',
-    marginBottom: 8
+    fontWeight: "bold",
+    color: "#0C4A6E",
+    marginBottom: 8,
   },
   frequencyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 3
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
   },
   frequencyLabel: {
     fontSize: 9,
-    color: '#0F172A'
+    color: "#0F172A",
   },
   frequencyValue: {
     fontSize: 9,
-    fontWeight: 'bold',
-    color: '#1E40AF'
-  }
+    fontWeight: "bold",
+    color: "#1E40AF",
+  },
 });
 
 // Interface definitions
@@ -187,7 +186,7 @@ interface ComponentStock {
 interface LowStockItem {
   name: string;
   quantity: number;
-  type: 'sensor' | 'component';
+  type: "sensor" | "component";
 }
 
 interface InventoryReportProps {
@@ -200,8 +199,8 @@ interface InventoryReportProps {
 // Frequency analysis helper
 const analyzeFrequencies = (sensorStock: SensorStock[]) => {
   const frequencyMap = new Map<string, number>();
-  sensorStock.forEach(sensor => {
-    const freq = sensor.frequency || 'Unknown';
+  sensorStock.forEach((sensor) => {
+    const freq = sensor.frequency || "Unknown";
     frequencyMap.set(freq, (frequencyMap.get(freq) || 0) + sensor.quantity);
   });
   return Array.from(frequencyMap.entries()).sort((a, b) => b[1] - a[1]);
@@ -209,47 +208,59 @@ const analyzeFrequencies = (sensorStock: SensorStock[]) => {
 
 // Location analysis helper
 
-
 // Create Document Component
 const InventoryReport: React.FC<InventoryReportProps> = ({
   sensorStock,
   componentStock,
   reportDate,
-  lowStockThreshold = 5
+  lowStockThreshold = 5,
 }) => {
   // Calculate summary statistics
-  const totalSensors = sensorStock.reduce((sum, item) => sum + item.quantity, 0);
-  const totalComponents = componentStock.reduce((sum, item) => sum + item.quantity, 0);
+  const totalSensors = sensorStock.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
+  const totalComponents = componentStock.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
   const uniqueSensorTypes = sensorStock.length;
   const uniqueComponentTypes = componentStock.length;
 
   // Find low stock items
   const lowStockItems: LowStockItem[] = [
     ...sensorStock
-      .filter(item => item.quantity <= lowStockThreshold)
-      .map(item => ({ name: item.sensorName, quantity: item.quantity, type: 'sensor' as const })),
+      .filter((item) => item.quantity <= lowStockThreshold)
+      .map((item) => ({
+        name: item.sensorName,
+        quantity: item.quantity,
+        type: "sensor" as const,
+      })),
     ...componentStock
-      .filter(item => item.quantity <= lowStockThreshold)
-      .map(item => ({ name: item.name, quantity: item.quantity, type: 'component' as const }))
+      .filter((item) => item.quantity <= lowStockThreshold)
+      .map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        type: "component" as const,
+      })),
   ];
 
   // Analyze frequencies and locations
   const frequencyAnalysis = analyzeFrequencies(sensorStock);
-
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-
-
           {/* <Image src="senzemoLogo.png" style={{ width: 100, height: 50 }} /> */}
 
-
-          <Text style={styles.subtitle}>Component and Sensor Inventory Status</Text>
+          <Text style={styles.subtitle}>
+            Component and Sensor Inventory Status
+          </Text>
           <Text style={styles.reportDate}>
-            Generated on: {reportDate.toLocaleDateString()} at {reportDate.toLocaleTimeString()}
+            Generated on: {reportDate.toLocaleDateString()} at{" "}
+            {reportDate.toLocaleTimeString()}
           </Text>
         </View>
 
@@ -270,11 +281,15 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Unique Component Types:</Text>
-            <Text style={styles.summaryValue}>{uniqueComponentTypes} types</Text>
+            <Text style={styles.summaryValue}>
+              {uniqueComponentTypes} types
+            </Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total Inventory Value:</Text>
-            <Text style={styles.summaryValue}>{totalSensors + totalComponents} units</Text>
+            <Text style={styles.summaryValue}>
+              {totalSensors + totalComponents} units
+            </Text>
           </View>
         </View>
 
@@ -296,8 +311,11 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
           <View style={styles.lowStockWarning}>
             <Text style={styles.warningTitle}> LOW STOCK ALERT</Text>
             <Text style={styles.warningText}>
-              {lowStockItems.length} item(s) below threshold ({lowStockThreshold} units): {' '}
-              {lowStockItems.map(item => `${item.name} (${item.quantity})`).join(', ')}
+              {lowStockItems.length} item(s) below threshold (
+              {lowStockThreshold} units):{" "}
+              {lowStockItems
+                .map((item) => `${item.name} (${item.quantity})`)
+                .join(", ")}
             </Text>
           </View>
         )}
@@ -315,16 +333,31 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
           </View>
 
           {/* Table Rows */}
-          {sensorStock.length > 0 ? sensorStock.map((sensor, index) => (
-            <View key={sensor.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{sensor.sensorName}</Text>
-              <Text style={styles.tableCellCenter}>{sensor.quantity}</Text>
-              <Text style={styles.tableCell}>{sensor.frequency || 'N/A'}</Text>
-              <Text style={styles.tableCell}>{sensor.productionBatch || 'N/A'}</Text>
-            </View>
-          )) : (
+          {sensorStock.length > 0 ? (
+            sensorStock.map((sensor, index) => (
+              <View
+                key={sensor.id}
+                style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}
+              >
+                <Text style={[styles.tableCell, { flex: 2 }]}>
+                  {sensor.sensorName}
+                </Text>
+                <Text style={styles.tableCellCenter}>{sensor.quantity}</Text>
+                <Text style={styles.tableCell}>
+                  {sensor.frequency || "N/A"}
+                </Text>
+                <Text style={styles.tableCell}>
+                  {sensor.productionBatch || "N/A"}
+                </Text>
+              </View>
+            ))
+          ) : (
             <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { textAlign: 'center', flex: 4 }]}>No sensors in inventory</Text>
+              <Text
+                style={[styles.tableCell, { textAlign: "center", flex: 4 }]}
+              >
+                No sensors in inventory
+              </Text>
             </View>
           )}
         </View>
@@ -343,28 +376,42 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
           </View>
 
           {/* Table Rows */}
-          {componentStock.length > 0 ? componentStock.map((component, index) => (
-            <View key={component.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{component.name}</Text>
-              <Text style={styles.tableCellCenter}>{component.quantity}</Text>
-              <Text style={styles.tableCell}>{component.location}</Text>
-              <Text style={styles.tableCell}>{component.supplier || 'N/A'}</Text>
-              <Text style={styles.tableCell}>{component.lastUpdated.toLocaleDateString()}</Text>
-            </View>
-          )) : (
+          {componentStock.length > 0 ? (
+            componentStock.map((component, index) => (
+              <View
+                key={component.id}
+                style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}
+              >
+                <Text style={[styles.tableCell, { flex: 2 }]}>
+                  {component.name}
+                </Text>
+                <Text style={styles.tableCellCenter}>{component.quantity}</Text>
+                <Text style={styles.tableCell}>{component.location}</Text>
+                <Text style={styles.tableCell}>
+                  {component.supplier || "N/A"}
+                </Text>
+                <Text style={styles.tableCell}>
+                  {component.lastUpdated.toLocaleDateString()}
+                </Text>
+              </View>
+            ))
+          ) : (
             <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { textAlign: 'center', flex: 5 }]}>No components in inventory</Text>
+              <Text
+                style={[styles.tableCell, { textAlign: "center", flex: 5 }]}
+              >
+                No components in inventory
+              </Text>
             </View>
           )}
         </View>
 
         {/* Location Summary */}
 
-
-
         {/* Footer */}
         <Text style={styles.footer}>
-          This report was automatically generated by the Senzemo Inventory Management System | Report ID: INV-{reportDate.getTime()}
+          This report was automatically generated by the Senzemo Inventory
+          Management System | Report ID: INV-{reportDate.getTime()}
         </Text>
       </Page>
     </Document>

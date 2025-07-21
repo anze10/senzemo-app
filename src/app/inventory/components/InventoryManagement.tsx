@@ -188,7 +188,7 @@ type ProductionDevice = {
 
 export default function InventoryManagementPage() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [activeTab, setActiveTab] = useState(0);
   const [sensorInventory, setSensorInventory] = useState<SenzorStockItem[]>([]);
   const [componentInventory, setComponentInventory] = useState<
@@ -210,51 +210,64 @@ export default function InventoryManagementPage() {
   const [uploading, setUploading] = useState(false);
 
   // Add state for invoice history
-  const [invoiceHistory, setInvoiceHistory] = useState<Array<{
-    invoiceNumber: string;
-    filename: string | null;
-    uploadDate: Date;
-    amount: number | null;
-    downloadUrl: string | null;
-  }>>([]);
+  const [invoiceHistory, setInvoiceHistory] = useState<
+    Array<{
+      invoiceNumber: string;
+      filename: string | null;
+      uploadDate: Date;
+      amount: number | null;
+      downloadUrl: string | null;
+    }>
+  >([]);
   const [loadingInvoiceHistory, setLoadingInvoiceHistory] = useState(false);
 
   // Add adjustment dialog state
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
-  const [currentAdjustItem, setCurrentAdjustItem] = useState<InventoryItem | null>(null);
-  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">("increase");
+  const [currentAdjustItem, setCurrentAdjustItem] =
+    useState<InventoryItem | null>(null);
+  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">(
+    "increase",
+  );
   const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
   const [adjustmentReason, setAdjustmentReason] = useState("");
 
   // Add device action dialog state
   const [deviceActionDialogOpen, setDeviceActionDialogOpen] = useState(false);
-  const [currentDevice, setCurrentDevice] = useState<ProductionDevice | null>(null);
+  const [currentDevice, setCurrentDevice] = useState<ProductionDevice | null>(
+    null,
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [deviceActionReason, setDeviceActionReason] = useState("");
 
   // Add query to fetch invoice files for a component
-  const fetchComponentInvoiceHistory = useCallback(async (componentId: number) => {
-    if (!componentId) return [];
+  const fetchComponentInvoiceHistory = useCallback(
+    async (componentId: number) => {
+      if (!componentId) return [];
 
-    setLoadingInvoiceHistory(true);
-    try {
-      // For now, return empty array since getComponentInvoiceFiles is not implemented
-      const invoices: Array<{
-        invoiceNumber: string;
-        filename: string | null;
-        uploadDate: Date;
-        amount: number | null;
-        downloadUrl: string | null;
-      }> = [];
-      // Sort by uploadDate descending to get newest first
-      return invoices.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-    } catch (error) {
-      console.error('Failed to fetch invoice history:', error);
-      return [];
-    } finally {
-      setLoadingInvoiceHistory(false);
-    }
-  }, []);
+      setLoadingInvoiceHistory(true);
+      try {
+        // For now, return empty array since getComponentInvoiceFiles is not implemented
+        const invoices: Array<{
+          invoiceNumber: string;
+          filename: string | null;
+          uploadDate: Date;
+          amount: number | null;
+          downloadUrl: string | null;
+        }> = [];
+        // Sort by uploadDate descending to get newest first
+        return invoices.sort(
+          (a, b) =>
+            new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime(),
+        );
+      } catch (error) {
+        console.error("Failed to fetch invoice history:", error);
+        return [];
+      } finally {
+        setLoadingInvoiceHistory(false);
+      }
+    },
+    [],
+  );
 
   const queryClient = useQueryClient();
   const frequencyOptions: Frequency[] = [
@@ -289,10 +302,12 @@ export default function InventoryManagementPage() {
     return { showAlert, severity, color, message };
   }
 
-
   // Helper function to check if component is in the low components list from database
   const isComponentInLowList = (component: ComponentStockItem) => {
-    return LowComponents.some((lowComp: LowComponentItem) => lowComp.componentId === component.componentId);
+    return LowComponents.some(
+      (lowComp: LowComponentItem) =>
+        lowComp.componentId === component.componentId,
+    );
   };
 
   const initializeNewItem = useCallback(() => {
@@ -337,7 +352,11 @@ export default function InventoryManagementPage() {
       // Create a new File object with the updated name
       const renamedFile = new File([file], newFileName, { type: file.type });
 
-      const filePath = await uploadPDFToB2(renamedFile, invoiceNumber, "components");
+      const filePath = await uploadPDFToB2(
+        renamedFile,
+        invoiceNumber,
+        "components",
+      );
       return filePath; // Return the actual file path from B2
     },
     onSuccess: (filePath) => {
@@ -898,7 +917,8 @@ export default function InventoryManagementPage() {
         })),
       invoiceNumber: invoiceNumber,
       price: (editItem as ComponentStockItem).price ?? 0,
-      lowStockThreshold: (editItem as ComponentStockItem).lowStockThreshold ?? undefined,
+      lowStockThreshold:
+        (editItem as ComponentStockItem).lowStockThreshold ?? undefined,
       isCritical: (editItem as ComponentStockItem).isCritical ?? false,
       contactDetails: (editItem as ComponentStockItem).contactDetails ?? {
         supplier: "",
@@ -1049,7 +1069,11 @@ export default function InventoryManagementPage() {
     try {
       // Upload file if provided and it's a component increase
       let fileKey: string | null = null;
-      if (invoiceFile && adjustmentType === "increase" && "componentId" in currentAdjustItem) {
+      if (
+        invoiceFile &&
+        adjustmentType === "increase" &&
+        "componentId" in currentAdjustItem
+      ) {
         setUploading(true);
         try {
           fileKey = await uploadMutation.mutateAsync(invoiceFile);
@@ -1071,8 +1095,10 @@ export default function InventoryManagementPage() {
           stockId: currentAdjustItem.id!,
           quantity: change,
           reason: adjustmentReason,
-          invoiceNumber: adjustmentType === "increase" ? invoiceNumber :
-            (currentAdjustItem as ComponentStockItem).invoiceNumber,
+          invoiceNumber:
+            adjustmentType === "increase"
+              ? invoiceNumber
+              : (currentAdjustItem as ComponentStockItem).invoiceNumber,
           fileKey: fileKey || undefined,
           price: undefined, // Could be added to UI later
           supplier: undefined, // Could be added to UI later
@@ -1091,14 +1117,19 @@ export default function InventoryManagementPage() {
         severity: "error",
       });
     }
-  }; const handleEditItem = async (item: InventoryItem) => {
+  };
+  const handleEditItem = async (item: InventoryItem) => {
     // For components, force a fresh fetch to get the latest data including invoice info
     if ("componentId" in item) {
       try {
         // Force refetch the latest component data
-        await queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
-        const freshData = await showAllComponents();  // Direct call to get fresh data
-        const freshComponent = freshData.find((c: ComponentStockItem) => c.id === item.id);
+        await queryClient.invalidateQueries({
+          queryKey: ["components-inventory"],
+        });
+        const freshData = await showAllComponents(); // Direct call to get fresh data
+        const freshComponent = freshData.find(
+          (c: ComponentStockItem) => c.id === item.id,
+        );
 
         setEditItem(freshComponent ?? item);
 
@@ -1107,11 +1138,11 @@ export default function InventoryManagementPage() {
           const history = await fetchComponentInvoiceHistory(item.componentId);
           setInvoiceHistory(history);
         } catch (error) {
-          console.error('Failed to fetch invoice history:', error);
+          console.error("Failed to fetch invoice history:", error);
           setInvoiceHistory([]);
         }
       } catch (error) {
-        console.error('Failed to fetch fresh component data:', error);
+        console.error("Failed to fetch fresh component data:", error);
         // Fallback to existing data
         setEditItem(item);
         setInvoiceHistory([]);
@@ -1143,28 +1174,31 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-              ...group,
-              frequencies: group.frequencies.map((freq) =>
-                freq.frequency === frequency
-                  ? { ...freq, expanded: !freq.expanded }
-                  : freq,
-              ),
-            }
+                ...group,
+                frequencies: group.frequencies.map((freq) =>
+                  freq.frequency === frequency
+                    ? { ...freq, expanded: !freq.expanded }
+                    : freq,
+                ),
+              }
             : group,
         ) || [],
     );
   };
 
   // Handle invoice file download
-  const handleDownloadInvoiceFile = async (invoiceNumber: string, filename: string) => {
+  const handleDownloadInvoiceFile = async (
+    invoiceNumber: string,
+    filename: string,
+  ) => {
     try {
       const { downloadUrl } = await getInvoiceFileDownloadUrl(invoiceNumber);
 
       // Create a temporary anchor element to trigger download
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
       link.download = filename;
-      link.target = '_blank';
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1205,7 +1239,11 @@ export default function InventoryManagementPage() {
     }
   };
 
-  const handleAssignToOrder = async (device: ProductionDevice, orderId: number, reason: string) => {
+  const handleAssignToOrder = async (
+    device: ProductionDevice,
+    orderId: number,
+    reason: string,
+  ) => {
     try {
       await assignDeviceToOrder(device.devEUI, orderId, reason);
       // Refresh the production hierarchy data
@@ -1225,7 +1263,10 @@ export default function InventoryManagementPage() {
     }
   };
 
-  const handleReleaseFromOrder = async (device: ProductionDevice, reason: string) => {
+  const handleReleaseFromOrder = async (
+    device: ProductionDevice,
+    reason: string,
+  ) => {
     try {
       await releaseDeviceFromOrder(device.devEUI, reason);
       // Refresh the production hierarchy data
@@ -1252,15 +1293,24 @@ export default function InventoryManagementPage() {
     setDeviceActionDialogOpen(true);
   };
 
-  const confirmDeviceAction = async (action: 'remove' | 'assign' | 'release') => {
+  const confirmDeviceAction = async (
+    action: "remove" | "assign" | "release",
+  ) => {
     if (!currentDevice) return;
 
-    if (action === 'remove') {
+    if (action === "remove") {
       await handleRemoveDevice(currentDevice);
-    } else if (action === 'assign' && selectedOrderId) {
-      await handleAssignToOrder(currentDevice, selectedOrderId, deviceActionReason || 'Assigned to order');
-    } else if (action === 'release') {
-      await handleReleaseFromOrder(currentDevice, deviceActionReason || 'Released from order');
+    } else if (action === "assign" && selectedOrderId) {
+      await handleAssignToOrder(
+        currentDevice,
+        selectedOrderId,
+        deviceActionReason || "Assigned to order",
+      );
+    } else if (action === "release") {
+      await handleReleaseFromOrder(
+        currentDevice,
+        deviceActionReason || "Released from order",
+      );
     }
 
     setDeviceActionDialogOpen(false);
@@ -1301,33 +1351,40 @@ export default function InventoryManagementPage() {
         `}
       </style>
       <CssBaseline />
-      <Container maxWidth={false} sx={{
-        py: { xs: 2, md: 2 },
-        px: { xs: 2, md: 3 },
-        minHeight: "100vh",
-        bgcolor: "background.default"
-      }}>
+      <Container
+        maxWidth={false}
+        sx={{
+          py: { xs: 2, md: 2 },
+          px: { xs: 2, md: 3 },
+          minHeight: "100vh",
+          bgcolor: "background.default",
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="mx-auto max-w-7xl"
         >
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            alignItems: { xs: 'center', md: 'flex-start' },
-            justifyContent: 'space-between',
-            mb: { xs: 4, md: 8 },
-            gap: { xs: 3, md: 0 }
-          }}>
-            <Box sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
-              alignItems: { xs: 'center', md: 'flex-start' },
-              gap: { xs: 1, md: 2 },
-              textAlign: { xs: 'center', md: 'left' }
-            }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              alignItems: { xs: "center", md: "flex-start" },
+              justifyContent: "space-between",
+              mb: { xs: 4, md: 8 },
+              gap: { xs: 3, md: 0 },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                alignItems: { xs: "center", md: "flex-start" },
+                gap: { xs: 1, md: 2 },
+                textAlign: { xs: "center", md: "left" },
+              }}
+            >
               <Image
                 src="/senzemo-large-01 (9).png"
                 alt="Senzemo Logo"
@@ -1341,8 +1398,8 @@ export default function InventoryManagementPage() {
                   component="h1"
                   sx={{
                     fontWeight: 600,
-                    color: 'primary.main',
-                    mb: isMobile ? 0 : 1
+                    color: "primary.main",
+                    mb: isMobile ? 0 : 1,
                   }}
                 >
                   Inventory Management
@@ -1393,14 +1450,14 @@ export default function InventoryManagementPage() {
             onChange={handleTabChange}
             sx={{
               mb: { xs: 3, md: 6 },
-              '& .MuiTab-root': {
-                minHeight: { xs: 48, md: 'auto' },
-                fontSize: { xs: '0.875rem', md: '1rem' },
-                fontWeight: 600
+              "& .MuiTab-root": {
+                minHeight: { xs: 48, md: "auto" },
+                fontSize: { xs: "0.875rem", md: "1rem" },
+                fontWeight: 600,
               },
-              '& .MuiTabs-indicator': {
-                height: 3
-              }
+              "& .MuiTabs-indicator": {
+                height: 3,
+              },
             }}
             variant={isMobile ? "fullWidth" : "standard"}
             scrollButtons={isMobile ? "auto" : false}
@@ -1440,25 +1497,27 @@ export default function InventoryManagementPage() {
                             sx={{
                               mb: 2,
                               borderRadius: 2,
-                              border: '1px solid',
-                              borderColor: 'divider'
+                              border: "1px solid",
+                              borderColor: "divider",
                             }}
                           >
                             <CardContent sx={{ p: 3 }}>
                               {/* Header with item name and change */}
-                              <Box sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                mb: 2
-                              }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  mb: 2,
+                                }}
+                              >
                                 <Box sx={{ flex: 1 }}>
                                   <Typography
                                     variant="h6"
                                     sx={{
                                       fontWeight: 600,
-                                      color: 'primary.main',
-                                      mb: 0.5
+                                      color: "primary.main",
+                                      mb: 0.5,
                                     }}
                                   >
                                     {log.itemName}
@@ -1471,7 +1530,11 @@ export default function InventoryManagementPage() {
                                   />
                                 </Box>
                                 <Chip
-                                  label={log.change > 0 ? `+${log.change}` : log.change}
+                                  label={
+                                    log.change > 0
+                                      ? `+${log.change}`
+                                      : log.change
+                                  }
                                   color={log.change > 0 ? "success" : "error"}
                                   variant="filled"
                                   size="medium"
@@ -1480,13 +1543,18 @@ export default function InventoryManagementPage() {
                               </Box>
 
                               {/* Details grid */}
-                              <Box sx={{
-                                display: 'grid',
-                                gridTemplateColumns: '1fr',
-                                gap: 2
-                              }}>
+                              <Box
+                                sx={{
+                                  display: "grid",
+                                  gridTemplateColumns: "1fr",
+                                  gap: 2,
+                                }}
+                              >
                                 <Box>
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
                                     Timestamp
                                   </Typography>
                                   <Typography variant="body2" fontWeight={500}>
@@ -1495,7 +1563,10 @@ export default function InventoryManagementPage() {
                                 </Box>
 
                                 <Box>
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
                                     Reason
                                   </Typography>
                                   <Typography variant="body2">
@@ -1505,7 +1576,10 @@ export default function InventoryManagementPage() {
 
                                 {log.user && (
                                   <Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
                                       User
                                     </Typography>
                                     <Typography variant="body2">
@@ -1516,10 +1590,16 @@ export default function InventoryManagementPage() {
 
                                 {log.invoiceNumber && (
                                   <Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
                                       Invoice Number
                                     </Typography>
-                                    <Typography variant="body2" fontWeight={500}>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={500}
+                                    >
                                       {log.invoiceNumber}
                                     </Typography>
                                   </Box>
@@ -1531,11 +1611,15 @@ export default function InventoryManagementPage() {
                       ))}
                     </AnimatePresence>
                   ) : (
-                    <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                    <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                       <Typography color="text.secondary" variant="h6">
                         No logs available
                       </Typography>
-                      <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                      <Typography
+                        color="text.secondary"
+                        variant="body2"
+                        sx={{ mt: 1 }}
+                      >
                         Activity logs will appear here when you make changes
                       </Typography>
                     </Card>
@@ -1560,7 +1644,9 @@ export default function InventoryManagementPage() {
                       <TableBody>
                         {logs.map((log) => (
                           <TableRow key={log.id}>
-                            <TableCell>{log.timestamp.toLocaleString()}</TableCell>
+                            <TableCell>
+                              {log.timestamp.toLocaleString()}
+                            </TableCell>
                             <TableCell>{log.itemName}</TableCell>
                             <TableCell>{log.itemType}</TableCell>
                             <TableCell>
@@ -1596,65 +1682,77 @@ export default function InventoryManagementPage() {
           ) : activeTab === 0 ? (
             // Sensors tab
             <>
-
-
               {/* Device Inventory - Hierarchical View */}
-              <Paper elevation={3} sx={{ mb: 4, overflow: 'hidden' }}>
+              <Paper elevation={3} sx={{ mb: 4, overflow: "hidden" }}>
                 <Box sx={{ p: { xs: 2, md: 4 } }}>
                   <Typography
                     variant="h6"
                     sx={{
                       mb: { xs: 2, md: 4 },
                       fontWeight: 600,
-                      color: 'primary.main'
+                      color: "primary.main",
                     }}
                   >
                     Device Inventory - Hierarchical View
                   </Typography>
 
                   {productionHierarchy.length === 0 ? (
-                    <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                    <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                       <Typography color="text.secondary" variant="h6">
                         No devices in inventory
                       </Typography>
-                      <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                      <Typography
+                        color="text.secondary"
+                        variant="body2"
+                        sx={{ mt: 1 }}
+                      >
                         Add devices to see them organized by type and frequency
                       </Typography>
                     </Card>
                   ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box
+                      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                    >
                       {productionHierarchy.map((sensorGroup) => (
                         <Card
                           key={sensorGroup.deviceType}
                           elevation={1}
                           sx={{
                             borderRadius: 2,
-                            border: '1px solid',
-                            borderColor: 'divider'
+                            border: "1px solid",
+                            borderColor: "divider",
                           }}
                         >
                           {/* Level 1: Device Type */}
                           <Box
-                            onClick={() => toggleSensorExpanded(sensorGroup.deviceType)}
+                            onClick={() =>
+                              toggleSensorExpanded(sensorGroup.deviceType)
+                            }
                             sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
                               p: { xs: 2, md: 3 },
-                              bgcolor: 'grey.50',
-                              cursor: 'pointer',
-                              minHeight: { xs: 60, md: 'auto' },
-                              '&:hover': {
-                                bgcolor: 'grey.100'
-                              }
+                              bgcolor: "grey.50",
+                              cursor: "pointer",
+                              minHeight: { xs: 60, md: "auto" },
+                              "&:hover": {
+                                bgcolor: "grey.100",
+                              },
                             }}
                           >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: { xs: 1, md: 2 },
+                              }}
+                            >
                               <IconButton
                                 size={isMobile ? "medium" : "small"}
                                 sx={{
-                                  minWidth: { xs: 44, md: 'auto' },
-                                  minHeight: { xs: 44, md: 'auto' }
+                                  minWidth: { xs: 44, md: "auto" },
+                                  minHeight: { xs: 44, md: "auto" },
                                 }}
                               >
                                 {sensorGroup.expanded ? (
@@ -1663,12 +1761,12 @@ export default function InventoryManagementPage() {
                                   <ChevronRightIcon />
                                 )}
                               </IconButton>
-                              <MemoryIcon sx={{ color: 'text.secondary' }} />
+                              <MemoryIcon sx={{ color: "text.secondary" }} />
                               <Typography
                                 variant={isMobile ? "subtitle1" : "h6"}
                                 sx={{
                                   fontWeight: 600,
-                                  color: 'text.primary'
+                                  color: "text.primary",
                                 }}
                               >
                                 {sensorGroup.deviceType}
@@ -1693,7 +1791,10 @@ export default function InventoryManagementPage() {
                                 {sensorGroup.frequencies.map((freqGroup) => (
                                   <Box
                                     key={freqGroup.frequency}
-                                    sx={{ borderTop: 1, borderColor: 'divider' }}
+                                    sx={{
+                                      borderTop: 1,
+                                      borderColor: "divider",
+                                    }}
                                   >
                                     <Box
                                       onClick={() =>
@@ -1703,25 +1804,31 @@ export default function InventoryManagementPage() {
                                         )
                                       }
                                       sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
                                         p: { xs: 2, md: 3 },
                                         pl: { xs: 3, md: 6 },
-                                        bgcolor: 'grey.25',
-                                        cursor: 'pointer',
-                                        minHeight: { xs: 56, md: 'auto' },
-                                        '&:hover': {
-                                          bgcolor: 'grey.50'
-                                        }
+                                        bgcolor: "grey.25",
+                                        cursor: "pointer",
+                                        minHeight: { xs: 56, md: "auto" },
+                                        "&:hover": {
+                                          bgcolor: "grey.50",
+                                        },
                                       }}
                                     >
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: { xs: 1, md: 2 },
+                                        }}
+                                      >
                                         <IconButton
                                           size={isMobile ? "medium" : "small"}
                                           sx={{
-                                            minWidth: { xs: 44, md: 'auto' },
-                                            minHeight: { xs: 44, md: 'auto' }
+                                            minWidth: { xs: 44, md: "auto" },
+                                            minHeight: { xs: 44, md: "auto" },
                                           }}
                                         >
                                           {freqGroup.expanded ? (
@@ -1730,9 +1837,13 @@ export default function InventoryManagementPage() {
                                             <ChevronRightIcon />
                                           )}
                                         </IconButton>
-                                        <RadioIcon sx={{ color: 'text.secondary' }} />
+                                        <RadioIcon
+                                          sx={{ color: "text.secondary" }}
+                                        />
                                         <Typography
-                                          variant={isMobile ? "body1" : "subtitle1"}
+                                          variant={
+                                            isMobile ? "body1" : "subtitle1"
+                                          }
                                           sx={{ fontWeight: 500 }}
                                         >
                                           {freqGroup.frequency}
@@ -1751,46 +1862,64 @@ export default function InventoryManagementPage() {
                                       {freqGroup.expanded && (
                                         <motion.div
                                           initial={{ opacity: 0, height: 0 }}
-                                          animate={{ opacity: 1, height: "auto" }}
+                                          animate={{
+                                            opacity: 1,
+                                            height: "auto",
+                                          }}
                                           exit={{ opacity: 0, height: 0 }}
                                           transition={{ duration: 0.3 }}
                                         >
-                                          <Box sx={{ bgcolor: 'grey.25' }}>
+                                          <Box sx={{ bgcolor: "grey.25" }}>
                                             {freqGroup.devices.map((device) => (
                                               <Box
                                                 key={device.id}
                                                 sx={{
                                                   p: { xs: 2, md: 3 },
                                                   pl: { xs: 4, md: 10 },
-                                                  borderTop: '1px solid',
-                                                  borderColor: 'divider',
-                                                  '&:hover': {
-                                                    bgcolor: 'grey.50'
-                                                  }
+                                                  borderTop: "1px solid",
+                                                  borderColor: "divider",
+                                                  "&:hover": {
+                                                    bgcolor: "grey.50",
+                                                  },
                                                 }}
                                               >
-                                                <Box sx={{
-                                                  display: 'flex',
-                                                  flexDirection: { xs: 'column', md: 'row' },
-                                                  alignItems: { xs: 'flex-start', md: 'center' },
-                                                  justifyContent: 'space-between',
-                                                  gap: { xs: 1, md: 2 }
-                                                }}>
-                                                  <Box sx={{
-                                                    display: 'flex',
-                                                    flexDirection: { xs: 'column', sm: 'row' },
-                                                    gap: { xs: 1, sm: 2 },
-                                                    flex: 1
-                                                  }}>
+                                                <Box
+                                                  sx={{
+                                                    display: "flex",
+                                                    flexDirection: {
+                                                      xs: "column",
+                                                      md: "row",
+                                                    },
+                                                    alignItems: {
+                                                      xs: "flex-start",
+                                                      md: "center",
+                                                    },
+                                                    justifyContent:
+                                                      "space-between",
+                                                    gap: { xs: 1, md: 2 },
+                                                  }}
+                                                >
+                                                  <Box
+                                                    sx={{
+                                                      display: "flex",
+                                                      flexDirection: {
+                                                        xs: "column",
+                                                        sm: "row",
+                                                      },
+                                                      gap: { xs: 1, sm: 2 },
+                                                      flex: 1,
+                                                    }}
+                                                  >
                                                     <Typography
                                                       variant="body2"
                                                       sx={{
-                                                        fontFamily: 'monospace',
+                                                        fontFamily: "monospace",
                                                         fontWeight: 500,
-                                                        color: 'primary.main'
+                                                        color: "primary.main",
                                                       }}
                                                     >
-                                                      DevEUI: {device.devEUI || "N/A"}
+                                                      DevEUI:{" "}
+                                                      {device.devEUI || "N/A"}
                                                     </Typography>
                                                     {!isMobile && (
                                                       <>
@@ -1798,29 +1927,37 @@ export default function InventoryManagementPage() {
                                                           variant="body2"
                                                           color="text.secondary"
                                                         >
-                                                          AppEUI: {device.appEUI || "N/A"}
+                                                          AppEUI:{" "}
+                                                          {device.appEUI ||
+                                                            "N/A"}
                                                         </Typography>
                                                         <Typography
                                                           variant="body2"
                                                           color="text.secondary"
                                                         >
-                                                          HW: {device.hwVersion || "N/A"}
+                                                          HW:{" "}
+                                                          {device.hwVersion ||
+                                                            "N/A"}
                                                         </Typography>
                                                         <Typography
                                                           variant="body2"
                                                           color="text.secondary"
                                                         >
-                                                          FW: {device.fwVersion || "N/A"}
+                                                          FW:{" "}
+                                                          {device.fwVersion ||
+                                                            "N/A"}
                                                         </Typography>
                                                       </>
                                                     )}
                                                   </Box>
 
-                                                  <Box sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 1
-                                                  }}>
+                                                  <Box
+                                                    sx={{
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      gap: 1,
+                                                    }}
+                                                  >
                                                     <Chip
                                                       label={
                                                         device.isAvailable
@@ -1836,20 +1973,29 @@ export default function InventoryManagementPage() {
                                                     />
 
                                                     {/* Device Action Buttons */}
-                                                    <Box sx={{
-                                                      display: 'flex',
-                                                      gap: 0.5
-                                                    }}>
+                                                    <Box
+                                                      sx={{
+                                                        display: "flex",
+                                                        gap: 0.5,
+                                                      }}
+                                                    >
                                                       <Tooltip title="Device Actions">
                                                         <IconButton
                                                           size="small"
-                                                          onClick={() => openDeviceActionDialog(device)}
+                                                          onClick={() =>
+                                                            openDeviceActionDialog(
+                                                              device,
+                                                            )
+                                                          }
                                                           sx={{
-                                                            color: 'primary.main',
-                                                            '&:hover': {
-                                                              bgcolor: 'primary.main',
-                                                              color: 'primary.contrastText'
-                                                            }
+                                                            color:
+                                                              "primary.main",
+                                                            "&:hover": {
+                                                              bgcolor:
+                                                                "primary.main",
+                                                              color:
+                                                                "primary.contrastText",
+                                                            },
                                                           }}
                                                         >
                                                           <AssignmentIcon fontSize="small" />
@@ -1859,13 +2005,19 @@ export default function InventoryManagementPage() {
                                                       <Tooltip title="Remove from Inventory">
                                                         <IconButton
                                                           size="small"
-                                                          onClick={() => handleRemoveDevice(device)}
+                                                          onClick={() =>
+                                                            handleRemoveDevice(
+                                                              device,
+                                                            )
+                                                          }
                                                           sx={{
-                                                            color: 'error.main',
-                                                            '&:hover': {
-                                                              bgcolor: 'error.main',
-                                                              color: 'error.contrastText'
-                                                            }
+                                                            color: "error.main",
+                                                            "&:hover": {
+                                                              bgcolor:
+                                                                "error.main",
+                                                              color:
+                                                                "error.contrastText",
+                                                            },
                                                           }}
                                                         >
                                                           <DeleteIcon fontSize="small" />
@@ -1875,20 +2027,40 @@ export default function InventoryManagementPage() {
                                                   </Box>
                                                 </Box>
                                                 {isMobile && (
-                                                  <Box sx={{
-                                                    mt: 1,
-                                                    display: 'grid',
-                                                    gridTemplateColumns: '1fr 1fr',
-                                                    gap: 1
-                                                  }}>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                      AppEUI: {device.appEUI || "N/A"}
+                                                  <Box
+                                                    sx={{
+                                                      mt: 1,
+                                                      display: "grid",
+                                                      gridTemplateColumns:
+                                                        "1fr 1fr",
+                                                      gap: 1,
+                                                    }}
+                                                  >
+                                                    <Typography
+                                                      variant="caption"
+                                                      color="text.secondary"
+                                                    >
+                                                      AppEUI:{" "}
+                                                      {device.appEUI || "N/A"}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                      HW: {device.hwVersion || "N/A"}
+                                                    <Typography
+                                                      variant="caption"
+                                                      color="text.secondary"
+                                                    >
+                                                      HW:{" "}
+                                                      {device.hwVersion ||
+                                                        "N/A"}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
-                                                      FW: {device.fwVersion || "N/A"}
+                                                    <Typography
+                                                      variant="caption"
+                                                      color="text.secondary"
+                                                      sx={{
+                                                        gridColumn: "1 / -1",
+                                                      }}
+                                                    >
+                                                      FW:{" "}
+                                                      {device.fwVersion ||
+                                                        "N/A"}
                                                     </Typography>
                                                   </Box>
                                                 )}
@@ -1910,18 +2082,20 @@ export default function InventoryManagementPage() {
                 </Box>
               </Paper>
 
-              <Box sx={{
-                display: 'flex',
-                justifyContent: { xs: 'center', md: 'flex-end' },
-                width: '100%'
-              }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: { xs: "center", md: "flex-end" },
+                  width: "100%",
+                }}
+              >
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleClickOpen}
                   startIcon={<AddIcon />}
                   size={isMobile ? "large" : "medium"}
-                  sx={{ minWidth: { xs: '200px', md: 'auto' } }}
+                  sx={{ minWidth: { xs: "200px", md: "auto" } }}
                 >
                   Add Device
                 </Button>
@@ -1948,37 +2122,55 @@ export default function InventoryManagementPage() {
                             sx={{
                               mb: 2,
                               borderRadius: 2,
-                              border: '1px solid',
-                              borderColor: 'divider'
+                              border: "1px solid",
+                              borderColor: "divider",
                             }}
                           >
                             <CardContent sx={{ p: 3 }}>
                               {/* Header with name, warning light, and edit button */}
-                              <Box sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                mb: 2
-                              }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, mr: 1 }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  mb: 2,
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    flex: 1,
+                                    mr: 1,
+                                  }}
+                                >
                                   {/* Alert Icon for Low Components */}
                                   {(() => {
-                                    const alertInfo = getComponentAlertInfo(item1);
-                                    const isInLowList = isComponentInLowList(item1);
+                                    const alertInfo =
+                                      getComponentAlertInfo(item1);
+                                    const isInLowList =
+                                      isComponentInLowList(item1);
                                     if (alertInfo.showAlert || isInLowList) {
                                       return (
-                                        <Box sx={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          mr: 1,
-                                        }}
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            mr: 1,
+                                          }}
                                         >
                                           <WarningIcon
                                             sx={{
-                                              color: isInLowList ? 'error.main' : alertInfo.color,
+                                              color: isInLowList
+                                                ? "error.main"
+                                                : alertInfo.color,
                                               fontSize: 24,
                                             }}
-                                            className={isInLowList ? "pulse-fast glow-critical" : "pulse-normal glow-warning"}
+                                            className={
+                                              isInLowList
+                                                ? "pulse-fast glow-critical"
+                                                : "pulse-normal glow-warning"
+                                            }
                                           />
                                         </Box>
                                       );
@@ -1988,17 +2180,19 @@ export default function InventoryManagementPage() {
 
                                   {/* Critical Component Indicator */}
                                   {item1.isCritical && (
-                                    <Box sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      mr: 1
-                                    }}>
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        mr: 1,
+                                      }}
+                                    >
                                       <Chip
                                         label="Critical"
                                         size="small"
                                         color="error"
                                         variant="filled"
-                                        sx={{ fontSize: '0.6rem', height: 20 }}
+                                        sx={{ fontSize: "0.6rem", height: 20 }}
                                       />
                                     </Box>
                                   )}
@@ -2006,7 +2200,7 @@ export default function InventoryManagementPage() {
                                     variant="h6"
                                     sx={{
                                       fontWeight: 600,
-                                      color: 'primary.main'
+                                      color: "primary.main",
                                     }}
                                   >
                                     {item1.name || "Unnamed Component"}
@@ -2022,28 +2216,37 @@ export default function InventoryManagementPage() {
                               </Box>
 
                               {/* Quantity controls */}
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                mb: 2,
-                                p: 2,
-                                bgcolor: 'grey.50',
-                                borderRadius: 1
-                              }}>
-                                <Typography variant="body2" color="text.secondary">
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  mb: 2,
+                                  p: 2,
+                                  bgcolor: "grey.50",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
                                   Quantity
                                 </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box
+                                  sx={{ display: "flex", alignItems: "center" }}
+                                >
                                   <IconButton
                                     size="medium"
-                                    onClick={() => openAdjustmentDialog(item1, "decrease")}
+                                    onClick={() =>
+                                      openAdjustmentDialog(item1, "decrease")
+                                    }
                                     sx={{
-                                      bgcolor: 'error.main',
-                                      color: 'white',
-                                      '&:hover': { bgcolor: 'error.dark' },
+                                      bgcolor: "error.main",
+                                      color: "white",
+                                      "&:hover": { bgcolor: "error.dark" },
                                       minWidth: 44,
-                                      minHeight: 44
+                                      minHeight: 44,
                                     }}
                                   >
                                     <RemoveIcon />
@@ -2053,21 +2256,23 @@ export default function InventoryManagementPage() {
                                     sx={{
                                       mx: 3,
                                       minWidth: 40,
-                                      textAlign: 'center',
-                                      fontWeight: 600
+                                      textAlign: "center",
+                                      fontWeight: 600,
                                     }}
                                   >
                                     {item1.quantity ?? "0"}
                                   </Typography>
                                   <IconButton
                                     size="medium"
-                                    onClick={() => openAdjustmentDialog(item1, "increase")}
+                                    onClick={() =>
+                                      openAdjustmentDialog(item1, "increase")
+                                    }
                                     sx={{
-                                      bgcolor: 'success.main',
-                                      color: 'white',
-                                      '&:hover': { bgcolor: 'success.dark' },
+                                      bgcolor: "success.main",
+                                      color: "white",
+                                      "&:hover": { bgcolor: "success.dark" },
                                       minWidth: 44,
-                                      minHeight: 44
+                                      minHeight: 44,
                                     }}
                                   >
                                     <AddIcon />
@@ -2076,34 +2281,51 @@ export default function InventoryManagementPage() {
                               </Box>
 
                               {/* Component details grid */}
-                              <Box sx={{
-                                display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
-                                gap: 2,
-                                mb: 2
-                              }}>
+                              <Box
+                                sx={{
+                                  display: "grid",
+                                  gridTemplateColumns: "1fr 1fr",
+                                  gap: 2,
+                                  mb: 2,
+                                }}
+                              >
                                 <Box>
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
                                     Price per Item
                                   </Typography>
                                   <Typography variant="body1" fontWeight={500}>
-                                    {item1.price !== undefined && item1.price !== null ? `€${Number(item1.price).toFixed(2)}` : "-"}
+                                    {item1.price !== undefined &&
+                                    item1.price !== null
+                                      ? `€${Number(item1.price).toFixed(2)}`
+                                      : "-"}
                                   </Typography>
                                 </Box>
                                 <Box>
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
                                     Last Updated
                                   </Typography>
                                   <Typography variant="body2">
-                                    {item1.lastUpdated ?
-                                      new Date(item1.lastUpdated).toLocaleDateString() : "-"}
+                                    {item1.lastUpdated
+                                      ? new Date(
+                                          item1.lastUpdated,
+                                        ).toLocaleDateString()
+                                      : "-"}
                                   </Typography>
                                 </Box>
                               </Box>
 
                               {/* Supplier information */}
                               <Box sx={{ mb: 2 }}>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
                                   Supplier
                                 </Typography>
                                 <Typography variant="body1" fontWeight={500}>
@@ -2111,12 +2333,14 @@ export default function InventoryManagementPage() {
                                 </Typography>
                                 {item1.contactDetails?.email && (
                                   <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                    {item1.contactDetails.email.includes("@") ? (
+                                    {item1.contactDetails.email.includes(
+                                      "@",
+                                    ) ? (
                                       <a
                                         href={`mailto:${item1.contactDetails.email}`}
                                         style={{
                                           color: "#0369a1",
-                                          textDecoration: "none"
+                                          textDecoration: "none",
                                         }}
                                       >
                                         {item1.contactDetails.email}
@@ -2124,7 +2348,9 @@ export default function InventoryManagementPage() {
                                     ) : (
                                       <a
                                         href={
-                                          item1.contactDetails.email.startsWith("http")
+                                          item1.contactDetails.email.startsWith(
+                                            "http",
+                                          )
                                             ? item1.contactDetails.email
                                             : `https://${item1.contactDetails.email}`
                                         }
@@ -2132,7 +2358,7 @@ export default function InventoryManagementPage() {
                                         rel="noopener noreferrer"
                                         style={{
                                           color: "#0369a1",
-                                          textDecoration: "none"
+                                          textDecoration: "none",
                                         }}
                                       >
                                         {item1.contactDetails.email}
@@ -2144,45 +2370,77 @@ export default function InventoryManagementPage() {
 
                               {/* Threshold and Critical Status Information */}
                               <Box sx={{ mb: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    mb: 1,
+                                  }}
+                                >
                                   <Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
                                       Low Stock Threshold
                                     </Typography>
-                                    <Typography variant="body2" fontWeight={500}>
-                                      {item1.lowStockThreshold !== null && item1.lowStockThreshold !== undefined
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={500}
+                                    >
+                                      {item1.lowStockThreshold !== null &&
+                                      item1.lowStockThreshold !== undefined
                                         ? `${item1.lowStockThreshold} units`
-                                        : 'No threshold set'
-                                      }
+                                        : "No threshold set"}
                                     </Typography>
                                   </Box>
                                   {(() => {
-                                    const alertInfo = getComponentAlertInfo(item1);
-                                    const isInLowList = isComponentInLowList(item1);
+                                    const alertInfo =
+                                      getComponentAlertInfo(item1);
+                                    const isInLowList =
+                                      isComponentInLowList(item1);
                                     if (alertInfo.showAlert || isInLowList) {
                                       return (
-                                        <Box sx={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 0.5,
-                                          p: 1,
-                                          borderRadius: 1,
-                                          bgcolor: isInLowList ? 'error.light' : alertInfo.severity === 'warning' ? 'warning.light' : 'error.light',
-                                          border: 1,
-                                          borderColor: isInLowList ? 'error.main' : alertInfo.severity === 'warning' ? 'warning.main' : 'divider'
-                                        }}>
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                            p: 1,
+                                            borderRadius: 1,
+                                            bgcolor: isInLowList
+                                              ? "error.light"
+                                              : alertInfo.severity === "warning"
+                                                ? "warning.light"
+                                                : "error.light",
+                                            border: 1,
+                                            borderColor: isInLowList
+                                              ? "error.main"
+                                              : alertInfo.severity === "warning"
+                                                ? "warning.main"
+                                                : "divider",
+                                          }}
+                                        >
                                           <WarningIcon
                                             sx={{
-                                              color: isInLowList ? 'error.main' : alertInfo.color,
-                                              fontSize: 16
+                                              color: isInLowList
+                                                ? "error.main"
+                                                : alertInfo.color,
+                                              fontSize: 16,
                                             }}
                                           />
                                           <Typography
                                             variant="caption"
-                                            color={isInLowList ? 'error.main' : alertInfo.color}
+                                            color={
+                                              isInLowList
+                                                ? "error.main"
+                                                : alertInfo.color
+                                            }
                                             fontWeight={600}
                                           >
-                                            {isInLowList ? "CRITICALLY LOW" : alertInfo.message}
+                                            {isInLowList
+                                              ? "CRITICALLY LOW"
+                                              : alertInfo.message}
                                           </Typography>
                                           {isInLowList && (
                                             <Chip
@@ -2190,7 +2448,10 @@ export default function InventoryManagementPage() {
                                               size="small"
                                               color="error"
                                               variant="filled"
-                                              sx={{ fontSize: '0.5rem', height: 16 }}
+                                              sx={{
+                                                fontSize: "0.5rem",
+                                                height: 16,
+                                              }}
                                             />
                                           )}
                                         </Box>
@@ -2205,78 +2466,121 @@ export default function InventoryManagementPage() {
                               {Array.isArray(item1.sensorAssignments) &&
                                 item1.sensorAssignments.length > 0 && (
                                   <Box sx={{ mb: 2 }}>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
                                       Sensor Requirements
                                     </Typography>
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                      {item1.sensorAssignments.map((sa, index) => (
-                                        <Chip
-                                          key={index}
-                                          label={`${sa.sensorName} (${sa.requiredQuantity})`}
-                                          size="small"
-                                          variant="outlined"
-                                          color="primary"
-                                        />
-                                      ))}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 0.5,
+                                        mt: 0.5,
+                                      }}
+                                    >
+                                      {item1.sensorAssignments.map(
+                                        (sa, index) => (
+                                          <Chip
+                                            key={index}
+                                            label={`${sa.sensorName} (${sa.requiredQuantity})`}
+                                            size="small"
+                                            variant="outlined"
+                                            color="primary"
+                                          />
+                                        ),
+                                      )}
                                     </Box>
                                   </Box>
                                 )}
 
                               {/* Invoice file information */}
                               <Box sx={{ mb: 2 }}>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
                                   Invoice Information
                                 </Typography>
                                 {item1.invoiceFile ? (
-                                  <Box sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 1,
-                                    mt: 0.5,
-                                    p: 1,
-                                    bgcolor: 'grey.50',
-                                    borderRadius: 1
-                                  }}>
-                                    <AttachFileIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1,
+                                      mt: 0.5,
+                                      p: 1,
+                                      bgcolor: "grey.50",
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    <AttachFileIcon
+                                      sx={{
+                                        fontSize: 16,
+                                        color: "primary.main",
+                                      }}
+                                    />
                                     <Box sx={{ flex: 1 }}>
-                                      <Typography variant="body2" fontWeight={500}>
-                                        {item1.invoiceNumber || "Unknown Invoice"}
+                                      <Typography
+                                        variant="body2"
+                                        fontWeight={500}
+                                      >
+                                        {item1.invoiceNumber ||
+                                          "Unknown Invoice"}
                                       </Typography>
-                                      <Typography variant="caption" color="text.secondary">
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
                                         {item1.invoiceFile}
                                       </Typography>
                                     </Box>
                                     <Button
                                       size="small"
                                       startIcon={<DownloadIcon />}
-                                      onClick={() => handleDownloadInvoiceFile(
-                                        item1.invoiceNumber || '',
-                                        item1.invoiceFile || ''
-                                      )}
+                                      onClick={() =>
+                                        handleDownloadInvoiceFile(
+                                          item1.invoiceNumber || "",
+                                          item1.invoiceFile || "",
+                                        )
+                                      }
                                       sx={{
-                                        textTransform: 'none',
-                                        fontSize: '0.75rem'
+                                        textTransform: "none",
+                                        fontSize: "0.75rem",
                                       }}
                                     >
                                       Download
                                     </Button>
                                   </Box>
                                 ) : item1.invoiceNumber ? (
-                                  <Box sx={{
-                                    mt: 0.5,
-                                    p: 1,
-                                    bgcolor: 'warning.light',
-                                    borderRadius: 1
-                                  }}>
-                                    <Typography variant="body2" color="warning.dark">
+                                  <Box
+                                    sx={{
+                                      mt: 0.5,
+                                      p: 1,
+                                      bgcolor: "warning.light",
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="body2"
+                                      color="warning.dark"
+                                    >
                                       Invoice: {item1.invoiceNumber}
                                     </Typography>
-                                    <Typography variant="caption" color="warning.dark">
+                                    <Typography
+                                      variant="caption"
+                                      color="warning.dark"
+                                    >
                                       No file uploaded
                                     </Typography>
                                   </Box>
                                 ) : (
-                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5 }}
+                                  >
                                     No invoice information
                                   </Typography>
                                 )}
@@ -2286,11 +2590,15 @@ export default function InventoryManagementPage() {
                         </motion.div>
                       ))
                     ) : (
-                      <Card elevation={2} sx={{ p: 6, textAlign: 'center' }}>
+                      <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                         <Typography color="text.secondary" variant="h6">
                           No components in inventory
                         </Typography>
-                        <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                        <Typography
+                          color="text.secondary"
+                          variant="body2"
+                          sx={{ mt: 1 }}
+                        >
                           Add your first component to get started
                         </Typography>
                       </Card>
@@ -2327,20 +2635,40 @@ export default function InventoryManagementPage() {
                                 transition={{ duration: 0.3 }}
                               >
                                 <TableCell className="font-bold">
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1,
+                                    }}
+                                  >
                                     {/* Alert Icon for Low Components */}
                                     {(() => {
-                                      const alertInfo = getComponentAlertInfo(item1);
-                                      const isInLowList = isComponentInLowList(item1);
+                                      const alertInfo =
+                                        getComponentAlertInfo(item1);
+                                      const isInLowList =
+                                        isComponentInLowList(item1);
                                       if (alertInfo.showAlert || isInLowList) {
                                         return (
-                                          <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              mr: 0.5,
+                                            }}
+                                          >
                                             <WarningIcon
                                               sx={{
-                                                color: isInLowList ? 'error.main' : alertInfo.color,
+                                                color: isInLowList
+                                                  ? "error.main"
+                                                  : alertInfo.color,
                                                 fontSize: 20,
                                               }}
-                                              className={isInLowList ? "pulse-fast glow-critical" : "pulse-normal glow-warning"}
+                                              className={
+                                                isInLowList
+                                                  ? "pulse-fast glow-critical"
+                                                  : "pulse-normal glow-warning"
+                                              }
                                             />
                                           </Box>
                                         );
@@ -2355,7 +2683,11 @@ export default function InventoryManagementPage() {
                                         size="small"
                                         color="error"
                                         variant="filled"
-                                        sx={{ fontSize: '0.6rem', height: 18, mr: 0.5 }}
+                                        sx={{
+                                          fontSize: "0.6rem",
+                                          height: 18,
+                                          mr: 0.5,
+                                        }}
                                       />
                                     )}
                                     {item1.name || "-"}
@@ -2385,7 +2717,8 @@ export default function InventoryManagementPage() {
                                   </Box>
                                 </TableCell>
                                 <TableCell>
-                                  {item1.price !== undefined && item1.price !== null
+                                  {item1.price !== undefined &&
+                                  item1.price !== null
                                     ? `€${Number(item1.price).toFixed(2)}`
                                     : "-"}
                                 </TableCell>
@@ -2431,41 +2764,68 @@ export default function InventoryManagementPage() {
                                 </TableCell>
                                 <TableCell>
                                   {Array.isArray(item1.sensorAssignments) &&
-                                    item1.sensorAssignments.length > 0
+                                  item1.sensorAssignments.length > 0
                                     ? item1.sensorAssignments
-                                      .map(sa => `${sa.sensorName} (${sa.requiredQuantity})`)
-                                      .join(", ")
+                                        .map(
+                                          (sa) =>
+                                            `${sa.sensorName} (${sa.requiredQuantity})`,
+                                        )
+                                        .join(", ")
                                     : "-"}
                                 </TableCell>
                                 <TableCell>
                                   {item1.invoiceFile ? (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <AttachFileIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      <AttachFileIcon
+                                        sx={{
+                                          fontSize: 16,
+                                          color: "text.secondary",
+                                        }}
+                                      />
                                       <Button
                                         size="small"
                                         startIcon={<DownloadIcon />}
-                                        onClick={() => handleDownloadInvoiceFile(
-                                          item1.invoiceNumber || '',
-                                          item1.invoiceFile || ''
-                                        )}
+                                        onClick={() =>
+                                          handleDownloadInvoiceFile(
+                                            item1.invoiceNumber || "",
+                                            item1.invoiceFile || "",
+                                          )
+                                        }
                                         sx={{
-                                          textTransform: 'none',
-                                          fontSize: '0.75rem',
-                                          minWidth: 'auto'
+                                          textTransform: "none",
+                                          fontSize: "0.75rem",
+                                          minWidth: "auto",
                                         }}
                                       >
                                         {item1.invoiceFile.length > 20
                                           ? `${item1.invoiceFile.substring(0, 17)}...`
-                                          : item1.invoiceFile
-                                        }
+                                          : item1.invoiceFile}
                                       </Button>
                                     </Box>
                                   ) : item1.invoiceNumber ? (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
                                         {item1.invoiceNumber}
                                       </Typography>
-                                      <Typography variant="caption" color="warning.main">
+                                      <Typography
+                                        variant="caption"
+                                        color="warning.main"
+                                      >
                                         (No file)
                                       </Typography>
                                     </Box>
@@ -2493,18 +2853,20 @@ export default function InventoryManagementPage() {
                 </Paper>
               )}
 
-              <Box sx={{
-                display: 'flex',
-                justifyContent: { xs: 'center', md: 'flex-end' },
-                width: '100%'
-              }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: { xs: "center", md: "flex-end" },
+                  width: "100%",
+                }}
+              >
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleClickOpen}
                   startIcon={<AddIcon />}
                   size={isMobile ? "large" : "medium"}
-                  sx={{ minWidth: { xs: '200px', md: 'auto' } }}
+                  sx={{ minWidth: { xs: "200px", md: "auto" } }}
                 >
                   Add {activeTab === 0 ? "Device" : "Component"}
                 </Button>
@@ -2516,18 +2878,20 @@ export default function InventoryManagementPage() {
           {(activeTab === 0 || activeTab === 1) && capacitySummary && (
             <Paper elevation={3} sx={{ mb: 3 }}>
               <Box sx={{ p: { xs: 2, md: 4 } }}>
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  mb: { xs: 2, md: 3 },
-                  gap: 1
-                }}>
-                  <BuildIcon sx={{ color: 'text.secondary' }} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    mb: { xs: 2, md: 3 },
+                    gap: 1,
+                  }}
+                >
+                  <BuildIcon sx={{ color: "text.secondary" }} />
                   <Typography
                     variant={isMobile ? "h6" : "h5"}
                     sx={{
                       fontWeight: 600,
-                      color: 'primary.main'
+                      color: "primary.main",
                     }}
                   >
                     Production Capacity Summary
@@ -2542,45 +2906,49 @@ export default function InventoryManagementPage() {
                       sx={{
                         mb: { xs: 2, md: 3 },
                         fontWeight: 600,
-                        color: 'text.primary'
+                        color: "text.primary",
                       }}
                     >
                       Breakdown by sensor type:
                     </Typography>
-                    <Box sx={{
-                      display: 'grid',
-                      gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: 'repeat(2, 1fr)',
-                        lg: 'repeat(3, 1fr)'
-                      },
-                      gap: { xs: 2, md: 3 }
-                    }}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          sm: "repeat(2, 1fr)",
+                          lg: "repeat(3, 1fr)",
+                        },
+                        gap: { xs: 2, md: 3 },
+                      }}
+                    >
                       {productionCapacity.map((sensor) => (
                         <Card
                           key={sensor.sensorId}
                           variant="outlined"
                           sx={{
                             borderRadius: 2,
-                            '&:hover': {
-                              boxShadow: 2
-                            }
+                            "&:hover": {
+                              boxShadow: 2,
+                            },
                           }}
                         >
                           <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                            <Box sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              mb: 2
-                            }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                mb: 2,
+                              }}
+                            >
                               <Typography
                                 variant="subtitle2"
                                 sx={{
                                   fontWeight: 600,
-                                  color: 'text.primary',
+                                  color: "text.primary",
                                   flex: 1,
-                                  mr: 1
+                                  mr: 1,
                                 }}
                               >
                                 {sensor.sensorName}
@@ -2604,21 +2972,32 @@ export default function InventoryManagementPage() {
                                   color="text.secondary"
                                   sx={{ mb: 1 }}
                                 >
-                                  Can assemble <strong>{sensor.maxProducible}</strong> sensors
+                                  Can assemble{" "}
+                                  <strong>{sensor.maxProducible}</strong>{" "}
+                                  sensors
                                 </Typography>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 0.5,
+                                  }}
+                                >
                                   {sensor.componentDetails.map((comp, idx) => (
                                     <Typography
                                       key={idx}
                                       variant="caption"
                                       sx={{
                                         color: comp.isLimitingFactor
-                                          ? 'warning.main'
-                                          : 'text.secondary',
-                                        fontWeight: comp.isLimitingFactor ? 600 : 400
+                                          ? "warning.main"
+                                          : "text.secondary",
+                                        fontWeight: comp.isLimitingFactor
+                                          ? 600
+                                          : 400,
                                       }}
                                     >
-                                      {comp.name}: {comp.available}/{comp.required}
+                                      {comp.name}: {comp.available}/
+                                      {comp.required}
                                       {comp.isLimitingFactor && " (limiting)"}
                                     </Typography>
                                   ))}
@@ -2633,31 +3012,43 @@ export default function InventoryManagementPage() {
                                 >
                                   Missing components:
                                 </Typography>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 0.5,
+                                  }}
+                                >
                                   {sensor.componentDetails
-                                    .filter((comp) => comp.available < comp.required)
+                                    .filter(
+                                      (comp) => comp.available < comp.required,
+                                    )
                                     .map((comp, idx) => (
                                       <Typography
                                         key={idx}
                                         variant="caption"
                                         sx={{
-                                          color: 'error.main',
-                                          fontWeight: 500
+                                          color: "error.main",
+                                          fontWeight: 500,
                                         }}
                                       >
-                                        {comp.name}: {comp.available}/{comp.required}
-                                        (need {comp.required - comp.available} more)
+                                        {comp.name}: {comp.available}/
+                                        {comp.required}
+                                        (need {comp.required -
+                                          comp.available}{" "}
+                                        more)
                                       </Typography>
                                     ))}
                                   {sensor.componentDetails.length === 0 && (
                                     <Typography
                                       variant="caption"
                                       sx={{
-                                        color: 'error.main',
-                                        fontWeight: 500
+                                        color: "error.main",
+                                        fontWeight: 500,
                                       }}
                                     >
-                                      No component requirements defined for this sensor
+                                      No component requirements defined for this
+                                      sensor
                                     </Typography>
                                   )}
                                 </Box>
@@ -2674,7 +3065,6 @@ export default function InventoryManagementPage() {
           )}
         </motion.div>
 
-
         <Dialog
           open={open}
           onClose={handleClose}
@@ -2685,43 +3075,52 @@ export default function InventoryManagementPage() {
             sx: {
               borderRadius: { xs: 0, md: 2 },
               m: { xs: 0, md: 2 },
-              maxHeight: { xs: '100vh', md: '90vh' }
-            }
+              maxHeight: { xs: "100vh", md: "90vh" },
+            },
           }}
         >
-          <DialogTitle sx={{
-            backgroundColor: 'primary.main',
-            color: 'primary.contrastText',
-            fontWeight: 600,
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
+          <DialogTitle
+            sx={{
+              backgroundColor: "primary.main",
+              color: "primary.contrastText",
+              fontWeight: 600,
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <Typography variant={isMobile ? "h6" : "h5"} component="div">
               {editItem?.id ? "Edit Item" : "Add Inventory Item"}
             </Typography>
             {isMobile && (
               <IconButton
                 onClick={handleClose}
-                sx={{ color: 'primary.contrastText' }}
+                sx={{ color: "primary.contrastText" }}
               >
-                <ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />
+                <ExpandMoreIcon sx={{ transform: "rotate(90deg)" }} />
               </IconButton>
             )}
           </DialogTitle>
-          <DialogContent sx={{
-            p: { xs: 2, md: 4 },
-            overflow: 'auto'
-          }}>
-            <Box sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: activeTab === 1 ? '1fr 1fr' : '1fr' },
-              gap: { xs: 3, md: 4 },
-              mt: 2
-            }}>
+          <DialogContent
+            sx={{
+              p: { xs: 2, md: 4 },
+              overflow: "auto",
+            }}
+          >
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: activeTab === 1 ? "1fr 1fr" : "1fr",
+                },
+                gap: { xs: 3, md: 4 },
+                mt: 2,
+              }}
+            >
               <Box>
                 {activeTab === 0 ? (
                   <>
@@ -2810,7 +3209,9 @@ export default function InventoryManagementPage() {
                 ) : (
                   <>
                     <Select
-                      value={(editItem as ComponentStockItem)?.componentId || ""}
+                      value={
+                        (editItem as ComponentStockItem)?.componentId || ""
+                      }
                       onChange={(e) => {
                         const componentId = Number(e.target.value);
                         const selectedComponent = componentOptions.find(
@@ -2849,8 +3250,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                          "contactDetails" in editItem &&
-                          editItem.contactDetails?.supplier
+                        "contactDetails" in editItem &&
+                        editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }
@@ -2878,8 +3279,8 @@ export default function InventoryManagementPage() {
                       fullWidth
                       variant="outlined"
                       value={
-                        (editItem as ComponentStockItem)?.contactDetails?.email ||
-                        ""
+                        (editItem as ComponentStockItem)?.contactDetails
+                          ?.email || ""
                       }
                       onChange={(e) => {
                         if (!editItem) return;
@@ -2901,8 +3302,8 @@ export default function InventoryManagementPage() {
                       fullWidth
                       variant="outlined"
                       value={
-                        (editItem as ComponentStockItem)?.contactDetails?.phone ||
-                        ""
+                        (editItem as ComponentStockItem)?.contactDetails
+                          ?.phone || ""
                       }
                       onChange={(e) => {
                         if (!editItem) return;
@@ -2923,10 +3324,17 @@ export default function InventoryManagementPage() {
                       type="number"
                       fullWidth
                       variant="outlined"
-                      value={(editItem as ComponentStockItem)?.price !== undefined ? (editItem as ComponentStockItem).price : ""}
+                      value={
+                        (editItem as ComponentStockItem)?.price !== undefined
+                          ? (editItem as ComponentStockItem).price
+                          : ""
+                      }
                       onChange={(e) => {
                         if (!editItem) return;
-                        const newPrice = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                        const newPrice =
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value);
                         console.log(`Setting price to: ${newPrice}`);
                         setEditItem({
                           ...editItem,
@@ -2968,13 +3376,19 @@ export default function InventoryManagementPage() {
                       type="number"
                       fullWidth
                       variant="outlined"
-                      value={(editItem as ComponentStockItem)?.lowStockThreshold ?? ""}
+                      value={
+                        (editItem as ComponentStockItem)?.lowStockThreshold ??
+                        ""
+                      }
                       onChange={(e) => {
                         if (!editItem) return;
                         const inputValue = e.target.value;
                         setEditItem({
                           ...editItem,
-                          lowStockThreshold: inputValue === "" ? undefined : Math.max(1, parseInt(inputValue) || 1),
+                          lowStockThreshold:
+                            inputValue === ""
+                              ? undefined
+                              : Math.max(1, parseInt(inputValue) || 1),
                         } as ComponentStockItem);
                       }}
                       className="mb-3"
@@ -2985,7 +3399,10 @@ export default function InventoryManagementPage() {
                     <FormControlLabel
                       control={
                         <Checkbox
-                          checked={(editItem as ComponentStockItem)?.isCritical ?? false}
+                          checked={
+                            (editItem as ComponentStockItem)?.isCritical ??
+                            false
+                          }
                           onChange={(e) => {
                             if (!editItem) return;
                             setEditItem({
@@ -2997,7 +3414,9 @@ export default function InventoryManagementPage() {
                         />
                       }
                       label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <Typography variant="body2">
                             Critical Component
                           </Typography>
@@ -3013,12 +3432,14 @@ export default function InventoryManagementPage() {
               </Box>
 
               {activeTab === 1 && (
-                <Box sx={{
-                  borderLeft: 1,
-                  borderColor: 'divider',
-                  pl: { xs: 0, md: 2 },
-                  mt: { xs: 3, md: 0 }
-                }}>
+                <Box
+                  sx={{
+                    borderLeft: 1,
+                    borderColor: "divider",
+                    pl: { xs: 0, md: 2 },
+                    mt: { xs: 3, md: 0 },
+                  }}
+                >
                   <Typography variant="h6" className="mb-3">
                     Assign to Sensors
                   </Typography>
@@ -3027,7 +3448,8 @@ export default function InventoryManagementPage() {
                     color="textSecondary"
                     className="mb-4"
                   >
-                    Specify how many of this component are needed for each sensor
+                    Specify how many of this component are needed for each
+                    sensor
                   </Typography>
 
                   <Box sx={{ mb: 3 }}>
@@ -3047,7 +3469,9 @@ export default function InventoryManagementPage() {
                         );
                       }}
                       renderValue={(selected) => (
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
                           {(selected as number[]).map((id) => {
                             const sensor = allSensors.find((s) => s.id === id);
                             return sensor ? (
@@ -3065,7 +3489,7 @@ export default function InventoryManagementPage() {
                     </Select>
                   </Box>
 
-                  <Box sx={{ mb: 3, maxHeight: 200, overflowY: 'auto' }}>
+                  <Box sx={{ mb: 3, maxHeight: 200, overflowY: "auto" }}>
                     {sensorOptions
                       .filter((option) => option.selected)
                       .map((option) => (
@@ -3073,12 +3497,12 @@ export default function InventoryManagementPage() {
                           key={option.id}
                           sx={{
                             mb: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
                             borderRadius: 1,
-                            bgcolor: 'grey.50',
-                            p: 1
+                            bgcolor: "grey.50",
+                            p: 1,
                           }}
                         >
                           <Typography>{option.name}</Typography>
@@ -3106,15 +3530,21 @@ export default function InventoryManagementPage() {
 
                   {/* Display newest invoice information when editing */}
                   {editItem?.id && "componentId" in editItem && (
-                    <Box sx={{
-                      mb: 3,
-                      p: 2,
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'primary.50'
-                    }}>
-                      <Typography variant="subtitle2" color="primary" className="mb-2">
+                    <Box
+                      sx={{
+                        mb: 3,
+                        p: 2,
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: "divider",
+                        bgcolor: "primary.50",
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        color="primary"
+                        className="mb-2"
+                      >
                         📄 Current Invoice Information
                       </Typography>
 
@@ -3127,32 +3557,49 @@ export default function InventoryManagementPage() {
                           {invoiceHistory[0] && (
                             <>
                               <Typography variant="body2" className="mb-1">
-                                <strong>Latest Invoice:</strong> {invoiceHistory[0].invoiceNumber}
+                                <strong>Latest Invoice:</strong>{" "}
+                                {invoiceHistory[0].invoiceNumber}
                               </Typography>
                               {invoiceHistory[0].uploadDate && (
                                 <Typography variant="body2" className="mb-1">
-                                  <strong>Date:</strong> {new Date(invoiceHistory[0].uploadDate).toLocaleDateString()}
+                                  <strong>Date:</strong>{" "}
+                                  {new Date(
+                                    invoiceHistory[0].uploadDate,
+                                  ).toLocaleDateString()}
                                 </Typography>
                               )}
                               {invoiceHistory[0].amount && (
                                 <Typography variant="body2" className="mb-1">
-                                  <strong>Amount:</strong> €{invoiceHistory[0].amount.toFixed(2)}
+                                  <strong>Amount:</strong> €
+                                  {invoiceHistory[0].amount.toFixed(2)}
                                 </Typography>
                               )}
                               {invoiceHistory[0].filename ? (
-                                <Typography variant="body2" color="success.main">
+                                <Typography
+                                  variant="body2"
+                                  color="success.main"
+                                >
                                   ✓ Invoice file available
                                 </Typography>
                               ) : (
-                                <Typography variant="body2" color="warning.main">
+                                <Typography
+                                  variant="body2"
+                                  color="warning.main"
+                                >
                                   ⚠ No file attached
                                 </Typography>
                               )}
                             </>
                           )}
                           {invoiceHistory.length > 1 && (
-                            <Typography variant="caption" color="textSecondary" className="mt-1" display="block">
-                              ({invoiceHistory.length - 1} older invoice{invoiceHistory.length > 2 ? 's' : ''} available)
+                            <Typography
+                              variant="caption"
+                              color="textSecondary"
+                              className="mt-1"
+                              display="block"
+                            >
+                              ({invoiceHistory.length - 1} older invoice
+                              {invoiceHistory.length > 2 ? "s" : ""} available)
                             </Typography>
                           )}
                         </Box>
@@ -3165,50 +3612,68 @@ export default function InventoryManagementPage() {
                   )}
 
                   {/* Display current invoice file information */}
-                  {editItem && "invoiceFile" in editItem && editItem.invoiceFile && (
-                    <Box sx={{
-                      mb: 3,
-                      borderRadius: 2,
-                      border: 1,
-                      borderColor: 'success.main',
-                      bgcolor: 'success.light',
-                      p: 2
-                    }}>
-                      <Typography variant="body2" color="success.dark" className="mb-2">
-                        <strong>Current Invoice File:</strong>
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <AttachFileIcon sx={{ fontSize: 16, color: 'success.dark' }} />
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" fontWeight={500} color="success.dark">
-                            {editItem.invoiceNumber || "Unknown Invoice"}
-                          </Typography>
-                          <Typography variant="caption" color="success.dark">
-                            File: {editItem.invoiceFile}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          startIcon={<DownloadIcon />}
-                          onClick={() => handleDownloadInvoiceFile(
-                            editItem.invoiceNumber || '',
-                            editItem.invoiceFile || ''
-                          )}
-                          sx={{
-                            textTransform: 'none',
-                            fontSize: '0.75rem',
-                            color: 'success.dark',
-                            '&:hover': {
-                              bgcolor: 'success.main',
-                              color: 'white'
-                            }
-                          }}
+                  {editItem &&
+                    "invoiceFile" in editItem &&
+                    editItem.invoiceFile && (
+                      <Box
+                        sx={{
+                          mb: 3,
+                          borderRadius: 2,
+                          border: 1,
+                          borderColor: "success.main",
+                          bgcolor: "success.light",
+                          p: 2,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          color="success.dark"
+                          className="mb-2"
                         >
-                          Download
-                        </Button>
+                          <strong>Current Invoice File:</strong>
+                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <AttachFileIcon
+                            sx={{ fontSize: 16, color: "success.dark" }}
+                          />
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="body2"
+                              fontWeight={500}
+                              color="success.dark"
+                            >
+                              {editItem.invoiceNumber || "Unknown Invoice"}
+                            </Typography>
+                            <Typography variant="caption" color="success.dark">
+                              File: {editItem.invoiceFile}
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() =>
+                              handleDownloadInvoiceFile(
+                                editItem.invoiceNumber || "",
+                                editItem.invoiceFile || "",
+                              )
+                            }
+                            sx={{
+                              textTransform: "none",
+                              fontSize: "0.75rem",
+                              color: "success.dark",
+                              "&:hover": {
+                                bgcolor: "success.main",
+                                color: "white",
+                              },
+                            }}
+                          >
+                            Download
+                          </Button>
+                        </Box>
                       </Box>
-                    </Box>
-                  )}
+                    )}
 
                   <TextField
                     label="Invoice Number *"
@@ -3230,14 +3695,16 @@ export default function InventoryManagementPage() {
                   </Typography>
 
                   {invoiceFile && (
-                    <Box sx={{
-                      mb: 2,
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'grey.50',
-                      p: 1.5
-                    }}>
+                    <Box
+                      sx={{
+                        mb: 2,
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: "divider",
+                        bgcolor: "grey.50",
+                        p: 1.5,
+                      }}
+                    >
                       <Typography variant="body2" className="mb-1">
                         <strong>Selected file:</strong> {invoiceFile.name}
                       </Typography>
@@ -3250,18 +3717,18 @@ export default function InventoryManagementPage() {
 
                   <Box
                     sx={{
-                      cursor: 'pointer',
+                      cursor: "pointer",
                       borderRadius: 2,
                       border: 2,
-                      borderStyle: 'dashed',
-                      borderColor: isDragging ? 'grey.500' : 'grey.300',
-                      bgcolor: isDragging ? 'grey.50' : 'transparent',
+                      borderStyle: "dashed",
+                      borderColor: isDragging ? "grey.500" : "grey.300",
+                      bgcolor: isDragging ? "grey.50" : "transparent",
                       p: 3,
-                      textAlign: 'center',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: 'grey.400'
-                      }
+                      textAlign: "center",
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        borderColor: "grey.400",
+                      },
                     }}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -3290,16 +3757,18 @@ export default function InventoryManagementPage() {
               )}
             </Box>
           </DialogContent>
-          <DialogActions sx={{
-            p: { xs: 2, md: 3 },
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: { xs: 1, md: 2 },
-            position: { xs: 'sticky', md: 'static' },
-            bottom: { xs: 0, md: 'auto' },
-            bgcolor: 'background.paper',
-            borderTop: { xs: '1px solid', md: 'none' },
-            borderColor: { xs: 'divider', md: 'transparent' }
-          }}>
+          <DialogActions
+            sx={{
+              p: { xs: 2, md: 3 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+              position: { xs: "sticky", md: "static" },
+              bottom: { xs: 0, md: "auto" },
+              bgcolor: "background.paper",
+              borderTop: { xs: "1px solid", md: "none" },
+              borderColor: { xs: "divider", md: "transparent" },
+            }}
+          >
             <Button
               color="error"
               variant="contained"
@@ -3340,15 +3809,17 @@ export default function InventoryManagementPage() {
           PaperProps={{
             sx: {
               borderRadius: { xs: 0, md: 2 },
-              m: { xs: 0, md: 2 }
-            }
+              m: { xs: 0, md: 2 },
+            },
           }}
         >
-          <DialogTitle sx={{
-            color: 'error.main',
-            fontWeight: 600,
-            fontSize: { xs: '1.25rem', md: '1.5rem' }
-          }}>
+          <DialogTitle
+            sx={{
+              color: "error.main",
+              fontWeight: 600,
+              fontSize: { xs: "1.25rem", md: "1.5rem" },
+            }}
+          >
             Are you sure you want to delete this item?
           </DialogTitle>
           <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -3356,11 +3827,13 @@ export default function InventoryManagementPage() {
               This action cannot be undone!
             </Typography>
           </DialogContent>
-          <DialogActions sx={{
-            p: { xs: 2, md: 3 },
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: { xs: 1, md: 2 }
-          }}>
+          <DialogActions
+            sx={{
+              p: { xs: 2, md: 3 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+            }}
+          >
             <Button
               onClick={() => setDeleteDialogOpen(false)}
               fullWidth={isMobile}
@@ -3390,42 +3863,49 @@ export default function InventoryManagementPage() {
             sx: {
               borderRadius: { xs: 0, md: 2 },
               m: { xs: 0, md: 2 },
-              maxHeight: { xs: '100vh', md: '90vh' }
-            }
+              maxHeight: { xs: "100vh", md: "90vh" },
+            },
           }}
         >
-          <DialogTitle sx={{
-            fontWeight: 600,
-            fontSize: { xs: '1.25rem', md: '1.5rem' },
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-            bgcolor: 'background.paper',
-            borderBottom: { xs: '1px solid', md: 'none' },
-            borderColor: { xs: 'divider', md: 'transparent' }
-          }}>
+          <DialogTitle
+            sx={{
+              fontWeight: 600,
+              fontSize: { xs: "1.25rem", md: "1.5rem" },
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              bgcolor: "background.paper",
+              borderBottom: { xs: "1px solid", md: "none" },
+              borderColor: { xs: "divider", md: "transparent" },
+            }}
+          >
             {adjustmentType === "increase"
               ? "Increase Quantity"
               : "Decrease Quantity"}
           </DialogTitle>
-          <DialogContent sx={{
-            p: { xs: 2, md: 3 },
-            overflow: 'auto'
-          }}>
+          <DialogContent
+            sx={{
+              p: { xs: 2, md: 3 },
+              overflow: "auto",
+            }}
+          >
             {currentAdjustItem && (
-              <Box sx={{
-                mb: 3,
-                p: { xs: 2, md: 3 },
-                bgcolor: 'grey.50',
-                borderRadius: 2
-              }}>
+              <Box
+                sx={{
+                  mb: 3,
+                  p: { xs: 2, md: 3 },
+                  bgcolor: "grey.50",
+                  borderRadius: 2,
+                }}
+              >
                 <Typography variant="h6" sx={{ mb: 1 }}>
                   {"sensorName" in currentAdjustItem
                     ? currentAdjustItem.sensorName
                     : currentAdjustItem.name}
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                  Current Quantity: <strong>{currentAdjustItem.quantity}</strong>
+                  Current Quantity:{" "}
+                  <strong>{currentAdjustItem.quantity}</strong>
                 </Typography>
               </Box>
             )}
@@ -3443,7 +3923,9 @@ export default function InventoryManagementPage() {
               variant="outlined"
               value={adjustmentQuantity}
               onChange={(e) =>
-                setAdjustmentQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                setAdjustmentQuantity(
+                  Math.max(1, parseInt(e.target.value) || 1),
+                )
               }
               inputProps={{ min: 1 }}
               sx={{ mb: 3 }}
@@ -3495,19 +3977,25 @@ export default function InventoryManagementPage() {
 
                   {/* File upload section for adjustments */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      sx={{ mb: 2 }}
+                    >
                       Upload invoice file (optional):
                     </Typography>
 
                     {invoiceFile && (
-                      <Box sx={{
-                        mb: 2,
-                        borderRadius: 1,
-                        border: 1,
-                        borderColor: 'divider',
-                        bgcolor: 'grey.50',
-                        p: 1.5
-                      }}>
+                      <Box
+                        sx={{
+                          mb: 2,
+                          borderRadius: 1,
+                          border: 1,
+                          borderColor: "divider",
+                          bgcolor: "grey.50",
+                          p: 1.5,
+                        }}
+                      >
                         <Typography variant="body2">
                           <strong>Selected file:</strong> {invoiceFile.name}
                         </Typography>
@@ -3516,26 +4004,32 @@ export default function InventoryManagementPage() {
 
                     <Box
                       sx={{
-                        cursor: 'pointer',
+                        cursor: "pointer",
                         borderRadius: 2,
                         border: 2,
-                        borderStyle: 'dashed',
-                        borderColor: isDragging ? 'grey.500' : 'grey.300',
-                        bgcolor: isDragging ? 'grey.50' : 'transparent',
+                        borderStyle: "dashed",
+                        borderColor: isDragging ? "grey.500" : "grey.300",
+                        bgcolor: isDragging ? "grey.50" : "transparent",
                         p: 2,
-                        textAlign: 'center',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: 'grey.400'
-                        }
+                        textAlign: "center",
+                        transition: "all 0.2s",
+                        "&:hover": {
+                          borderColor: "grey.400",
+                        },
                       }}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={() => document.getElementById("adjustment-invoice-upload")?.click()}
+                      onClick={() =>
+                        document
+                          .getElementById("adjustment-invoice-upload")
+                          ?.click()
+                      }
                     >
                       <Typography variant="body2">
-                        {invoiceFile ? "Change file" : "Drop invoice file here or click to browse"}
+                        {invoiceFile
+                          ? "Change file"
+                          : "Drop invoice file here or click to browse"}
                       </Typography>
                       <Typography variant="caption" color="textSecondary">
                         PDF files only
@@ -3552,16 +4046,18 @@ export default function InventoryManagementPage() {
                 </>
               )}
           </DialogContent>
-          <DialogActions sx={{
-            p: { xs: 2, md: 3 },
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: { xs: 1, md: 2 },
-            position: { xs: 'sticky', md: 'static' },
-            bottom: { xs: 0, md: 'auto' },
-            bgcolor: 'background.paper',
-            borderTop: { xs: '1px solid', md: 'none' },
-            borderColor: { xs: 'divider', md: 'transparent' }
-          }}>
+          <DialogActions
+            sx={{
+              p: { xs: 2, md: 3 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+              position: { xs: "sticky", md: "static" },
+              bottom: { xs: 0, md: "auto" },
+              bgcolor: "background.paper",
+              borderTop: { xs: "1px solid", md: "none" },
+              borderColor: { xs: "divider", md: "transparent" },
+            }}
+          >
             <Button
               onClick={() => setAdjustmentDialogOpen(false)}
               fullWidth={isMobile}
@@ -3596,14 +4092,16 @@ export default function InventoryManagementPage() {
           PaperProps={{
             sx: {
               borderRadius: { xs: 0, md: 2 },
-              m: { xs: 0, md: 2 }
-            }
+              m: { xs: 0, md: 2 },
+            },
           }}
         >
-          <DialogTitle sx={{
-            fontWeight: 600,
-            fontSize: { xs: '1.25rem', md: '1.5rem' }
-          }}>
+          <DialogTitle
+            sx={{
+              fontWeight: 600,
+              fontSize: { xs: "1.25rem", md: "1.5rem" },
+            }}
+          >
             Device Actions - {currentDevice?.devEUI}
           </DialogTitle>
           <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -3612,7 +4110,7 @@ export default function InventoryManagementPage() {
                 Choose an action for this device:
               </Typography>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {/* Assign to Order */}
                 <Button
                   variant="outlined"
@@ -3624,7 +4122,7 @@ export default function InventoryManagementPage() {
                   }}
                   disabled={!currentDevice?.isAvailable}
                   fullWidth
-                  sx={{ justifyContent: 'flex-start' }}
+                  sx={{ justifyContent: "flex-start" }}
                 >
                   Assign to Order
                   {!currentDevice?.isAvailable && " (Already Assigned)"}
@@ -3634,10 +4132,10 @@ export default function InventoryManagementPage() {
                 <Button
                   variant="outlined"
                   startIcon={<AssignmentIcon />}
-                  onClick={() => confirmDeviceAction('release')}
+                  onClick={() => confirmDeviceAction("release")}
                   disabled={currentDevice?.isAvailable}
                   fullWidth
-                  sx={{ justifyContent: 'flex-start' }}
+                  sx={{ justifyContent: "flex-start" }}
                 >
                   Release from Order
                   {currentDevice?.isAvailable && " (Not Assigned)"}
@@ -3648,9 +4146,9 @@ export default function InventoryManagementPage() {
                   variant="outlined"
                   color="error"
                   startIcon={<DeleteIcon />}
-                  onClick={() => confirmDeviceAction('remove')}
+                  onClick={() => confirmDeviceAction("remove")}
                   fullWidth
-                  sx={{ justifyContent: 'flex-start' }}
+                  sx={{ justifyContent: "flex-start" }}
                 >
                   Remove from Inventory
                 </Button>
@@ -3674,7 +4172,8 @@ export default function InventoryManagementPage() {
                     </MenuItem>
                     {allOrders.map((order) => (
                       <MenuItem key={order.id} value={order.id}>
-                        Order #{order.id} - {order.customerName} ({order.remainingToAssign} remaining)
+                        Order #{order.id} - {order.customerName} (
+                        {order.remainingToAssign} remaining)
                       </MenuItem>
                     ))}
                   </Select>
@@ -3698,11 +4197,13 @@ export default function InventoryManagementPage() {
               </Box>
             </Box>
           </DialogContent>
-          <DialogActions sx={{
-            p: { xs: 2, md: 3 },
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: { xs: 1, md: 2 }
-          }}>
+          <DialogActions
+            sx={{
+              p: { xs: 2, md: 3 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+            }}
+          >
             <Button
               onClick={() => setDeviceActionDialogOpen(false)}
               fullWidth={isMobile}
@@ -3711,7 +4212,7 @@ export default function InventoryManagementPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => confirmDeviceAction('assign')}
+              onClick={() => confirmDeviceAction("assign")}
               disabled={!selectedOrderId || !currentDevice?.isAvailable}
               variant="contained"
               fullWidth={isMobile}

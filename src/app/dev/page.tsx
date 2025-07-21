@@ -5,7 +5,6 @@ import { SensorCheckForm } from "./components/SensorCheckForm";
 export default async function Home() {
   return (
     <div>
-
       <SensorCheckForm />
     </div>
   );

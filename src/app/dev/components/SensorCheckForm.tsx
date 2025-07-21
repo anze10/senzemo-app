@@ -58,8 +58,6 @@ import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 
-
-
 type ImportantSensorData = Record<
   string,
   {
@@ -77,7 +75,7 @@ export function SensorCheckForm() {
     useState<boolean>(false);
 
   const current_sensor_index = useSensorStore(
-    (state) => state.current_sensor_index
+    (state) => state.current_sensor_index,
   );
 
   const current_sensor = useSensorStore((state) => {
@@ -142,10 +140,10 @@ export function SensorCheckForm() {
         decoder: sensor.decoder,
         description: sensor.description,
       }));
-    }
+    },
   });
   const set_current_sensor_index = useSensorStore(
-    (state) => state.set_current_sensor_index
+    (state) => state.set_current_sensor_index,
   );
 
   const { data: sensors } = useQuery({
@@ -169,7 +167,6 @@ export function SensorCheckForm() {
       current_sensor_index,
       current_sensor,
     });
-
 
     // set_current_sensor_index(current_sensor_index + 1);
     const uint_array = await GetDataFromSensor();
@@ -197,11 +194,14 @@ export function SensorCheckForm() {
         console.log("Current operation status:", operationStatus);
 
         // Reset flags if they're stuck
-        if (operationStatus.isReadingInProgress || operationStatus.isWritingInProgress) {
+        if (
+          operationStatus.isReadingInProgress ||
+          operationStatus.isWritingInProgress
+        ) {
           console.log("Resetting stuck operation flags before attempting read");
           resetOperationFlags();
           // Add a small delay to ensure flags are reset
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
         }
 
         if (!portRef.current) {
@@ -220,7 +220,7 @@ export function SensorCheckForm() {
             }
 
             // Small delay before reconnecting
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, 300));
             portRef.current = await connectToPort();
           }
         }
@@ -230,7 +230,11 @@ export function SensorCheckForm() {
         // Set a timeout in case the read operation gets stuck
         const readPromise = readDataFromPort(portRef.current);
         const timeoutPromise = new Promise<null>((_, reject) => {
-          setTimeout(() => reject(new Error("Read operation timed out after 15 seconds")), 15000);
+          setTimeout(
+            () =>
+              reject(new Error("Read operation timed out after 15 seconds")),
+            15000,
+          );
         });
 
         // Race the read operation against a timeout
@@ -245,7 +249,10 @@ export function SensorCheckForm() {
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`Failed to get data from sensor (attempt ${attempts}):`, error);
+        console.error(
+          `Failed to get data from sensor (attempt ${attempts}):`,
+          error,
+        );
 
         // Reset operation flags on error to prevent getting stuck
         resetOperationFlags();
@@ -254,7 +261,7 @@ export function SensorCheckForm() {
         if (attempts < maxRetries) {
           const backoffMs = 500 * Math.pow(2, attempts - 1); // 500ms, 1000ms, 2000ms...
           console.log(`Waiting ${backoffMs}ms before next attempt...`);
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
         }
       }
     }
@@ -271,157 +278,180 @@ export function SensorCheckForm() {
   //   useSensorStore.setState({ start_time: Date.now() });
   // }, []);
 
-  const [important_sensor_data, unimportant_sensor_data, dataforDB] = useMemo(() => {
-    const important: ImportantSensorData = {};
-    const unimportant: ImportantSensorData = {};
+  const [important_sensor_data, unimportant_sensor_data, dataforDB] =
+    useMemo(() => {
+      const important: ImportantSensorData = {};
+      const unimportant: ImportantSensorData = {};
 
-    // Create fresh dataforDB object
-    const dataforDB: ProductionListWithoutId = {
-      orderId: null,
-      DevEUI: null,
-      AppEUI: null,
-      AppKey: null,
-      DeviceType: null,
-      SubBands: null,
-      CustomFWVersion: null,
-      FrequencyRegion: null,
-      HWVersion: null,
-      FWVersion: null,
-      SendPeriod: null,
-      ACK: null,
-      MovementThreshold: null,
-      DateCreated: new Date(),
-      Batch: null
-    };
+      // Create fresh dataforDB object
+      const dataforDB: ProductionListWithoutId = {
+        orderId: null,
+        DevEUI: null,
+        AppEUI: null,
+        AppKey: null,
+        DeviceType: null,
+        SubBands: null,
+        CustomFWVersion: null,
+        FrequencyRegion: null,
+        HWVersion: null,
+        FWVersion: null,
+        SendPeriod: null,
+        ACK: null,
+        MovementThreshold: null,
+        DateCreated: new Date(),
+        Batch: null,
+      };
 
-    console.log("sensor_parsers", sensor_parsers);
-    console.log("current_sensor", current_sensor);
-    console.log("Sensor parser: ", sensor_parsers);
+      console.log("sensor_parsers", sensor_parsers);
+      console.log("current_sensor", current_sensor);
+      console.log("Sensor parser: ", sensor_parsers);
 
-    if (!current_sensor) return [important, unimportant, dataforDB];
+      if (!current_sensor) return [important, unimportant, dataforDB];
 
-    console.log("Available sensor data keys:", Object.keys(current_sensor.data));
-
-    Object.entries(current_sensor.data).forEach(([key, value]) => {
-      const parser = sensor_parsers.find(
-        (parser) => parser.output.name === key
+      console.log(
+        "Available sensor data keys:",
+        Object.keys(current_sensor.data),
       );
-      console.log(`Processing key: ${key}, value: ${value}`);
 
-      if (!parser?.output) {
-        console.error("Parser not found for key", key);
-        return;
-      }
+      Object.entries(current_sensor.data).forEach(([key, value]) => {
+        const parser = sensor_parsers.find(
+          (parser) => parser.output.name === key,
+        );
+        console.log(`Processing key: ${key}, value: ${value}`);
 
-      // Map sensor data to database fields based on actual sensor parser keys
-      // DevEUI mapping
-      if (key === "dev_eui") {
-        dataforDB.DevEUI = typeof value === "string" ? value : String(value);
-        console.log(`Mapped DevEUI: ${dataforDB.DevEUI}`);
-      }
-      // AppEUI mapping (join_eui or app_eui)
-      else if (key === "app_eui" || key === "join_eui") {
-        dataforDB.AppEUI = typeof value === "string" ? value : String(value);
-        console.log(`Mapped AppEUI: ${dataforDB.AppEUI}`);
-      }
-      // AppKey mapping
-      else if (key === "app_key") {
-        dataforDB.AppKey = typeof value === "string" ? value : String(value);
-        console.log(`Mapped AppKey: ${dataforDB.AppKey}`);
-      }
-      // FrequencyRegion mapping (from enum values)
-      else if (key === "lora_freq_reg") {
-        // Convert enum value to string representation
-        if (parser.output.enum_values) {
-          let mappedValue: string | undefined;
-          if (typeof value === "number") {
-            const enumEntry = parser.output.enum_values.find((e: { value: number; mapped: string }) => e.value === value);
-            mappedValue = enumEntry?.mapped;
-          } else if (typeof value === "string") {
-            // If value is already a mapped string, use it directly
-            const enumEntry = parser.output.enum_values.find((e: { value: number; mapped: string }) => e.mapped === value);
-            mappedValue = enumEntry?.mapped ?? value;
-          }
-          if (mappedValue) {
-            dataforDB.FrequencyRegion = mappedValue;
-            console.log(`Mapped FrequencyRegion: ${dataforDB.FrequencyRegion}`);
+        if (!parser?.output) {
+          console.error("Parser not found for key", key);
+          return;
+        }
+
+        // Map sensor data to database fields based on actual sensor parser keys
+        // DevEUI mapping
+        if (key === "dev_eui") {
+          dataforDB.DevEUI = typeof value === "string" ? value : String(value);
+          console.log(`Mapped DevEUI: ${dataforDB.DevEUI}`);
+        }
+        // AppEUI mapping (join_eui or app_eui)
+        else if (key === "app_eui" || key === "join_eui") {
+          dataforDB.AppEUI = typeof value === "string" ? value : String(value);
+          console.log(`Mapped AppEUI: ${dataforDB.AppEUI}`);
+        }
+        // AppKey mapping
+        else if (key === "app_key") {
+          dataforDB.AppKey = typeof value === "string" ? value : String(value);
+          console.log(`Mapped AppKey: ${dataforDB.AppKey}`);
+        }
+        // FrequencyRegion mapping (from enum values)
+        else if (key === "lora_freq_reg") {
+          // Convert enum value to string representation
+          if (parser.output.enum_values) {
+            let mappedValue: string | undefined;
+            if (typeof value === "number") {
+              const enumEntry = parser.output.enum_values.find(
+                (e: { value: number; mapped: string }) => e.value === value,
+              );
+              mappedValue = enumEntry?.mapped;
+            } else if (typeof value === "string") {
+              // If value is already a mapped string, use it directly
+              const enumEntry = parser.output.enum_values.find(
+                (e: { value: number; mapped: string }) => e.mapped === value,
+              );
+              mappedValue = enumEntry?.mapped ?? value;
+            }
+            if (mappedValue) {
+              dataforDB.FrequencyRegion = mappedValue;
+              console.log(
+                `Mapped FrequencyRegion: ${dataforDB.FrequencyRegion}`,
+              );
+            }
           }
         }
-      }
-      // SubBands mapping  
-      else if (key === "sub_bands" || key === "lora_sub_bands") {
-        dataforDB.SubBands = typeof value === "string" ? value : String(value);
-        console.log(`Mapped SubBands: ${dataforDB.SubBands}`);
-      }
-      // HWVersion mapping
-      else if (key === "hw_version" || key === "device_hw_ver" || key === "device_device_hw_ver") {
-        dataforDB.HWVersion = typeof value === "string" ? value : String(value);
-        console.log(`Mapped HWVersion: ${dataforDB.HWVersion}`);
-      }
-      // FWVersion mapping
-      else if (key === "fw_version" || key === "device_fw_ver") {
-        dataforDB.FWVersion = typeof value === "string" ? value : String(value);
-        console.log(`Mapped FWVersion: ${dataforDB.FWVersion}`);
-      }
-      // SendPeriod mapping
-      else if (key === "send_period" || key === "lora_send_period") {
-        dataforDB.SendPeriod = typeof value === "string" ? value : String(value);
-        console.log(`Mapped SendPeriod: ${dataforDB.SendPeriod}`);
-      }
-      // ACK mapping
-      else if (key === "ack" || key === "lora_ack") {
-        dataforDB.ACK = typeof value === "string" ? value : String(value);
-        console.log(`Mapped ACK: ${dataforDB.ACK}`);
-      }
-      // MovementThreshold mapping
-      else if (key === "movement_threshold" || key === "device_mov_thr") {
-        dataforDB.MovementThreshold = typeof value === "string" ? value : String(value);
-        console.log(`Mapped MovementThreshold: ${dataforDB.MovementThreshold}`);
-      }
-      // DeviceType mapping from family_id and product_id
-      else if (key === "family_id" || key === "product_id") {
-        // We'll construct DeviceType from family_id and product_id
-        const currentFamily = current_sensor.data.family_id;
-        const currentProduct = current_sensor.data.product_id;
-        if (currentFamily && currentProduct) {
-
-          const foundSensor = GetSensorName.data?.find(
-            (sensor: { familyId: number; productId: number; sensorName: string }) =>
-              sensor.familyId === currentFamily &&
-              sensor.productId === currentProduct
+        // SubBands mapping
+        else if (key === "sub_bands" || key === "lora_sub_bands") {
+          dataforDB.SubBands =
+            typeof value === "string" ? value : String(value);
+          console.log(`Mapped SubBands: ${dataforDB.SubBands}`);
+        }
+        // HWVersion mapping
+        else if (
+          key === "hw_version" ||
+          key === "device_hw_ver" ||
+          key === "device_device_hw_ver"
+        ) {
+          dataforDB.HWVersion =
+            typeof value === "string" ? value : String(value);
+          console.log(`Mapped HWVersion: ${dataforDB.HWVersion}`);
+        }
+        // FWVersion mapping
+        else if (key === "fw_version" || key === "device_fw_ver") {
+          dataforDB.FWVersion =
+            typeof value === "string" ? value : String(value);
+          console.log(`Mapped FWVersion: ${dataforDB.FWVersion}`);
+        }
+        // SendPeriod mapping
+        else if (key === "send_period" || key === "lora_send_period") {
+          dataforDB.SendPeriod =
+            typeof value === "string" ? value : String(value);
+          console.log(`Mapped SendPeriod: ${dataforDB.SendPeriod}`);
+        }
+        // ACK mapping
+        else if (key === "ack" || key === "lora_ack") {
+          dataforDB.ACK = typeof value === "string" ? value : String(value);
+          console.log(`Mapped ACK: ${dataforDB.ACK}`);
+        }
+        // MovementThreshold mapping
+        else if (key === "movement_threshold" || key === "device_mov_thr") {
+          dataforDB.MovementThreshold =
+            typeof value === "string" ? value : String(value);
+          console.log(
+            `Mapped MovementThreshold: ${dataforDB.MovementThreshold}`,
           );
-          if (foundSensor) {
-            dataforDB.DeviceType = foundSensor.sensorName;
-          }
-          console.log(`Mapped DeviceType: ${dataforDB.DeviceType}`);
         }
-      }
+        // DeviceType mapping from family_id and product_id
+        else if (key === "family_id" || key === "product_id") {
+          // We'll construct DeviceType from family_id and product_id
+          const currentFamily = current_sensor.data.family_id;
+          const currentProduct = current_sensor.data.product_id;
+          if (currentFamily && currentProduct) {
+            const foundSensor = GetSensorName.data?.find(
+              (sensor: {
+                familyId: number;
+                productId: number;
+                sensorName: string;
+              }) =>
+                sensor.familyId === currentFamily &&
+                sensor.productId === currentProduct,
+            );
+            if (foundSensor) {
+              dataforDB.DeviceType = foundSensor.sensorName;
+            }
+            console.log(`Mapped DeviceType: ${dataforDB.DeviceType}`);
+          }
+        }
 
-      // Generic mapping for exact field matches (fallback)
-      if (key in dataforDB) {
-        (dataforDB as Record<string, unknown>)[key] =
-          typeof value === "string" ? value : String(value);
-        console.log(`Generic mapping for ${key}: ${value}`);
-      }
+        // Generic mapping for exact field matches (fallback)
+        if (key in dataforDB) {
+          (dataforDB as Record<string, unknown>)[key] =
+            typeof value === "string" ? value : String(value);
+          console.log(`Generic mapping for ${key}: ${value}`);
+        }
 
-      if (parser.output.important) {
-        important[key] = {
-          value: value as ParsedSensorValue,
-          my_type: parser.output.type,
-          enum_values: parser.output.enum_values,
-        };
-      } else {
-        unimportant[key] = {
-          value: value as ParsedSensorValue,
-          my_type: parser.output.type,
-          enum_values: parser.output.enum_values,
-        };
-      }
-    });
+        if (parser.output.important) {
+          important[key] = {
+            value: value as ParsedSensorValue,
+            my_type: parser.output.type,
+            enum_values: parser.output.enum_values,
+          };
+        } else {
+          unimportant[key] = {
+            value: value as ParsedSensorValue,
+            my_type: parser.output.type,
+            enum_values: parser.output.enum_values,
+          };
+        }
+      });
 
-    return [important, unimportant, dataforDB];
-  }, [GetSensorName.data, current_sensor, sensor_parsers]);
-
+      return [important, unimportant, dataforDB];
+    }, [GetSensorName.data, current_sensor, sensor_parsers]);
 
   // Define the mutation after dataforDB is available
   const insertIntoDatabaseMutation = useMutation({
@@ -432,13 +462,16 @@ export function SensorCheckForm() {
       // Validate that we have critical data
       if (!dataforDB.DevEUI || dataforDB.DevEUI.trim() === "") {
         console.error("DevEUI validation failed:", dataforDB.DevEUI);
-        throw new Error("DevEUI is required but not found or empty in sensor data");
+        throw new Error(
+          "DevEUI is required but not found or empty in sensor data",
+        );
       }
 
       // Additional validation for other important fields
       const validationErrors: string[] = [];
       if (!dataforDB.DeviceType) validationErrors.push("DeviceType is missing");
-      if (!dataforDB.FrequencyRegion) validationErrors.push("FrequencyRegion is missing");
+      if (!dataforDB.FrequencyRegion)
+        validationErrors.push("FrequencyRegion is missing");
 
       if (validationErrors.length > 0) {
         console.warn("Validation warnings:", validationErrors);
@@ -446,7 +479,10 @@ export function SensorCheckForm() {
       }
 
       console.log("Validation passed, inserting into database...");
-      console.log("Final dataforDB being sent to database:", JSON.stringify(dataforDB, null, 2));
+      console.log(
+        "Final dataforDB being sent to database:",
+        JSON.stringify(dataforDB, null, 2),
+      );
       return InsertintoDB(dataforDB);
     },
     onMutate: async () => {
@@ -470,7 +506,7 @@ export function SensorCheckForm() {
   }
 
   async function handleSubmit(
-    dataHandler: (data: ParsedSensorData) => Promise<void>
+    dataHandler: (data: ParsedSensorData) => Promise<void>,
   ): Promise<void> {
     if (!current_sensor) {
       console.log("No current sensor", sensors);
@@ -487,7 +523,7 @@ export function SensorCheckForm() {
       .then(async () => {
         set_sensor_data(
           current_sensor_index,
-          current_sensor.data as ParsedSensorData
+          current_sensor.data as ParsedSensorData,
         );
 
         const uint_array = await GetDataFromSensor();
@@ -497,14 +533,11 @@ export function SensorCheckForm() {
         if (!decoder) return;
 
         add_new_sensor(decoder, uint_array);
-
       })
       .catch((error) => {
         console.error("Error in data handler:", error);
       });
   }
-
-
 
   return (
     <>
@@ -604,8 +637,6 @@ export function SensorCheckForm() {
               >
                 Open Serial Port
               </Button>
-
-
             </Box>
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
               <Tooltip title="Open settings">
@@ -752,7 +783,11 @@ export function SensorCheckForm() {
               variant="text"
               size="small"
               endIcon={
-                showUnimportantParameters ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                showUnimportantParameters ? (
+                  <ExpandLessIcon />
+                ) : (
+                  <ExpandMoreIcon />
+                )
               }
               onClick={() =>
                 setShowUnimportantParameters(!showUnimportantParameters)
@@ -780,118 +815,140 @@ export function SensorCheckForm() {
 
           <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>            <Button
-            variant="contained"
-            color="success"
-            onClick={async () => {
-              console.log("Accept button clicked");
-              console.log("Current sensor index:", current_sensor_index);
-              console.log("Current sensor accepted state:", isCurrentSensorAccepted);
-
-              try {
-                if (!current_sensor) {
-                  console.log("No current sensor available");
-                  return;
-                }
-
-                // Prevent accepting already accepted sensors
-                if (isCurrentSensorAccepted) {
-                  console.log("Sensor already accepted, skipping processing");
-                  return;
-                }
-
-                console.log("Processing accept for current sensor");
-                const data = current_sensor.data as ParsedSensorData;
-
-                // IMPORTANT: Set a loading state indicator
-                const acceptButton = document.querySelector('button[color="success"]');
-                if (acceptButton) {
-                  acceptButton.textContent = "Processing...";
-                  acceptButton.setAttribute('disabled', 'true');
-                }
-
-                // Set sensor status to accepted
-                set_sensor_status(current_sensor_index, true);
-                set_sensor_data(current_sensor_index, data);
-                console.log("Sensor marked as accepted for index:", current_sensor_index);
-
-                // Insert current sensor data into database
-                console.log("Inserting current sensor data into database...");
-                await insertIntoDatabaseMutation.mutateAsync();
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
+          >
+            {" "}
+            <Button
+              variant="contained"
+              color="success"
+              onClick={async () => {
+                console.log("Accept button clicked");
+                console.log("Current sensor index:", current_sensor_index);
+                console.log(
+                  "Current sensor accepted state:",
+                  isCurrentSensorAccepted,
+                );
 
                 try {
-                  await PrintSticker(
-                    data.dev_eui as string,
-                    data.family_id as number,
-                    data.product_id as number,
-                    selectedPrinter
+                  if (!current_sensor) {
+                    console.log("No current sensor available");
+                    return;
+                  }
+
+                  // Prevent accepting already accepted sensors
+                  if (isCurrentSensorAccepted) {
+                    console.log("Sensor already accepted, skipping processing");
+                    return;
+                  }
+
+                  console.log("Processing accept for current sensor");
+                  const data = current_sensor.data as ParsedSensorData;
+
+                  // IMPORTANT: Set a loading state indicator
+                  const acceptButton = document.querySelector(
+                    'button[color="success"]',
                   );
-                } catch (printError) {
-                  console.error("Error printing sticker:", printError);
-                  // Continue execution even if printing fails
-                }
+                  if (acceptButton) {
+                    acceptButton.textContent = "Processing...";
+                    acceptButton.setAttribute("disabled", "true");
+                  }
 
-                // Reset operation flags to ensure clean state before reading
-                resetOperationFlags();
+                  // Set sensor status to accepted
+                  set_sensor_status(current_sensor_index, true);
+                  set_sensor_data(current_sensor_index, data);
+                  console.log(
+                    "Sensor marked as accepted for index:",
+                    current_sensor_index,
+                  );
 
-                // Delay to ensure USB connection is stable
-                await new Promise(resolve => setTimeout(resolve, 500));
+                  // Insert current sensor data into database
+                  console.log("Inserting current sensor data into database...");
+                  await insertIntoDatabaseMutation.mutateAsync();
 
-                // Try to get data from the next sensor with robust retry mechanism
-                console.log("Reading new sensor data with retry mechanism...");
-                const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+                  try {
+                    await PrintSticker(
+                      data.dev_eui as string,
+                      data.family_id as number,
+                      data.product_id as number,
+                      selectedPrinter,
+                    );
+                  } catch (printError) {
+                    console.error("Error printing sticker:", printError);
+                    // Continue execution even if printing fails
+                  }
 
-                if (!uint_array || !sensors) {
-                  console.warn("Failed to get new sensor data after retries");
-                  // Ensure UI updates even if we couldn't get new sensor data
+                  // Reset operation flags to ensure clean state before reading
+                  resetOperationFlags();
+
+                  // Delay to ensure USB connection is stable
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+
+                  // Try to get data from the next sensor with robust retry mechanism
+                  console.log(
+                    "Reading new sensor data with retry mechanism...",
+                  );
+                  const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
+                  if (!uint_array || !sensors) {
+                    console.warn("Failed to get new sensor data after retries");
+                    // Ensure UI updates even if we couldn't get new sensor data
+                    if (acceptButton) {
+                      acceptButton.textContent = "Accept";
+                      acceptButton.removeAttribute("disabled");
+                    }
+                    return;
+                  }
+
+                  const decoder = RightDecoder(uint_array, sensors);
+                  if (!decoder) {
+                    console.warn("Failed to decode new sensor data");
+                    // Ensure UI updates
+                    if (acceptButton) {
+                      acceptButton.textContent = "Accept";
+                      acceptButton.removeAttribute("disabled");
+                    }
+                    return;
+                  }
+
+                  console.log(
+                    "Adding new sensor (this will reset accepted state)",
+                  );
+                  add_new_sensor(decoder, uint_array);
+                  console.log(
+                    "New sensor added, current_sensor_index is now:",
+                    current_sensor_index + 1,
+                  );
+                  console.log(
+                    "Button should now show 'Accept' for the new sensor",
+                  );
+
+                  // Force a UI update to ensure the button shows "Accept" for the new sensor
                   if (acceptButton) {
                     acceptButton.textContent = "Accept";
-                    acceptButton.removeAttribute('disabled');
+                    acceptButton.removeAttribute("disabled");
                   }
-                  return;
-                }
+                } catch (error) {
+                  console.error("Error in accept button:", error);
 
-                const decoder = RightDecoder(uint_array, sensors);
-                if (!decoder) {
-                  console.warn("Failed to decode new sensor data");
-                  // Ensure UI updates
+                  // Reset flags on error to prevent getting stuck
+                  resetOperationFlags();
+
+                  // Ensure the UI is updated even after an error
+                  const acceptButton = document.querySelector(
+                    'button[color="success"]',
+                  );
                   if (acceptButton) {
                     acceptButton.textContent = "Accept";
-                    acceptButton.removeAttribute('disabled');
+                    acceptButton.removeAttribute("disabled");
                   }
-                  return;
                 }
-
-                console.log("Adding new sensor (this will reset accepted state)");
-                add_new_sensor(decoder, uint_array);
-                console.log("New sensor added, current_sensor_index is now:", current_sensor_index + 1);
-                console.log("Button should now show 'Accept' for the new sensor");
-
-                // Force a UI update to ensure the button shows "Accept" for the new sensor
-                if (acceptButton) {
-                  acceptButton.textContent = "Accept";
-                  acceptButton.removeAttribute('disabled');
-                }
-              } catch (error) {
-                console.error("Error in accept button:", error);
-
-                // Reset flags on error to prevent getting stuck
-                resetOperationFlags();
-
-                // Ensure the UI is updated even after an error
-                const acceptButton = document.querySelector('button[color="success"]');
-                if (acceptButton) {
-                  acceptButton.textContent = "Accept";
-                  acceptButton.removeAttribute('disabled');
-                }
-              }
-            }}
-            sx={{ flex: 1 }}
-            disabled={isCurrentSensorAccepted}
-          >
-            {isCurrentSensorAccepted ? "Accepted" : "Accept"}
-          </Button>
-
+              }}
+              sx={{ flex: 1 }}
+              disabled={isCurrentSensorAccepted}
+            >
+              {isCurrentSensorAccepted ? "Accepted" : "Accept"}
+            </Button>
             <Button
               variant="contained"
               color="warning"
@@ -913,10 +970,18 @@ export function SensorCheckForm() {
                   console.log("Sensor parsers:", sensor_parsers);
 
                   // Encode sensor data to bytes
-                  const encodedData = EncodeSensorData(sensor_parsers, current_sensor.data);
+                  const encodedData = EncodeSensorData(
+                    sensor_parsers,
+                    current_sensor.data,
+                  );
                   console.log("Encoded data:", encodedData);
                   console.log("Encoded data length:", encodedData.length);
-                  console.log("Encoded data as hex:", Array.from(encodedData).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                  console.log(
+                    "Encoded data as hex:",
+                    Array.from(encodedData)
+                      .map((b) => b.toString(16).padStart(2, "0"))
+                      .join(" "),
+                  );
 
                   // Ensure we have a serial port connection
                   if (!portRef.current) {
@@ -938,7 +1003,10 @@ export function SensorCheckForm() {
                   }
 
                   console.log("Port connection:", portRef.current);
-                  console.log("Final port status:", checkPortStatus(portRef.current));
+                  console.log(
+                    "Final port status:",
+                    checkPortStatus(portRef.current),
+                  );
 
                   // Write binary data directly to port
                   await writeDataToPort(portRef.current, encodedData);
@@ -947,8 +1015,7 @@ export function SensorCheckForm() {
 
                   // Optional: Read response from sensor to verify
                   console.log("Waiting for sensor response...");
-                  await new Promise(resolve => setTimeout(resolve, 500));
-
+                  await new Promise((resolve) => setTimeout(resolve, 500));
                 } catch (error) {
                   console.error("Error reprogramming sensor:", error);
                 }
@@ -957,7 +1024,6 @@ export function SensorCheckForm() {
             >
               Reprogram
             </Button>
-
             <Button
               variant="outlined"
               color="warning"
@@ -970,8 +1036,6 @@ export function SensorCheckForm() {
             </Button>
           </Box>
         </form>
-
-
 
         <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
           <Button
@@ -1009,7 +1073,7 @@ export function DynamicFormComponent({
   const handleChange = (
     e:
       | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-      | SelectChangeEvent<unknown>
+      | SelectChangeEvent<unknown>,
   ) => {
     let value: ParsedSensorValue = e.target.value as ParsedSensorValue;
 
@@ -1082,11 +1146,12 @@ export function DynamicFormComponent({
                 value={
                   typeof value === "number"
                     ? value
-                    : enum_values.find(
-                      (item) =>
-                        (typeof value === "string" && item.mapped === value) ||
-                        (typeof value === "number" && item.value === value)
-                    )?.value ?? ""
+                    : (enum_values.find(
+                        (item) =>
+                          (typeof value === "string" &&
+                            item.mapped === value) ||
+                          (typeof value === "number" && item.value === value),
+                      )?.value ?? "")
                 }
                 onChange={handleChange}
               >
@@ -1106,10 +1171,7 @@ export function DynamicFormComponent({
   );
 }
 
-function getStatusColor2(
-  name: string,
-  vrednost: ParsedSensorValue
-): string {
+function getStatusColor2(name: string, vrednost: ParsedSensorValue): string {
   const target = useSensorStore.getState().target_sensor_data;
   if (!target) {
     return "white";

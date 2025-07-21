@@ -14,7 +14,13 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
-import { Box, Drawer, IconButton, useMediaQuery, useTheme } from "@mui/material";
+import {
+  Box,
+  Drawer,
+  IconButton,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 
 const navItems = [
   { name: "Sensors", href: "/", icon: <CpuIcon /> },
@@ -26,7 +32,7 @@ const navItems = [
 export function Navbar() {
   const pathname = usePathname();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => {
@@ -35,19 +41,25 @@ export function Navbar() {
 
   const NavContent = () => (
     <Box sx={{ p: 2 }}>
-      <Box sx={{
-        mb: 4,
-        fontSize: { xs: '1.25rem', md: '1.5rem' },
-        fontWeight: 'bold',
-        color: 'primary.main',
-        textAlign: { xs: 'center', md: 'left' }
-      }}>
+      <Box
+        sx={{
+          mb: 4,
+          fontSize: { xs: "1.25rem", md: "1.5rem" },
+          fontWeight: "bold",
+          color: "primary.main",
+          textAlign: { xs: "center", md: "left" },
+        }}
+      >
         Inventory System
       </Box>
       <List>
         {navItems.map((item) => (
           <ListItem key={item.name} disablePadding>
-            <Link href={item.href} passHref style={{ width: '100%', textDecoration: 'none' }}>
+            <Link
+              href={item.href}
+              passHref
+              style={{ width: "100%", textDecoration: "none" }}
+            >
               <ListItemButton
                 component="div"
                 selected={pathname === item.href}
@@ -84,7 +96,7 @@ export function Navbar() {
                 <ListItemText
                   primary={item.name}
                   primaryTypographyProps={{
-                    fontSize: { xs: '0.875rem', md: '1rem' },
+                    fontSize: { xs: "0.875rem", md: "1rem" },
                     fontWeight: pathname === item.href ? 600 : 500,
                   }}
                 />
@@ -105,15 +117,15 @@ export function Navbar() {
           edge="start"
           onClick={handleDrawerToggle}
           sx={{
-            position: 'fixed',
+            position: "fixed",
             top: 16,
             left: 16,
             zIndex: 1300,
-            bgcolor: 'primary.main',
-            color: 'white',
-            '&:hover': {
-              bgcolor: 'primary.dark',
-            }
+            bgcolor: "primary.main",
+            color: "white",
+            "&:hover": {
+              bgcolor: "primary.dark",
+            },
           }}
         >
           <MenuIcon />
@@ -127,13 +139,13 @@ export function Navbar() {
             keepMounted: true, // Better open performance on mobile.
           }}
           sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
               width: 280,
             },
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", p: 1 }}>
             <IconButton onClick={handleDrawerToggle}>
               <CloseIcon />
             </IconButton>
@@ -149,8 +161,8 @@ export function Navbar() {
       elevation={3}
       sx={{
         width: 280,
-        height: 'fit-content',
-        bgcolor: 'background.paper',
+        height: "fit-content",
+        bgcolor: "background.paper",
         borderRadius: 2,
       }}
     >

@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 
 interface NoSSRProps {
-    children: React.ReactNode;
-    fallback?: React.ReactNode;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 /**
@@ -11,17 +11,17 @@ interface NoSSRProps {
  * This is useful for components that use browser-only APIs or localStorage
  */
 export function NoSSR({ children, fallback = null }: NoSSRProps) {
-    const [isClient, setIsClient] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-    if (!isClient) {
-        return <>{fallback}</>;
-    }
+  if (!isClient) {
+    return <>{fallback}</>;
+  }
 
-    return <>{children}</>;
+  return <>{children}</>;
 }
 
 export default NoSSR;

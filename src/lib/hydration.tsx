@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
  * This prevents hydration mismatches by ensuring the store is only used on the client
  */
 export function useHydrated() {
-    const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-    useEffect(() => {
-        setIsHydrated(true);
-    }, []);
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
-    return isHydrated;
+  return isHydrated;
 }
 
 /**
@@ -20,27 +20,27 @@ export function useHydrated() {
  * This prevents SSR issues by only rendering the component on the client
  */
 export function withHydration<T extends object>(
-    Component: React.ComponentType<T>,
-    fallback?: React.ComponentType<T> | React.ReactNode,
+  Component: React.ComponentType<T>,
+  fallback?: React.ComponentType<T> | React.ReactNode,
 ) {
-    const WrappedComponent = (props: T) => {
-        const isHydrated = useHydrated();
+  const WrappedComponent = (props: T) => {
+    const isHydrated = useHydrated();
 
-        if (!isHydrated) {
-            if (fallback) {
-                return typeof fallback === "function" ? (
-                    React.createElement(fallback, props)
-                ) : (
-                    <>{fallback}</>
-                );
-            }
-            return null;
-        }
+    if (!isHydrated) {
+      if (fallback) {
+        return typeof fallback === "function" ? (
+          React.createElement(fallback, props)
+        ) : (
+          <>{fallback}</>
+        );
+      }
+      return null;
+    }
 
-        return <Component {...props} />;
-    };
+    return <Component {...props} />;
+  };
 
-    WrappedComponent.displayName = `withHydration(${Component.displayName || Component.name})`;
+  WrappedComponent.displayName = `withHydration(${Component.displayName || Component.name})`;
 
-    return WrappedComponent;
+  return WrappedComponent;
 }

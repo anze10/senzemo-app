@@ -44,7 +44,7 @@ type Order = {
 
 export default function OrderManagement() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [orders, setOrders] = useState<Order[]>([
     {
       id: 1,
@@ -168,13 +168,15 @@ export default function OrderManagement() {
         transition={{ duration: 0.5 }}
       >
         <Box sx={{ mb: { xs: 3, md: 4 } }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            alignItems: { xs: 'stretch', md: 'center' },
-            justifyContent: 'space-between',
-            gap: { xs: 2, md: 0 }
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              alignItems: { xs: "stretch", md: "center" },
+              justifyContent: "space-between",
+              gap: { xs: 2, md: 0 },
+            }}
+          >
             <Typography
               variant={isMobile ? "h4" : "h3"}
               component="h1"
@@ -192,7 +194,7 @@ export default function OrderManagement() {
               size={isMobile ? "large" : "medium"}
               sx={{
                 fontWeight: 600,
-                minWidth: { xs: '100%', md: 'auto' }
+                minWidth: { xs: "100%", md: "auto" },
               }}
             >
               Create New Order
@@ -205,10 +207,10 @@ export default function OrderManagement() {
           elevation={3}
           sx={{
             borderRadius: 2,
-            overflow: 'hidden',
-            '& .MuiTable-root': {
-              minWidth: { xs: 600, md: 'auto' }
-            }
+            overflow: "hidden",
+            "& .MuiTable-root": {
+              minWidth: { xs: 600, md: "auto" },
+            },
           }}
         >
           <Table stickyHeader>
@@ -253,9 +255,7 @@ export default function OrderManagement() {
                     <TableCell>
                       <Chip
                         label={order.status}
-                        color={
-                          order.status === "Taken" ? "success" : "warning"
-                        }
+                        color={order.status === "Taken" ? "success" : "warning"}
                       />
                     </TableCell>
                     <TableCell>

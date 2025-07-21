@@ -48,7 +48,7 @@ export default function Parameters() {
   const [addToStock, setAddToStock] = useState<boolean>(false);
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const router = useRouter();
   const set_target_sensor_data = useSensorStore(
@@ -96,7 +96,8 @@ export default function Parameters() {
               newValues[parser.output.name] = false;
               break;
             case "enum":
-              newValues[parser.output.name] = parser.output.enum_values?.[0]?.value ?? 0;
+              newValues[parser.output.name] =
+                parser.output.enum_values?.[0]?.value ?? 0;
               break;
             default:
               newValues[parser.output.name] = "";
@@ -129,52 +130,65 @@ export default function Parameters() {
       >
         <Box component="form">
           {isLoading && (
-            <Typography variant="h6" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+            <Typography
+              variant="h6"
+              sx={{ textAlign: "center", color: "text.secondary" }}
+            >
               Loading...
             </Typography>
           )}
 
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: { xs: 'auto', md: '80vh' },
-            py: { xs: 3, md: 6 }
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: { xs: "auto", md: "80vh" },
+              py: { xs: 3, md: 6 },
+            }}
+          >
             <Typography
               variant={isMobile ? "h4" : "h3"}
               sx={{
                 mb: { xs: 4, md: 8 },
-                fontWeight: 'bold',
-                color: 'primary.main',
-                textAlign: 'center'
+                fontWeight: "bold",
+                color: "primary.main",
+                textAlign: "center",
               }}
             >
               SENZEMO
             </Typography>
 
-            <Box sx={{
-              width: '100%',
-              maxWidth: { xs: '100%', md: '800px' },
-              backgroundColor: 'background.paper',
-              borderRadius: 2,
-              p: { xs: 3, md: 6 },
-              boxShadow: theme.shadows[4]
-            }}>
+            <Box
+              sx={{
+                width: "100%",
+                maxWidth: { xs: "100%", md: "800px" },
+                backgroundColor: "background.paper",
+                borderRadius: 2,
+                p: { xs: 3, md: 6 },
+                boxShadow: theme.shadows[4],
+              }}
+            >
               <Typography
                 variant={isMobile ? "h6" : "h5"}
                 sx={{
                   mb: { xs: 3, md: 6 },
-                  textAlign: 'center',
+                  textAlign: "center",
                   fontWeight: 600,
-                  color: 'text.primary'
+                  color: "text.primary",
                 }}
               >
                 Configuration
               </Typography>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, md: 4 } }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: { xs: 3, md: 4 },
+                }}
+              >
                 <FormControl fullWidth>
                   <InputLabel htmlFor="family_id">Izberi senzor</InputLabel>
                   <Select
@@ -207,7 +221,9 @@ export default function Parameters() {
                 {!addToStock && (
                   <>
                     <FormControl fullWidth>
-                      <InputLabel htmlFor="Company_name">Company Name</InputLabel>
+                      <InputLabel htmlFor="Company_name">
+                        Company Name
+                      </InputLabel>
                       <Input
                         id="Company_name"
                         value={company_name}
@@ -217,7 +233,9 @@ export default function Parameters() {
                     </FormControl>
 
                     <FormControl fullWidth>
-                      <InputLabel htmlFor="serial-number">Order Number</InputLabel>
+                      <InputLabel htmlFor="serial-number">
+                        Order Number
+                      </InputLabel>
                       <Input
                         id="serial-number"
                         value={order_number}
@@ -230,18 +248,25 @@ export default function Parameters() {
 
                 <Grid2 container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
                   {decoder?.map((parser) => (
-                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={parser.output.name}>
+                    <Grid2
+                      size={{ xs: 12, sm: 6, md: 4 }}
+                      key={parser.output.name}
+                    >
                       <DynamicFormComponent
                         my_key={parser.output.name}
                         my_type={parser.output.type}
                         value={
-                          formValues[parser.output.name] ?? parser.output.default ?? (
-                            parser.output.type === "string" ? "" :
-                              parser.output.type === "number" ? 0 :
-                                parser.output.type === "boolean" ? false :
-                                  parser.output.type === "enum" ? parser.output.enum_values?.[0]?.value ?? 0 :
-                                    ""
-                          )
+                          formValues[parser.output.name] ??
+                          parser.output.default ??
+                          (parser.output.type === "string"
+                            ? ""
+                            : parser.output.type === "number"
+                              ? 0
+                              : parser.output.type === "boolean"
+                                ? false
+                                : parser.output.type === "enum"
+                                  ? (parser.output.enum_values?.[0]?.value ?? 0)
+                                  : "")
                         }
                         enum_values={parser.output.enum_values}
                         onValueChange={handleValueChange}
@@ -252,7 +277,13 @@ export default function Parameters() {
               </Box>
             </Box>
 
-            <Box sx={{ mt: { xs: 4, md: 8 }, display: 'flex', justifyContent: 'center' }}>
+            <Box
+              sx={{
+                mt: { xs: 4, md: 8 },
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
               <Button
                 variant="contained"
                 color="primary"
@@ -260,9 +291,9 @@ export default function Parameters() {
                 sx={{
                   px: { xs: 4, md: 6 },
                   py: { xs: 1.5, md: 2 },
-                  fontSize: { xs: '1rem', md: '1.1rem' },
+                  fontSize: { xs: "1rem", md: "1.1rem" },
                   fontWeight: 600,
-                  minWidth: { xs: '200px', md: '250px' }
+                  minWidth: { xs: "200px", md: "250px" },
                 }}
                 onClick={async () => {
                   if (!addToStock && company_name.trim() === "") {
