@@ -74,7 +74,7 @@ export function InventoryEmailTemplate({
         {/* Detailed Inventory */}
         <div style={{ margin: '30px 0' }}>
           <h2 style={{ color: '#1F2937', fontSize: '18px', marginBottom: '20px' }}>
-            📦 Sensor Inventory
+            Sensor Inventory
           </h2>
 
           {/* Sensor Inventory Table */}

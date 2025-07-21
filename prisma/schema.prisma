@@ -42,6 +42,7 @@ model Mailing {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId], name: "mailing_user_id_index")
+  @@index([Date_of_monthly_report], name: "mailing_date_index")
   @@index([dayOfMonth, isSubscribed], name: "mailing_schedule_index")
 }
 

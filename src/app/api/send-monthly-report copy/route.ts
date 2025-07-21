@@ -9,7 +9,20 @@ import {
 } from "src/app/inventory/components/backent";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
 
+// Define types for inventory items
+// interface InventoryItem {
+//   quantity: number;
+//   [key: string]: unknown;
+// }
+
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+interface MonthlyReportSettings {
+  recipients: string[];
+  subject?: string;
+  includeReportUrl?: boolean;
+  lowStockThreshold?: number;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,6 +68,19 @@ export async function POST(request: NextRequest) {
         })),
       }),
     );
+
+    // const detailedComponentInventory = rawComponentInventory.map(
+    //   (component) => ({
+    //     name: String(component.name),
+    //     totalQuantity: Number(component.totalQuantity),
+    //     locations: (
+    //       component.locations as Array<{ location: string; quantity: number }>
+    //     ).map((loc) => ({
+    //       location: String(loc.location),
+    //       quantity: Number(loc.quantity),
+    //     })),
+    //   }),
+    // );
 
     // Calculate statistics
     const uniqueSensorTypes = sensorData.length;
