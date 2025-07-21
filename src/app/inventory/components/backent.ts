@@ -351,7 +351,32 @@ export async function showAllComponents() {
       const invoiceComponents = relatedInvoice
         ? allInvoices.find((inv) => inv.id === relatedInvoice.id)
             ?.componentStocks || []
-        : [];
+        : []; // Extract and format the component price, ensuring it's a valid number
+      const rawPrice = stock.component.Component_price;
+      let price = 0;
+
+      // Try to convert the raw price to a number safely
+      if (rawPrice !== null && rawPrice !== undefined) {
+        try {
+          price = parseFloat(String(rawPrice));
+          if (isNaN(price)) price = 0;
+        } catch (e) {
+          console.error(
+            `Failed to parse price for component ${stock.componentId}:`,
+            e,
+          );
+          price = 0;
+        }
+      }
+
+      console.log(
+        `Component ${stock.componentId} (${stock.component.name}) price data:`,
+        {
+          rawPrice: rawPrice,
+          parsedPrice: price,
+          type: typeof rawPrice,
+        },
+      );
 
       return {
         id: stock.id,
@@ -361,7 +386,7 @@ export async function showAllComponents() {
         quantity: stock.quantity,
         location: stock.location,
         supplier: stock.supplier,
-        price: stock.component.Component_price,
+        price: price,
         lastUpdated: stock.lastUpdated,
         recentLogs: stock.logs,
         invoiceNumber: invoiceNumber,
@@ -784,10 +809,24 @@ export async function addComponentToInventory(
 
       // Update the component price if provided
       if (price !== null) {
-        await tx.component.update({
-          where: { id: componentId },
-          data: { Component_price: price },
-        });
+        // Ensure price is a valid number
+        const numericPrice = parseFloat(String(price));
+
+        if (!isNaN(numericPrice)) {
+          console.log(
+            `Updating component ${componentId} price to: ${numericPrice}`,
+          );
+          await tx.component.update({
+            where: { id: componentId },
+            data: { Component_price: numericPrice },
+          });
+        } else {
+          console.log(
+            `Invalid price format for component ${componentId}: ${price}`,
+          );
+        }
+      } else {
+        console.log(`No price provided for component ${componentId}`);
       }
 
       // Handle sensor assignments
@@ -919,10 +958,22 @@ export async function updateComponentStock(
 
       // Update component price if provided
       if (price !== undefined) {
-        await tx.component.update({
-          where: { id: currentStock.componentId },
-          data: { Component_price: price },
-        });
+        // Ensure price is a valid number
+        const numericPrice = parseFloat(String(price));
+
+        if (!isNaN(numericPrice)) {
+          console.log(
+            `Updating component ${currentStock.componentId} price to: ${numericPrice}`,
+          );
+          await tx.component.update({
+            where: { id: currentStock.componentId },
+            data: { Component_price: numericPrice },
+          });
+        } else {
+          console.log(
+            `Invalid price format for component ${currentStock.componentId}: ${price}`,
+          );
+        }
       }
 
       // Create invoice record if provided

@@ -2217,7 +2217,7 @@ export default function InventoryManagementPage() {
                                     Price per Item
                                   </Typography>
                                   <Typography variant="body1" fontWeight={500}>
-                                    {item1.price ? `€${item1.price.toFixed(2)}` : "-"}
+                                    {item1.price !== undefined && item1.price !== null ? `€${Number(item1.price).toFixed(2)}` : "-"}
                                   </Typography>
                                 </Box>
                                 <Box>
@@ -2515,8 +2515,8 @@ export default function InventoryManagementPage() {
                                   </Box>
                                 </TableCell>
                                 <TableCell>
-                                  {item1.price
-                                    ? `€${item1.price.toFixed(2)}`
+                                  {item1.price !== undefined && item1.price !== null
+                                    ? `€${Number(item1.price).toFixed(2)}`
                                     : "-"}
                                 </TableCell>
                                 <TableCell>
@@ -2563,7 +2563,7 @@ export default function InventoryManagementPage() {
                                   {Array.isArray(item1.sensorAssignments) &&
                                     item1.sensorAssignments.length > 0
                                     ? item1.sensorAssignments
-
+                                      .map(sa => `${sa.sensorName} (${sa.requiredQuantity})`)
                                       .join(", ")
                                     : "-"}
                                 </TableCell>
@@ -2892,12 +2892,14 @@ export default function InventoryManagementPage() {
                       type="number"
                       fullWidth
                       variant="outlined"
-                      value={(editItem as ComponentStockItem)?.price || ""}
+                      value={(editItem as ComponentStockItem)?.price !== undefined ? (editItem as ComponentStockItem).price : ""}
                       onChange={(e) => {
                         if (!editItem) return;
+                        const newPrice = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                        console.log(`Setting price to: ${newPrice}`);
                         setEditItem({
                           ...editItem,
-                          price: parseFloat(e.target.value) || 0,
+                          price: newPrice,
                         } as ComponentStockItem);
                       }}
                       className="mb-4"
