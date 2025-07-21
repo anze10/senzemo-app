@@ -1178,7 +1178,7 @@ export async function showLogs() {
       user: log.user,
       id: log.id,
       invoiceId: log.invoiceId ?? null,
-      invoiceNumber: log.invoice?.invoiceNumber ? `INV-${log.invoiceId}` : null,
+      invoiceNumber: log.invoice?.invoiceNumber || null,
       timestamp: log.timestamp,
       itemType: log.itemType,
       itemName: log.itemName,
