@@ -281,10 +281,10 @@ export async function showAllComponents() {
             componentStocks: {
               include: {
                 component: {
-                  select: { name: true }
-                }
-              }
-            }
+                  select: { name: true },
+                },
+              },
+            },
           },
         },
         logs: {
@@ -316,18 +316,18 @@ export async function showAllComponents() {
         componentStocks: {
           include: {
             component: {
-              select: { name: true }
-            }
-          }
+              select: { name: true },
+            },
+          },
         },
         logs: {
           select: {
             componentStockId: true,
             change: true,
             timestamp: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     return componentStocks.map((stock) => {
@@ -337,18 +337,20 @@ export async function showAllComponents() {
         stock.logs.find((log) => log.invoice?.invoiceNumber)?.invoice
           ?.invoiceNumber;
 
-      // Get file information
+      // Get file information - prioritize invoiceFileKey from ComponentStock, then filename from Invoice
       const invoiceFile =
+        stock.invoiceFileKey ||
         stock.invoice?.filename ||
         stock.logs.find((log) => log.invoice?.filename)?.invoice?.filename;
 
       // Get comprehensive invoice data
-      const relatedInvoice = stock.invoice || 
-        stock.logs.find((log) => log.invoice)?.invoice;
+      const relatedInvoice =
+        stock.invoice || stock.logs.find((log) => log.invoice)?.invoice;
 
       // Find all related components on the same invoice
-      const invoiceComponents = relatedInvoice 
-        ? allInvoices.find(inv => inv.id === relatedInvoice.id)?.componentStocks || []
+      const invoiceComponents = relatedInvoice
+        ? allInvoices.find((inv) => inv.id === relatedInvoice.id)
+            ?.componentStocks || []
         : [];
 
       return {
@@ -376,18 +378,20 @@ export async function showAllComponents() {
           phone: stock.phone ?? "",
         },
         // Enhanced invoice information
-        invoiceDetails: relatedInvoice ? {
-          id: relatedInvoice.id,
-          invoiceNumber: relatedInvoice.invoiceNumber,
-          totalAmount: relatedInvoice.amount || 0,
-          supplier: relatedInvoice.supplier,
-          uploadDate: new Date(), // Use current date since uploadDate field is missing from the type
-          filename: relatedInvoice.filename,
-          relatedComponents: invoiceComponents.map(cs => ({
-            componentName: cs.component.name,
-            componentStockId: cs.id
-          }))
-        } : null,
+        invoiceDetails: relatedInvoice
+          ? {
+              id: relatedInvoice.id,
+              invoiceNumber: relatedInvoice.invoiceNumber,
+              totalAmount: relatedInvoice.amount || 0,
+              supplier: relatedInvoice.supplier,
+              uploadDate: new Date(), // Use current date since uploadDate field is missing from the type
+              filename: relatedInvoice.filename,
+              relatedComponents: invoiceComponents.map((cs) => ({
+                componentName: cs.component.name,
+                componentStockId: cs.id,
+              })),
+            }
+          : null,
       };
     }) as ComponentStockItem[];
   } catch (error) {
@@ -441,7 +445,7 @@ export async function adjustComponentStock(
 
       // Create invoice record if provided and quantity increased
       let invoiceRecord = null;
-      if (invoiceNumber && quantity > 0) {
+      if (invoiceNumber) {
         invoiceRecord = await tx.invoice.upsert({
           where: { invoiceNumber },
           create: {
@@ -531,12 +535,12 @@ export async function adjustComponentStockWithInvoice(
               componentStocks: {
                 include: {
                   component: {
-                    select: { name: true }
-                  }
-                }
-              }
-            }
-          }
+                    select: { name: true },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -554,11 +558,11 @@ export async function adjustComponentStockWithInvoice(
             componentStocks: {
               include: {
                 component: {
-                  select: { name: true }
-                }
-              }
-            }
-          }
+                  select: { name: true },
+                },
+              },
+            },
+          },
         });
       }
 
@@ -575,14 +579,25 @@ export async function adjustComponentStockWithInvoice(
       };
 
       if (supplier !== undefined) updateData.supplier = supplier;
-      if (fileKey !== undefined && fileKey !== null)
+      if (fileKey !== undefined && fileKey !== null) {
         updateData.invoiceFileKey = fileKey;
+        console.log("Setting invoiceFileKey to:", fileKey);
+      }
 
-      // Create invoice record if provided and quantity increased
+      // Create invoice record if provided
       let invoiceRecord = null;
-      if (invoiceNumber && quantity > 0) {
-        const totalInvoiceAmount = (existingInvoice?.amount || 0) + ((price || 0) * Math.abs(quantity));
-        
+      if (invoiceNumber) {
+        const totalInvoiceAmount =
+          (existingInvoice?.amount || 0) + (price || 0) * Math.abs(quantity);
+
+        // Debug: Log what's being saved to the database
+        console.log("Creating/updating invoice with:", {
+          invoiceNumber,
+          amount: (price || 0) * Math.abs(quantity),
+          supplier: supplier || currentStock.supplier || "",
+          filename: fileKey,
+        });
+
         invoiceRecord = await tx.invoice.upsert({
           where: { invoiceNumber },
           create: {
@@ -590,13 +605,24 @@ export async function adjustComponentStockWithInvoice(
             amount: (price || 0) * Math.abs(quantity),
             supplier: supplier || currentStock.supplier || "",
             uploadDate: new Date(),
-            filename: fileKey ? `invoices/${fileKey}` : null,
+            filename: fileKey || null, // Store the full B2 file path directly
           },
           update: {
             amount: totalInvoiceAmount,
-            supplier: supplier || existingInvoice?.supplier || currentStock.supplier || "",
-            filename: fileKey ? `invoices/${fileKey}` : existingInvoice?.filename,
+            supplier:
+              supplier ||
+              existingInvoice?.supplier ||
+              currentStock.supplier ||
+              "",
+            filename: fileKey || existingInvoice?.filename, // Store the full B2 file path directly
           },
+        });
+
+        console.log("Invoice record created/updated:", {
+          id: invoiceRecord.id,
+          invoiceNumber: invoiceRecord.invoiceNumber,
+          filename: invoiceRecord.filename,
+          amount: invoiceRecord.amount,
         });
 
         updateData.invoiceId = invoiceRecord.id;
@@ -607,25 +633,65 @@ export async function adjustComponentStockWithInvoice(
         data: updateData,
       });
 
-      // Create detailed log entry with invoice information
-      const invoiceDetails = existingInvoice 
-        ? `Existing invoice components: ${existingInvoice.componentStocks.map(cs => cs.component.name).join(', ')} | `
-        : '';
+      // Create detailed log entry with invoice information - always log when invoice or other data changes
+      const invoiceDetails = existingInvoice
+        ? `Existing invoice components: ${existingInvoice.componentStocks.map((cs) => cs.component.name).join(", ")} | `
+        : "";
 
-      await tx.inventoryLog.create({
-        data: {
-          itemType: "component",
-          itemName: currentStock.component.name,
-          change: quantity,
-          reason,
-          user: "System",
-          details: invoiceNumber
-            ? `Adjustment | Invoice: ${invoiceNumber} | ${invoiceDetails}Unit price: ${price ? `€${price}` : "N/A"} | Total invoice amount: €${invoiceRecord?.amount || 0}${fileKey ? ` | File: ${fileKey}` : ""}`
-            : `Adjustment | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`,
-          invoiceId: invoiceRecord?.id,
-          componentStockId: stockId,
-        },
-      });
+      const hasInvoiceUpdate =
+        invoiceNumber ||
+        fileKey ||
+        supplier !== undefined ||
+        price !== undefined;
+      const shouldLog = quantity !== 0 || hasInvoiceUpdate;
+
+      if (shouldLog) {
+        const logDetails = [];
+
+        if (quantity !== 0) {
+          logDetails.push(
+            `Quantity change: ${quantity > 0 ? "+" : ""}${quantity}`,
+          );
+        }
+
+        if (invoiceNumber) {
+          logDetails.push(`Invoice: ${invoiceNumber}`);
+          if (invoiceDetails) {
+            logDetails.push(invoiceDetails.trim());
+          }
+        }
+
+        if (price !== undefined) {
+          logDetails.push(`Unit price: ${price ? `€${price}` : "N/A"}`);
+        }
+
+        if (invoiceRecord) {
+          logDetails.push(
+            `Total invoice amount: €${invoiceRecord.amount || 0}`,
+          );
+        }
+
+        if (supplier !== undefined) {
+          logDetails.push(`Supplier: ${supplier || "N/A"}`);
+        }
+
+        if (fileKey) {
+          logDetails.push(`File: ${fileKey}`);
+        }
+
+        await tx.inventoryLog.create({
+          data: {
+            itemType: "component",
+            itemName: currentStock.component.name,
+            change: quantity,
+            reason: quantity !== 0 ? reason : `Invoice update: ${reason}`,
+            user: "System",
+            details: logDetails.join(" | "),
+            invoiceId: invoiceRecord?.id,
+            componentStockId: stockId,
+          },
+        });
+      }
 
       return {
         ...updatedStock,
@@ -665,11 +731,11 @@ export async function addComponentToInventory(
             componentStocks: {
               include: {
                 component: {
-                  select: { name: true }
-                }
-              }
-            }
-          }
+                  select: { name: true },
+                },
+              },
+            },
+          },
         });
       }
 
@@ -683,18 +749,22 @@ export async function addComponentToInventory(
             amount: (price || 0) * quantity,
             supplier: supplier || "",
             uploadDate: new Date(),
-            filename: fileKey ? `invoices/${fileKey}` : null,
+            filename: fileKey || null, // Store the full B2 file path directly
           },
           update: {
             // Update amount by adding new component cost to existing amount
-            amount: (existingInvoice?.amount || 0) + ((price || 0) * quantity),
+            amount: (existingInvoice?.amount || 0) + (price || 0) * quantity,
             supplier: supplier || existingInvoice?.supplier || "",
-            filename: fileKey ? `invoices/${fileKey}` : existingInvoice?.filename,
+            filename: fileKey || existingInvoice?.filename, // Store the full B2 file path directly
           },
         });
       }
 
       // Create component stock
+      console.log(
+        "addComponentToInventory: Creating component stock with invoiceFileKey:",
+        fileKey,
+      );
       const componentStock = await tx.componentStock.create({
         data: {
           componentId,
@@ -707,6 +777,10 @@ export async function addComponentToInventory(
           invoiceId: invoiceRecord?.id, // Link to invoice if created
         },
       });
+      console.log(
+        "Component stock created with invoiceFileKey:",
+        componentStock.invoiceFileKey,
+      );
 
       // Update the component price if provided
       if (price !== null) {
@@ -830,8 +904,13 @@ export async function updateComponentStock(
       if (email !== undefined) updateData.email = email;
       if (supplier !== undefined) updateData.supplier = supplier;
       if (phone !== undefined) updateData.phone = phone;
-      if (fileKey !== undefined && fileKey !== null)
+      if (fileKey !== undefined && fileKey !== null) {
         updateData.invoiceFileKey = fileKey;
+        console.log(
+          "updateComponentStock: Setting invoiceFileKey to:",
+          fileKey,
+        );
+      }
 
       await tx.componentStock.update({
         where: { id: stockId },
@@ -846,22 +925,22 @@ export async function updateComponentStock(
         });
       }
 
-      // Create invoice record if provided and quantity increased
+      // Create invoice record if provided
       let invoiceRecord = null;
-      if (invoiceNumber && quantityChange > 0) {
+      if (invoiceNumber) {
         invoiceRecord = await tx.invoice.upsert({
           where: { invoiceNumber },
           create: {
             invoiceNumber,
-            amount: (price || 0) * quantityChange,
+            amount: (price || 0) * Math.abs(quantityChange),
             supplier: supplier || currentStock.supplier || "",
             uploadDate: new Date(),
-            filename: fileKey ? `invoices/${fileKey}` : null,
+            filename: fileKey || null, // Store the full B2 file path
           },
           update: {
-            amount: (price || 0) * quantityChange,
+            amount: (price || 0) * Math.abs(quantityChange),
             supplier: supplier || currentStock.supplier || "",
-            filename: fileKey ? `invoices/${fileKey}` : null,
+            filename: fileKey || null, // Store the full B2 file path
           },
         });
 
@@ -872,20 +951,52 @@ export async function updateComponentStock(
         });
       }
 
-      await tx.inventoryLog.create({
-        data: {
-          itemType: "component",
-          itemName: currentStock.component.name,
-          change: quantityChange,
-          reason,
-          user: "System",
-          details: invoiceNumber
-            ? `Updated stock | Invoice: ${invoiceNumber} | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`
-            : `Updated stock | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`,
-          invoiceId: invoiceRecord?.id,
-          componentStockId: stockId,
-        },
-      });
+      // Create detailed log entry - always log when invoice information is provided
+      const hasInvoiceUpdate =
+        invoiceNumber ||
+        fileKey ||
+        supplier !== undefined ||
+        price !== undefined;
+      const shouldLog = quantityChange !== 0 || hasInvoiceUpdate;
+
+      if (shouldLog) {
+        const logDetails = [];
+
+        if (quantityChange !== 0) {
+          logDetails.push(
+            `Quantity change: ${quantityChange > 0 ? "+" : ""}${quantityChange}`,
+          );
+        }
+
+        if (invoiceNumber) {
+          logDetails.push(`Invoice: ${invoiceNumber}`);
+        }
+
+        if (price !== undefined) {
+          logDetails.push(`Price: ${price ? `€${price}` : "N/A"}`);
+        }
+
+        if (supplier !== undefined) {
+          logDetails.push(`Supplier: ${supplier || "N/A"}`);
+        }
+
+        if (fileKey) {
+          logDetails.push(`File: ${fileKey}`);
+        }
+
+        await tx.inventoryLog.create({
+          data: {
+            itemType: "component",
+            itemName: currentStock.component.name,
+            change: quantityChange,
+            reason: quantityChange !== 0 ? reason : `Invoice update: ${reason}`,
+            user: "System",
+            details: logDetails.join(" | "),
+            invoiceId: invoiceRecord?.id,
+            componentStockId: stockId,
+          },
+        });
+      }
 
       const updated = await tx.componentStock.findUnique({
         where: { id: stockId },
@@ -2340,7 +2451,7 @@ export async function getInvoiceFileDownloadUrl(invoiceNumber: string) {
     // For B2 integration, you would generate a presigned URL here
     // This is a placeholder - you'd need to implement B2 presigned URL generation
     return {
-      downloadUrl: `${process.env.B2_PUBLIC_URL}/${invoice.filename}`,
+      downloadUrl: `${process.env.NEK_URL}/${process.env.AWS_BUCKET_NAME}/${invoice.filename}`,
       filename: invoice.filename,
       uploadDate: invoice.uploadDate,
     };
@@ -2416,8 +2527,8 @@ export async function getInvoiceFileDownloadUrl(invoiceNumber: string) {
 
 export async function getLowComponents() {
   try {
-    // First, get all components with a treshold set
-    const componentsWithTreshold = await prisma.component.findMany({
+    // Get all components with thresholds set and their stock information
+    const componentsWithStock = await prisma.component.findMany({
       where: {
         treshold: { not: null },
       },
@@ -2425,6 +2536,11 @@ export async function getLowComponents() {
         id: true,
         name: true,
         treshold: true,
+        stockItems: {
+          select: {
+            quantity: true,
+          },
+        },
       },
     });
 
@@ -2434,13 +2550,10 @@ export async function getLowComponents() {
       availableQuantity: number;
     }> = [];
 
-    for (const comp of componentsWithTreshold) {
-      const totalQuantity = await prisma.componentStock.aggregate({
-        where: { componentId: comp.id },
-        _sum: { quantity: true },
-      });
-
-      const availableQuantity = totalQuantity._sum.quantity ?? 0;
+    for (const comp of componentsWithStock) {
+      // Since componentId is unique in ComponentStock, there should be only one stock item
+      const stockItem = comp.stockItems[0];
+      const availableQuantity = stockItem?.quantity ?? 0;
 
       if (availableQuantity <= (comp.treshold ?? 0)) {
         lowComponents.push({

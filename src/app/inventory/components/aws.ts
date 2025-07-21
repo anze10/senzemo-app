@@ -55,7 +55,9 @@ export const uploadPDFToB2 = async (
 
     const result = await b2Client.send(command);
     console.log("Upload successful:", result);
-    return true;
+
+    // Return the full file path
+    return `invoices/${productName}/${fileName}`;
   } catch (error) {
     console.error("Upload error details:", error);
     throw error;

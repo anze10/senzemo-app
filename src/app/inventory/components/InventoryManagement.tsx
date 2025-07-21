@@ -1,7 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMediaQuery, useTheme } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
+import Container from "@mui/material/Container";
 import Image from "next/image";
 import {
   Alert,
@@ -47,9 +50,8 @@ import WarningIcon from "@mui/icons-material/Warning";
 import InfoIcon from "@mui/icons-material/Info";
 import DownloadIcon from "@mui/icons-material/Download";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-
-//import WarningIcon from '@mui/icons-material/Warning';
-//import InfoIcon from '@mui/icons-material/Info';
+import EmailReportManager from "./EmailReportManager";
+import { uploadPDFToB2 } from "./aws";
 import {
   addComponentToInventory,
   addSensorToInventory,
@@ -59,6 +61,7 @@ import {
   deleteSensorFromInventory,
   getAllComponents,
   getInvoiceFileDownloadUrl,
+  getLowComponents,
   getProductionByFrequency,
   getProductionCapacitySummary,
   getProductionDevices,
@@ -72,13 +75,13 @@ import {
   updateComponentStock,
 } from "src/app/inventory/components/backent";
 
-import { useQuery } from "@tanstack/react-query";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { uploadPDFToB2 } from "src/app/inventory/components/aws";
-import EmailReportManager from "src/app/inventory/components/EmailReportManager";
-import { Container, useMediaQuery, useTheme } from "@mui/material";
-
 type Frequency = "868 MHz" | "915 MHz" | "433 MHz" | "2.4 GHz" | "Custom";
+
+type LowComponentItem = {
+  componentId: number;
+  componentName: string;
+  availableQuantity: number;
+};
 
 export type LogEntry = {
   id: number;
@@ -251,35 +254,33 @@ export default function InventoryManagementPage() {
   ];
 
   // Helper function to check if component is below threshold
-  const isComponentBelowThreshold = (component: ComponentStockItem) => {
-    // Only check threshold if one is actually set (not null or undefined)
-    if (component.lowStockThreshold === null || component.lowStockThreshold === undefined) {
-      return false;
-    }
-    return component.quantity <= component.lowStockThreshold;
-  };
 
   // Helper function to determine alert type and severity
-  const getComponentAlertInfo = (component: ComponentStockItem) => {
-    const isBelowThreshold = isComponentBelowThreshold(component);
+  function getComponentAlertInfo(component: ComponentStockItem) {
+    const threshold = component.lowStockThreshold;
+    const quantity = component.quantity ?? 0;
+    let showAlert = false;
+    let severity: "warning" | "error" = "warning";
+    let color = "#FF9800"; // warning.main
+    let message = "";
 
-    if (isBelowThreshold) {
-      return {
-        showAlert: true,
-        severity: 'warning' as const,
-        message: 'BELOW THRESHOLD',
-        color: 'warning.main' as const,
-        pulseIntensity: 'normal' as const
-      };
+    if (typeof threshold === "number" && quantity <= threshold) {
+      showAlert = true;
+      severity = quantity === 0 ? "error" : "warning";
+      color = severity === "error" ? "#DC2626" : "#FF9800";
+      message =
+        quantity === 0
+          ? "OUT OF STOCK"
+          : `Low stock (${quantity}/${threshold})`;
     }
 
-    return {
-      showAlert: false,
-      severity: 'normal' as const,
-      message: '',
-      color: 'text.secondary' as const,
-      pulseIntensity: 'none' as const
-    };
+    return { showAlert, severity, color, message };
+  }
+
+
+  // Helper function to check if component is in the low components list from database
+  const isComponentInLowList = (component: ComponentStockItem) => {
+    return LowComponents.some((lowComp: LowComponentItem) => lowComp.componentId === component.componentId);
   };
 
   const initializeNewItem = useCallback(() => {
@@ -324,13 +325,13 @@ export default function InventoryManagementPage() {
       // Create a new File object with the updated name
       const renamedFile = new File([file], newFileName, { type: file.type });
 
-      await uploadPDFToB2(renamedFile, invoiceNumber, "components");
-      return invoiceNumber; // Return the invoice number as the file key
+      const filePath = await uploadPDFToB2(renamedFile, invoiceNumber, "components");
+      return filePath; // Return the actual file path from B2
     },
-    onSuccess: (fileKey) => {
+    onSuccess: (filePath) => {
       setSnackbar({
         open: true,
-        message: `Invoice uploaded successfully as: ${fileKey}`,
+        message: `Invoice uploaded successfully to: ${filePath}`,
         severity: "success",
       });
     },
@@ -361,6 +362,12 @@ export default function InventoryManagementPage() {
   const { data: componentOptions = [] } = useQuery({
     queryKey: ["all-components"],
     queryFn: getAllComponents,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const { data: LowComponents = [] } = useQuery({
+    queryKey: [" LowComponents "],
+    queryFn: getLowComponents,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -899,7 +906,7 @@ export default function InventoryManagementPage() {
           editItem.id,
           updatedItem.quantity,
           "Manual update",
-          newQuantity > currentQuantity ? invoiceNumber : undefined,
+          invoiceNumber || undefined, // Always pass invoice number if provided
           updatedItem.location,
           updatedItem.contactDetails.email,
           updatedItem.contactDetails.supplier,
@@ -1064,19 +1071,29 @@ export default function InventoryManagementPage() {
         severity: "error",
       });
     }
-  };
-  const handleEditItem = async (item: InventoryItem) => {
-    // Če je komponenta, poišči najnovejši vnos iz allComponents
+  }; const handleEditItem = async (item: InventoryItem) => {
+    // For components, force a fresh fetch to get the latest data including invoice info
     if ("componentId" in item) {
-      const freshComponent = allComponents.find((c) => c.id === item.id);
-      setEditItem(freshComponent ?? item);
-
-      // Fetch invoice history for this component
       try {
-        const history = await fetchComponentInvoiceHistory(item.componentId);
-        setInvoiceHistory(history);
+        // Force refetch the latest component data
+        await queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
+        const freshData = await showAllComponents();  // Direct call to get fresh data
+        const freshComponent = freshData.find((c: ComponentStockItem) => c.id === item.id);
+
+        setEditItem(freshComponent ?? item);
+
+        // Fetch invoice history for this component
+        try {
+          const history = await fetchComponentInvoiceHistory(item.componentId);
+          setInvoiceHistory(history);
+        } catch (error) {
+          console.error('Failed to fetch invoice history:', error);
+          setInvoiceHistory([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch invoice history:', error);
+        console.error('Failed to fetch fresh component data:', error);
+        // Fallback to existing data
+        setEditItem(item);
         setInvoiceHistory([]);
       }
     } else {
@@ -1931,7 +1948,8 @@ export default function InventoryManagementPage() {
                                   {/* Alert Icon for Low Components */}
                                   {(() => {
                                     const alertInfo = getComponentAlertInfo(item1);
-                                    if (alertInfo.showAlert) {
+                                    const isInLowList = isComponentInLowList(item1);
+                                    if (alertInfo.showAlert || isInLowList) {
                                       return (
                                         <Box sx={{
                                           display: 'flex',
@@ -1941,10 +1959,10 @@ export default function InventoryManagementPage() {
                                         >
                                           <WarningIcon
                                             sx={{
-                                              color: alertInfo.color,
-                                              fontSize: alertInfo.severity === 'critical' ? 28 : 24,
+                                              color: isInLowList ? 'error.main' : alertInfo.color,
+                                              fontSize: 24,
                                             }}
-                                            className={`${alertInfo.pulseIntensity === 'fast' ? 'pulse-fast' : 'pulse-normal'} ${alertInfo.severity === 'critical' ? 'glow-critical' : 'glow-warning'}`}
+                                            className={isInLowList ? "pulse-fast glow-critical" : "pulse-normal glow-warning"}
                                           />
                                         </Box>
                                       );
@@ -2124,7 +2142,8 @@ export default function InventoryManagementPage() {
                                   </Box>
                                   {(() => {
                                     const alertInfo = getComponentAlertInfo(item1);
-                                    if (alertInfo.showAlert) {
+                                    const isInLowList = isComponentInLowList(item1);
+                                    if (alertInfo.showAlert || isInLowList) {
                                       return (
                                         <Box sx={{
                                           display: 'flex',
@@ -2132,24 +2151,24 @@ export default function InventoryManagementPage() {
                                           gap: 0.5,
                                           p: 1,
                                           borderRadius: 1,
-                                          bgcolor: alertInfo.severity === 'critical' ? 'error.light' : 'warning.light',
+                                          bgcolor: isInLowList ? 'error.light' : alertInfo.severity === 'warning' ? 'warning.light' : 'error.light',
                                           border: 1,
-                                          borderColor: alertInfo.severity === 'critical' ? 'error.main' : 'warning.main'
+                                          borderColor: isInLowList ? 'error.main' : alertInfo.severity === 'warning' ? 'warning.main' : 'divider'
                                         }}>
                                           <WarningIcon
                                             sx={{
-                                              color: alertInfo.color,
+                                              color: isInLowList ? 'error.main' : alertInfo.color,
                                               fontSize: 16
                                             }}
                                           />
                                           <Typography
                                             variant="caption"
-                                            color={alertInfo.color}
+                                            color={isInLowList ? 'error.main' : alertInfo.color}
                                             fontWeight={600}
                                           >
-                                            {alertInfo.message}
+                                            {isInLowList ? "CRITICALLY LOW" : alertInfo.message}
                                           </Typography>
-                                          {isComponentInLowList(item1) && (
+                                          {isInLowList && (
                                             <Chip
                                               label="DATABASE ALERT"
                                               size="small"
@@ -2296,30 +2315,17 @@ export default function InventoryManagementPage() {
                                     {/* Alert Icon for Low Components */}
                                     {(() => {
                                       const alertInfo = getComponentAlertInfo(item1);
-                                      if (alertInfo.showAlert) {
+                                      const isInLowList = isComponentInLowList(item1);
+                                      if (alertInfo.showAlert || isInLowList) {
                                         return (
                                           <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
                                             <WarningIcon
                                               sx={{
-                                                color: alertInfo.color,
-                                                fontSize: alertInfo.severity === 'critical' ? 24 : 20,
+                                                color: isInLowList ? 'error.main' : alertInfo.color,
+                                                fontSize: 20,
                                               }}
-                                              className={`${alertInfo.pulseIntensity === 'fast' ? 'pulse-fast' : 'pulse-normal'} ${alertInfo.severity === 'critical' ? 'glow-critical' : 'glow-warning'}`}
+                                              className={isInLowList ? "pulse-fast glow-critical" : "pulse-normal glow-warning"}
                                             />
-                                            {isComponentInLowList(item1) && (
-                                              <Chip
-                                                label="DB"
-                                                size="small"
-                                                color="error"
-                                                variant="filled"
-                                                sx={{
-                                                  fontSize: '0.5rem',
-                                                  height: 16,
-                                                  ml: 0.5,
-                                                  minWidth: 24
-                                                }}
-                                              />
-                                            )}
                                           </Box>
                                         );
                                       }
@@ -2979,6 +2985,52 @@ export default function InventoryManagementPage() {
                           No previous invoices found for this component
                         </Typography>
                       )}
+                    </Box>
+                  )}
+
+                  {/* Display current invoice file information */}
+                  {editItem && "invoiceFile" in editItem && editItem.invoiceFile && (
+                    <Box sx={{
+                      mb: 3,
+                      borderRadius: 2,
+                      border: 1,
+                      borderColor: 'success.main',
+                      bgcolor: 'success.light',
+                      p: 2
+                    }}>
+                      <Typography variant="body2" color="success.dark" className="mb-2">
+                        <strong>Current Invoice File:</strong>
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <AttachFileIcon sx={{ fontSize: 16, color: 'success.dark' }} />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" fontWeight={500} color="success.dark">
+                            {editItem.invoiceNumber || "Unknown Invoice"}
+                          </Typography>
+                          <Typography variant="caption" color="success.dark">
+                            File: {editItem.invoiceFile}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          startIcon={<DownloadIcon />}
+                          onClick={() => handleDownloadInvoiceFile(
+                            editItem.invoiceNumber || '',
+                            editItem.invoiceFile || ''
+                          )}
+                          sx={{
+                            textTransform: 'none',
+                            fontSize: '0.75rem',
+                            color: 'success.dark',
+                            '&:hover': {
+                              bgcolor: 'success.main',
+                              color: 'white'
+                            }
+                          }}
+                        >
+                          Download
+                        </Button>
+                      </Box>
                     </Box>
                   )}
 
