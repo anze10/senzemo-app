@@ -450,7 +450,7 @@ export default function InventoryManagementPage() {
   const { data: productionCapacity = [] } = useQuery({
     queryKey: ["production-capacity"],
     queryFn: getSensorProductionCapacity,
-    enabled: activeTab === 0, // Only fetch when on sensors tab
+    enabled: activeTab === 0 || activeTab === 1, // Fetch when on sensors or components tab
     staleTime: 10 * 60 * 1000, // 10 minutes cache
     refetchOnWindowFocus: false,
   });
@@ -458,7 +458,7 @@ export default function InventoryManagementPage() {
   const { data: capacitySummary } = useQuery({
     queryKey: ["capacity-summary"],
     queryFn: getProductionCapacitySummary,
-    enabled: activeTab === 0, // Only fetch when on sensors tab
+    enabled: activeTab === 0 || activeTab === 1, // Fetch when on sensors or components tab
     staleTime: 10 * 60 * 1000, // 10 minutes cache
     refetchOnWindowFocus: false,
   });
@@ -1909,136 +1909,6 @@ export default function InventoryManagementPage() {
                   )}
                 </Box>
               </Paper>
-              {/* Production Capacity Summary */}
-              {capacitySummary && (
-                <Paper elevation={3} sx={{ mb: 3 }}>
-                  <Box sx={{ p: { xs: 2, md: 4 } }}>
-                    <Box sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      mb: { xs: 2, md: 3 },
-                      gap: 1
-                    }}>
-                      <BuildIcon sx={{ color: 'text.secondary' }} />
-                      <Typography
-                        variant={isMobile ? "h6" : "h5"}
-                        sx={{
-                          fontWeight: 600,
-                          color: 'primary.main'
-                        }}
-                      >
-                        Production Capacity Summary
-                      </Typography>
-                    </Box>
-
-                    {/* Detailed breakdown per sensor */}
-                    {productionCapacity && productionCapacity.length > 0 && (
-                      <Box>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{
-                            mb: { xs: 2, md: 3 },
-                            fontWeight: 600,
-                            color: 'text.primary'
-                          }}
-                        >
-                          Breakdown by sensor type:
-                        </Typography>
-                        <Box sx={{
-                          display: 'grid',
-                          gridTemplateColumns: {
-                            xs: '1fr',
-                            sm: 'repeat(2, 1fr)',
-                            lg: 'repeat(3, 1fr)'
-                          },
-                          gap: { xs: 2, md: 3 }
-                        }}>
-                          {productionCapacity.map((sensor) => (
-                            <Card
-                              key={sensor.sensorId}
-                              variant="outlined"
-                              sx={{
-                                borderRadius: 2,
-                                '&:hover': {
-                                  boxShadow: 2
-                                }
-                              }}
-                            >
-                              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                                <Box sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  mb: 2
-                                }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    sx={{
-                                      fontWeight: 600,
-                                      color: 'text.primary',
-                                      flex: 1,
-                                      mr: 1
-                                    }}
-                                  >
-                                    {sensor.sensorName}
-                                  </Typography>
-                                  <Chip
-                                    label={`${sensor.maxProducible} units`}
-                                    color={
-                                      sensor.maxProducible > 0
-                                        ? "success"
-                                        : "default"
-                                    }
-                                    size={isMobile ? "medium" : "small"}
-                                    sx={{ fontWeight: 600 }}
-                                  />
-                                </Box>
-
-                                {sensor.hasAllComponents ? (
-                                  <Box>
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                      sx={{ mb: 1 }}
-                                    >
-                                      Can assemble <strong>{sensor.maxProducible}</strong> sensors
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                      {sensor.componentDetails.map((comp, idx) => (
-                                        <Typography
-                                          key={idx}
-                                          variant="caption"
-                                          sx={{
-                                            color: comp.isLimitingFactor
-                                              ? 'warning.main'
-                                              : 'text.secondary',
-                                            fontWeight: comp.isLimitingFactor ? 600 : 400
-                                          }}
-                                        >
-                                          {comp.name}: {comp.available}/{comp.required}
-                                          {comp.isLimitingFactor && " (limiting)"}
-                                        </Typography>
-                                      ))}
-                                    </Box>
-                                  </Box>
-                                ) : (
-                                  <Typography
-                                    variant="body2"
-                                    color="error.main"
-                                    sx={{ fontWeight: 500 }}
-                                  >
-                                    Missing components
-                                  </Typography>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </Box>
-                      </Box>
-                    )}
-                  </Box>
-                </Paper>
-              )}
 
               <Box sx={{
                 display: 'flex',
@@ -2640,6 +2510,167 @@ export default function InventoryManagementPage() {
                 </Button>
               </Box>
             </>
+          )}
+
+          {/* Production Capacity Summary - shown on both Devices and Components tabs */}
+          {(activeTab === 0 || activeTab === 1) && capacitySummary && (
+            <Paper elevation={3} sx={{ mb: 3 }}>
+              <Box sx={{ p: { xs: 2, md: 4 } }}>
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  mb: { xs: 2, md: 3 },
+                  gap: 1
+                }}>
+                  <BuildIcon sx={{ color: 'text.secondary' }} />
+                  <Typography
+                    variant={isMobile ? "h6" : "h5"}
+                    sx={{
+                      fontWeight: 600,
+                      color: 'primary.main'
+                    }}
+                  >
+                    Production Capacity Summary
+                  </Typography>
+                </Box>
+
+                {/* Detailed breakdown per sensor */}
+                {productionCapacity && productionCapacity.length > 0 && (
+                  <Box>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        mb: { xs: 2, md: 3 },
+                        fontWeight: 600,
+                        color: 'text.primary'
+                      }}
+                    >
+                      Breakdown by sensor type:
+                    </Typography>
+                    <Box sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, 1fr)',
+                        lg: 'repeat(3, 1fr)'
+                      },
+                      gap: { xs: 2, md: 3 }
+                    }}>
+                      {productionCapacity.map((sensor) => (
+                        <Card
+                          key={sensor.sensorId}
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 2,
+                            '&:hover': {
+                              boxShadow: 2
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              mb: 2
+                            }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: 'text.primary',
+                                  flex: 1,
+                                  mr: 1
+                                }}
+                              >
+                                {sensor.sensorName}
+                              </Typography>
+                              <Chip
+                                label={`${sensor.maxProducible} units`}
+                                color={
+                                  sensor.maxProducible > 0
+                                    ? "success"
+                                    : "default"
+                                }
+                                size={isMobile ? "medium" : "small"}
+                                sx={{ fontWeight: 600 }}
+                              />
+                            </Box>
+
+                            {sensor.hasAllComponents ? (
+                              <Box>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mb: 1 }}
+                                >
+                                  Can assemble <strong>{sensor.maxProducible}</strong> sensors
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {sensor.componentDetails.map((comp, idx) => (
+                                    <Typography
+                                      key={idx}
+                                      variant="caption"
+                                      sx={{
+                                        color: comp.isLimitingFactor
+                                          ? 'warning.main'
+                                          : 'text.secondary',
+                                        fontWeight: comp.isLimitingFactor ? 600 : 400
+                                      }}
+                                    >
+                                      {comp.name}: {comp.available}/{comp.required}
+                                      {comp.isLimitingFactor && " (limiting)"}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              </Box>
+                            ) : (
+                              <Box>
+                                <Typography
+                                  variant="body2"
+                                  color="error.main"
+                                  sx={{ fontWeight: 500, mb: 1 }}
+                                >
+                                  Missing components:
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {sensor.componentDetails
+                                    .filter((comp) => comp.available < comp.required)
+                                    .map((comp, idx) => (
+                                      <Typography
+                                        key={idx}
+                                        variant="caption"
+                                        sx={{
+                                          color: 'error.main',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        {comp.name}: {comp.available}/{comp.required}
+                                        (need {comp.required - comp.available} more)
+                                      </Typography>
+                                    ))}
+                                  {sensor.componentDetails.length === 0 && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: 'error.main',
+                                        fontWeight: 500
+                                      }}
+                                    >
+                                      No component requirements defined for this sensor
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
           )}
         </motion.div>
 
