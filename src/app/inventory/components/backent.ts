@@ -272,10 +272,19 @@ export async function showAllComponents() {
         },
         invoice: {
           select: {
+            id: true,
             invoiceNumber: true,
             filename: true,
             uploadDate: true,
             amount: true,
+            supplier: true,
+            componentStocks: {
+              include: {
+                component: {
+                  select: { name: true }
+                }
+              }
+            }
           },
         },
         logs: {
@@ -289,13 +298,36 @@ export async function showAllComponents() {
             details: true,
             invoice: {
               select: {
+                id: true,
                 invoiceNumber: true,
                 filename: true,
+                amount: true,
+                supplier: true,
               },
             },
           },
         },
       },
+    });
+
+    // Also get all invoices to provide comprehensive invoice data
+    const allInvoices = await prisma.invoice.findMany({
+      include: {
+        componentStocks: {
+          include: {
+            component: {
+              select: { name: true }
+            }
+          }
+        },
+        logs: {
+          select: {
+            componentStockId: true,
+            change: true,
+            timestamp: true,
+          }
+        }
+      }
     });
 
     return componentStocks.map((stock) => {
@@ -309,6 +341,15 @@ export async function showAllComponents() {
       const invoiceFile =
         stock.invoice?.filename ||
         stock.logs.find((log) => log.invoice?.filename)?.invoice?.filename;
+
+      // Get comprehensive invoice data
+      const relatedInvoice = stock.invoice || 
+        stock.logs.find((log) => log.invoice)?.invoice;
+
+      // Find all related components on the same invoice
+      const invoiceComponents = relatedInvoice 
+        ? allInvoices.find(inv => inv.id === relatedInvoice.id)?.componentStocks || []
+        : [];
 
       return {
         id: stock.id,
@@ -334,6 +375,19 @@ export async function showAllComponents() {
           supplier: stock.supplier ?? "",
           phone: stock.phone ?? "",
         },
+        // Enhanced invoice information
+        invoiceDetails: relatedInvoice ? {
+          id: relatedInvoice.id,
+          invoiceNumber: relatedInvoice.invoiceNumber,
+          totalAmount: relatedInvoice.amount || 0,
+          supplier: relatedInvoice.supplier,
+          uploadDate: new Date(), // Use current date since uploadDate field is missing from the type
+          filename: relatedInvoice.filename,
+          relatedComponents: invoiceComponents.map(cs => ({
+            componentName: cs.component.name,
+            componentStockId: cs.id
+          }))
+        } : null,
       };
     }) as ComponentStockItem[];
   } catch (error) {
@@ -468,6 +522,21 @@ export async function adjustComponentStockWithInvoice(
               },
             },
           },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              amount: true,
+              supplier: true,
+              componentStocks: {
+                include: {
+                  component: {
+                    select: { name: true }
+                  }
+                }
+              }
+            }
+          }
         },
       });
 
@@ -476,12 +545,30 @@ export async function adjustComponentStockWithInvoice(
       const newQuantity = currentStock.quantity + quantity;
       if (newQuantity < 0) throw new Error("Insufficient stock");
 
+      // Check if invoice exists and get its data
+      let existingInvoice = null;
+      if (invoiceNumber) {
+        existingInvoice = await tx.invoice.findUnique({
+          where: { invoiceNumber },
+          include: {
+            componentStocks: {
+              include: {
+                component: {
+                  select: { name: true }
+                }
+              }
+            }
+          }
+        });
+      }
+
       // Update stock quantity and file key if provided
       const updateData: {
         quantity: number;
         lastUpdated: Date;
         supplier?: string | null;
         invoiceFileKey?: string | null;
+        invoiceId?: number | null;
       } = {
         quantity: newQuantity,
         lastUpdated: new Date(),
@@ -491,14 +578,11 @@ export async function adjustComponentStockWithInvoice(
       if (fileKey !== undefined && fileKey !== null)
         updateData.invoiceFileKey = fileKey;
 
-      const updatedStock = await tx.componentStock.update({
-        where: { id: stockId },
-        data: updateData,
-      });
-
       // Create invoice record if provided and quantity increased
       let invoiceRecord = null;
       if (invoiceNumber && quantity > 0) {
+        const totalInvoiceAmount = (existingInvoice?.amount || 0) + ((price || 0) * Math.abs(quantity));
+        
         invoiceRecord = await tx.invoice.upsert({
           where: { invoiceNumber },
           create: {
@@ -509,18 +593,24 @@ export async function adjustComponentStockWithInvoice(
             filename: fileKey ? `invoices/${fileKey}` : null,
           },
           update: {
-            amount: (price || 0) * Math.abs(quantity),
-            supplier: supplier || currentStock.supplier || "",
-            filename: fileKey ? `invoices/${fileKey}` : null,
+            amount: totalInvoiceAmount,
+            supplier: supplier || existingInvoice?.supplier || currentStock.supplier || "",
+            filename: fileKey ? `invoices/${fileKey}` : existingInvoice?.filename,
           },
         });
 
-        // Link the component stock to the invoice if created
-        await tx.componentStock.update({
-          where: { id: stockId },
-          data: { invoiceId: invoiceRecord.id },
-        });
+        updateData.invoiceId = invoiceRecord.id;
       }
+
+      const updatedStock = await tx.componentStock.update({
+        where: { id: stockId },
+        data: updateData,
+      });
+
+      // Create detailed log entry with invoice information
+      const invoiceDetails = existingInvoice 
+        ? `Existing invoice components: ${existingInvoice.componentStocks.map(cs => cs.component.name).join(', ')} | `
+        : '';
 
       await tx.inventoryLog.create({
         data: {
@@ -530,7 +620,7 @@ export async function adjustComponentStockWithInvoice(
           reason,
           user: "System",
           details: invoiceNumber
-            ? `Adjustment | Invoice: ${invoiceNumber} | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`
+            ? `Adjustment | Invoice: ${invoiceNumber} | ${invoiceDetails}Unit price: ${price ? `€${price}` : "N/A"} | Total invoice amount: €${invoiceRecord?.amount || 0}${fileKey ? ` | File: ${fileKey}` : ""}`
             : `Adjustment | Price: ${price ? `€${price}` : "N/A"}${fileKey ? ` | File: ${fileKey}` : ""}`,
           invoiceId: invoiceRecord?.id,
           componentStockId: stockId,
@@ -540,6 +630,8 @@ export async function adjustComponentStockWithInvoice(
       return {
         ...updatedStock,
         component: currentStock.component,
+        invoice: invoiceRecord,
+        existingInvoiceData: existingInvoice,
       };
     });
 
@@ -564,6 +656,44 @@ export async function addComponentToInventory(
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Check if invoice already exists and get its data
+      let existingInvoice = null;
+      if (invoiceNumber) {
+        existingInvoice = await tx.invoice.findUnique({
+          where: { invoiceNumber },
+          include: {
+            componentStocks: {
+              include: {
+                component: {
+                  select: { name: true }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Create invoice record if provided and doesn't exist
+      let invoiceRecord = null;
+      if (invoiceNumber) {
+        invoiceRecord = await tx.invoice.upsert({
+          where: { invoiceNumber },
+          create: {
+            invoiceNumber,
+            amount: (price || 0) * quantity,
+            supplier: supplier || "",
+            uploadDate: new Date(),
+            filename: fileKey ? `invoices/${fileKey}` : null,
+          },
+          update: {
+            // Update amount by adding new component cost to existing amount
+            amount: (existingInvoice?.amount || 0) + ((price || 0) * quantity),
+            supplier: supplier || existingInvoice?.supplier || "",
+            filename: fileKey ? `invoices/${fileKey}` : existingInvoice?.filename,
+          },
+        });
+      }
+
       // Create component stock
       const componentStock = await tx.componentStock.create({
         data: {
@@ -574,6 +704,7 @@ export async function addComponentToInventory(
           supplier,
           phone,
           invoiceFileKey: fileKey, // Store the B2 file key
+          invoiceId: invoiceRecord?.id, // Link to invoice if created
         },
       });
 
@@ -604,32 +735,6 @@ export async function addComponentToInventory(
         }
       }
 
-      // Create invoice record if provided
-      let invoiceRecord = null;
-      if (invoiceNumber) {
-        invoiceRecord = await tx.invoice.upsert({
-          where: { invoiceNumber },
-          create: {
-            invoiceNumber,
-            amount: (price || 0) * quantity,
-            supplier: supplier || "",
-            uploadDate: new Date(),
-            filename: fileKey ? `invoices/${fileKey}` : null,
-          },
-          update: {
-            amount: (price || 0) * quantity,
-            supplier: supplier || "",
-            filename: fileKey ? `invoices/${fileKey}` : null,
-          },
-        });
-
-        // Link the component stock to the invoice if created
-        await tx.componentStock.update({
-          where: { id: componentStock.id },
-          data: { invoiceId: invoiceRecord.id },
-        });
-      }
-
       const component = await tx.component.findUnique({
         where: { id: componentId },
         select: {
@@ -648,6 +753,7 @@ export async function addComponentToInventory(
         },
       });
 
+      // Create inventory log with invoice reference
       await tx.inventoryLog.create({
         data: {
           itemType: "component",
@@ -656,7 +762,7 @@ export async function addComponentToInventory(
           reason: "Added to inventory",
           user: "System",
           details: invoiceNumber
-            ? `Component ID: ${componentId} | Invoice: ${invoiceNumber} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`
+            ? `Component ID: ${componentId} | Invoice: ${invoiceNumber} | Total invoice amount: €${invoiceRecord?.amount || 0} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`
             : `Component ID: ${componentId} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`,
           invoiceId: invoiceRecord?.id,
           componentStockId: componentStock.id,
@@ -667,6 +773,7 @@ export async function addComponentToInventory(
         ...componentStock,
         component,
         invoice: invoiceRecord,
+        existingInvoiceData: existingInvoice,
         fileKey,
       };
     });
@@ -1037,9 +1144,6 @@ export async function getSensorsByFrequency(
   }
 }
 
-/**
- * Dobi povzetek količin po tipih senzorjev
- */
 export async function getSensorQuantitySummary() {
   try {
     const summary = await prisma.productionList.groupBy({
@@ -2249,63 +2353,107 @@ export async function getInvoiceFileDownloadUrl(invoiceNumber: string) {
 /**
  * Get all invoice files for a component
  */
-export async function getComponentInvoiceFiles(componentId: number) {
+// export async function getComponentInvoiceFiles(componentId: number) {
+//   try {
+//     const componentStocks = await prisma.componentStock.findMany({
+//       where: { componentId },
+//       include: {
+//         invoice: {
+//           select: {
+//             invoiceNumber: true,
+//             filename: true,
+//             uploadDate: true,
+//             amount: true,
+//           },
+//         },
+//         logs: {
+//           where: {
+//             invoice: { isNot: null },
+//           },
+//           include: {
+//             invoice: {
+//               select: {
+//                 invoiceNumber: true,
+//                 filename: true,
+//                 uploadDate: true,
+//                 amount: true,
+//               },
+//             },
+//           },
+//           orderBy: { timestamp: "desc" },
+//         },
+//       },
+//     });
+
+//     const allInvoices = new Map();
+
+//     // Collect all unique invoices
+//     componentStocks.forEach((stock) => {
+//       if (stock.invoice) {
+//         allInvoices.set(stock.invoice.invoiceNumber, stock.invoice);
+//       }
+//       stock.logs.forEach((log) => {
+//         if (log.invoice) {
+//           allInvoices.set(log.invoice.invoiceNumber, log.invoice);
+//         }
+//       });
+//     });
+
+//     return Array.from(allInvoices.values()).map((invoice) => ({
+//       invoiceNumber: invoice.invoiceNumber,
+//       filename: invoice.filename,
+//       uploadDate: invoice.uploadDate,
+//       amount: invoice.amount,
+//       downloadUrl: invoice.filename
+//         ? `${process.env.B2_PUBLIC_URL}/${invoice.filename}`
+//         : null,
+//     }));
+//   } catch (error) {
+//     console.error("Error fetching component invoice files:", error);
+//     throw new Error("Failed to fetch component invoice files");
+//   }
+// }
+
+export async function getLowComponents() {
   try {
-    const componentStocks = await prisma.componentStock.findMany({
-      where: { componentId },
-      include: {
-        invoice: {
-          select: {
-            invoiceNumber: true,
-            filename: true,
-            uploadDate: true,
-            amount: true,
-          },
-        },
-        logs: {
-          where: {
-            invoice: { isNot: null },
-          },
-          include: {
-            invoice: {
-              select: {
-                invoiceNumber: true,
-                filename: true,
-                uploadDate: true,
-                amount: true,
-              },
-            },
-          },
-          orderBy: { timestamp: "desc" },
-        },
+    // First, get all components with a treshold set
+    const componentsWithTreshold = await prisma.component.findMany({
+      where: {
+        treshold: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        treshold: true,
       },
     });
 
-    const allInvoices = new Map();
+    const lowComponents: Array<{
+      componentId: number;
+      componentName: string;
+      availableQuantity: number;
+    }> = [];
 
-    // Collect all unique invoices
-    componentStocks.forEach((stock) => {
-      if (stock.invoice) {
-        allInvoices.set(stock.invoice.invoiceNumber, stock.invoice);
-      }
-      stock.logs.forEach((log) => {
-        if (log.invoice) {
-          allInvoices.set(log.invoice.invoiceNumber, log.invoice);
-        }
+    for (const comp of componentsWithTreshold) {
+      const totalQuantity = await prisma.componentStock.aggregate({
+        where: { componentId: comp.id },
+        _sum: { quantity: true },
       });
-    });
 
-    return Array.from(allInvoices.values()).map((invoice) => ({
-      invoiceNumber: invoice.invoiceNumber,
-      filename: invoice.filename,
-      uploadDate: invoice.uploadDate,
-      amount: invoice.amount,
-      downloadUrl: invoice.filename
-        ? `${process.env.B2_PUBLIC_URL}/${invoice.filename}`
-        : null,
-    }));
+      const availableQuantity = totalQuantity._sum.quantity ?? 0;
+
+      if (availableQuantity <= (comp.treshold ?? 0)) {
+        lowComponents.push({
+          componentId: comp.id,
+          componentName: comp.name,
+          availableQuantity,
+        });
+      }
+    }
+
+    return lowComponents;
   } catch (error) {
-    console.error("Error fetching component invoice files:", error);
-    throw new Error("Failed to fetch component invoice files");
+    console.error("Error fetching low components:", error);
+    throw new Error("Failed to fetch low components");
   }
 }

@@ -21,7 +21,11 @@ const b2Client = new S3Client({
 
 //     return await getSignedUrl(b2Client, command, { expiresIn: 3600 });
 // };
-export const uploadPDFToB2 = async (file: File, invoiceNumber = "test") => {
+export const uploadPDFToB2 = async (
+  file: File,
+  invoiceNumber = "test",
+  productName: string,
+) => {
   const fileName = `${invoiceNumber || "invoice"}-${Date.now()}.pdf`;
 
   // Convert File to Buffer for S3 upload
@@ -43,7 +47,7 @@ export const uploadPDFToB2 = async (file: File, invoiceNumber = "test") => {
     // Upload to B2 with additional headers
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME!,
-      Key: `invoices/${fileName}`,
+      Key: `invoices/${productName}/${fileName}`,
       Body: fileBuffer,
       ContentType: "application/pdf",
       ContentLength: fileBuffer.length,

@@ -58,7 +58,6 @@ import {
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
-  getComponentInvoiceFiles,
   getInvoiceFileDownloadUrl,
   getProductionByFrequency,
   getProductionCapacitySummary,
@@ -128,6 +127,19 @@ export type ComponentStockItem = {
   price?: number; // Price per item
   lowStockThreshold?: number; // Threshold for low stock warning
   isCritical?: boolean; // Whether this component is critical for sensor assembly
+  // Enhanced invoice information
+  invoiceDetails?: {
+    id: number;
+    invoiceNumber: string;
+    totalAmount: number;
+    supplier: string;
+    uploadDate: Date;
+    filename: string | null;
+    relatedComponents: {
+      componentName: string;
+      componentStockId: number;
+    }[];
+  } | null;
 };
 
 type InventoryItem = SenzorStockItem | ComponentStockItem;
@@ -211,7 +223,14 @@ export default function InventoryManagementPage() {
 
     setLoadingInvoiceHistory(true);
     try {
-      const invoices = await getComponentInvoiceFiles(componentId);
+      // For now, return empty array since getComponentInvoiceFiles is not implemented
+      const invoices: Array<{
+        invoiceNumber: string;
+        filename: string | null;
+        uploadDate: Date;
+        amount: number | null;
+        downloadUrl: string | null;
+      }> = [];
       // Sort by uploadDate descending to get newest first
       return invoices.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
     } catch (error) {
@@ -233,8 +252,34 @@ export default function InventoryManagementPage() {
 
   // Helper function to check if component is below threshold
   const isComponentBelowThreshold = (component: ComponentStockItem) => {
-    const threshold = component.lowStockThreshold || 5; // Default threshold of 5
-    return component.quantity <= threshold;
+    // Only check threshold if one is actually set (not null or undefined)
+    if (component.lowStockThreshold === null || component.lowStockThreshold === undefined) {
+      return false;
+    }
+    return component.quantity <= component.lowStockThreshold;
+  };
+
+  // Helper function to determine alert type and severity
+  const getComponentAlertInfo = (component: ComponentStockItem) => {
+    const isBelowThreshold = isComponentBelowThreshold(component);
+
+    if (isBelowThreshold) {
+      return {
+        showAlert: true,
+        severity: 'warning' as const,
+        message: 'BELOW THRESHOLD',
+        color: 'warning.main' as const,
+        pulseIntensity: 'normal' as const
+      };
+    }
+
+    return {
+      showAlert: false,
+      severity: 'normal' as const,
+      message: '',
+      color: 'text.secondary' as const,
+      pulseIntensity: 'none' as const
+    };
   };
 
   const initializeNewItem = useCallback(() => {
@@ -259,7 +304,7 @@ export default function InventoryManagementPage() {
         sensorAssignments: [],
         invoiceNumber: "",
         price: 0,
-        lowStockThreshold: 5, // Default threshold
+        lowStockThreshold: undefined, // No default threshold
         isCritical: false, // Default not critical
         contactDetails: {
           supplier: "",
@@ -279,7 +324,7 @@ export default function InventoryManagementPage() {
       // Create a new File object with the updated name
       const renamedFile = new File([file], newFileName, { type: file.type });
 
-      await uploadPDFToB2(renamedFile, invoiceNumber);
+      await uploadPDFToB2(renamedFile, invoiceNumber, "components");
       return invoiceNumber; // Return the invoice number as the file key
     },
     onSuccess: (fileKey) => {
@@ -313,16 +358,16 @@ export default function InventoryManagementPage() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: componentOptions = [] } = useQuery({
+    queryKey: ["all-components"],
+    queryFn: getAllComponents,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const { data: logs = [] } = useQuery({
     queryKey: ["inventory-logs"],
     queryFn: showLogs,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-  const { data: componentOptions = [] } = useQuery({
-    queryKey: ["all-components"],
-    queryFn: getAllComponents,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -826,7 +871,7 @@ export default function InventoryManagementPage() {
         })),
       invoiceNumber: invoiceNumber,
       price: (editItem as ComponentStockItem).price ?? 0,
-      lowStockThreshold: (editItem as ComponentStockItem).lowStockThreshold ?? 5,
+      lowStockThreshold: (editItem as ComponentStockItem).lowStockThreshold ?? undefined,
       isCritical: (editItem as ComponentStockItem).isCritical ?? false,
       contactDetails: (editItem as ComponentStockItem).contactDetails ?? {
         supplier: "",
@@ -1113,6 +1158,28 @@ export default function InventoryManagementPage() {
             50% { opacity: 0.5; }
             100% { opacity: 1; }
           }
+          
+          @keyframes pulseFast {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+          
+          .pulse-normal {
+            animation: pulse 2s infinite;
+          }
+          
+          .pulse-fast {
+            animation: pulseFast 1s infinite;
+          }
+          
+          .glow-critical {
+            filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.8)) drop-shadow(0 0 16px rgba(220, 38, 38, 0.4));
+          }
+          
+          .glow-warning {
+            filter: drop-shadow(0 0 4px rgba(255, 152, 0, 0.8));
+          }
         `}
       </style>
       <CssBaseline />
@@ -1170,8 +1237,37 @@ export default function InventoryManagementPage() {
               </Box>
             </Box>
 
-
-
+            {/* Low Stock Alert Summary
+            {LowComponents.length > 0 && (
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 2,
+                borderRadius: 2,
+                bgcolor: 'error.light',
+                border: 2,
+                borderColor: 'error.main',
+                order: { xs: -1, md: 1 }
+              }}
+              >
+                <WarningIcon
+                  sx={{
+                    color: 'error.main',
+                    fontSize: 24
+                  }}
+                  className="glow-critical pulse-fast"
+                />
+                <Box>
+                  <Typography variant="body2" fontWeight={600} color="error.main">
+                    CRITICAL STOCK ALERT
+                  </Typography>
+                  <Typography variant="caption" color="error.dark">
+                    {LowComponents.length} component{LowComponents.length > 1 ? 's' : ''} critically low
+                  </Typography>
+                </Box>
+              </Box>
+            )} */}
           </Box>
 
           <Tabs
@@ -1832,23 +1928,30 @@ export default function InventoryManagementPage() {
                                 mb: 2
                               }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, mr: 1 }}>
-                                  {/* Warning Light */}
-                                  {isComponentBelowThreshold(item1) && (
-                                    <Box sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      mr: 1,
-                                      animation: 'pulse 2s infinite'
-                                    }}>
-                                      <WarningIcon
-                                        sx={{
-                                          color: 'error.main',
-                                          fontSize: 24,
-                                          filter: 'drop-shadow(0 0 4px rgba(255, 152, 0, 0.8))'
+                                  {/* Alert Icon for Low Components */}
+                                  {(() => {
+                                    const alertInfo = getComponentAlertInfo(item1);
+                                    if (alertInfo.showAlert) {
+                                      return (
+                                        <Box sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          mr: 1,
                                         }}
-                                      />
-                                    </Box>
-                                  )}
+                                        >
+                                          <WarningIcon
+                                            sx={{
+                                              color: alertInfo.color,
+                                              fontSize: alertInfo.severity === 'critical' ? 28 : 24,
+                                            }}
+                                            className={`${alertInfo.pulseIntensity === 'fast' ? 'pulse-fast' : 'pulse-normal'} ${alertInfo.severity === 'critical' ? 'glow-critical' : 'glow-warning'}`}
+                                          />
+                                        </Box>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+
                                   {/* Critical Component Indicator */}
                                   {item1.isCritical && (
                                     <Box sx={{
@@ -2013,17 +2116,53 @@ export default function InventoryManagementPage() {
                                       Low Stock Threshold
                                     </Typography>
                                     <Typography variant="body2" fontWeight={500}>
-                                      {item1.lowStockThreshold || 5} units
+                                      {item1.lowStockThreshold !== null && item1.lowStockThreshold !== undefined
+                                        ? `${item1.lowStockThreshold} units`
+                                        : 'No threshold set'
+                                      }
                                     </Typography>
                                   </Box>
-                                  {isComponentBelowThreshold(item1) && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <WarningIcon sx={{ color: 'error.main', fontSize: 16 }} />
-                                      <Typography variant="caption" color="error.main" fontWeight={600}>
-                                        BELOW THRESHOLD
-                                      </Typography>
-                                    </Box>
-                                  )}
+                                  {(() => {
+                                    const alertInfo = getComponentAlertInfo(item1);
+                                    if (alertInfo.showAlert) {
+                                      return (
+                                        <Box sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          p: 1,
+                                          borderRadius: 1,
+                                          bgcolor: alertInfo.severity === 'critical' ? 'error.light' : 'warning.light',
+                                          border: 1,
+                                          borderColor: alertInfo.severity === 'critical' ? 'error.main' : 'warning.main'
+                                        }}>
+                                          <WarningIcon
+                                            sx={{
+                                              color: alertInfo.color,
+                                              fontSize: 16
+                                            }}
+                                          />
+                                          <Typography
+                                            variant="caption"
+                                            color={alertInfo.color}
+                                            fontWeight={600}
+                                          >
+                                            {alertInfo.message}
+                                          </Typography>
+                                          {isComponentInLowList(item1) && (
+                                            <Chip
+                                              label="DATABASE ALERT"
+                                              size="small"
+                                              color="error"
+                                              variant="filled"
+                                              sx={{ fontSize: '0.5rem', height: 16 }}
+                                            />
+                                          )}
+                                        </Box>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </Box>
                               </Box>
 
@@ -2154,17 +2293,39 @@ export default function InventoryManagementPage() {
                               >
                                 <TableCell className="font-bold">
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {/* Warning Light */}
-                                    {isComponentBelowThreshold(item1) && (
-                                      <WarningIcon
-                                        sx={{
-                                          color: 'error.main',
-                                          fontSize: 20,
-                                          filter: 'drop-shadow(0 0 4px rgba(255, 152, 0, 0.8))',
-                                          animation: 'pulse 2s infinite'
-                                        }}
-                                      />
-                                    )}
+                                    {/* Alert Icon for Low Components */}
+                                    {(() => {
+                                      const alertInfo = getComponentAlertInfo(item1);
+                                      if (alertInfo.showAlert) {
+                                        return (
+                                          <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
+                                            <WarningIcon
+                                              sx={{
+                                                color: alertInfo.color,
+                                                fontSize: alertInfo.severity === 'critical' ? 24 : 20,
+                                              }}
+                                              className={`${alertInfo.pulseIntensity === 'fast' ? 'pulse-fast' : 'pulse-normal'} ${alertInfo.severity === 'critical' ? 'glow-critical' : 'glow-warning'}`}
+                                            />
+                                            {isComponentInLowList(item1) && (
+                                              <Chip
+                                                label="DB"
+                                                size="small"
+                                                color="error"
+                                                variant="filled"
+                                                sx={{
+                                                  fontSize: '0.5rem',
+                                                  height: 16,
+                                                  ml: 0.5,
+                                                  minWidth: 24
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+
                                     {/* Critical Component Indicator */}
                                     {item1.isCritical && (
                                       <Chip
@@ -2625,17 +2786,18 @@ export default function InventoryManagementPage() {
                       type="number"
                       fullWidth
                       variant="outlined"
-                      value={(editItem as ComponentStockItem)?.lowStockThreshold ?? 5}
+                      value={(editItem as ComponentStockItem)?.lowStockThreshold ?? ""}
                       onChange={(e) => {
                         if (!editItem) return;
+                        const inputValue = e.target.value;
                         setEditItem({
                           ...editItem,
-                          lowStockThreshold: Math.max(1, parseInt(e.target.value) || 5),
+                          lowStockThreshold: inputValue === "" ? undefined : Math.max(1, parseInt(inputValue) || 1),
                         } as ComponentStockItem);
                       }}
                       className="mb-3"
-                      inputProps={{ min: 1 }}
-                      helperText="Component will show warning when quantity falls below this threshold"
+                      inputProps={{ min: 0 }}
+                      helperText="Component will show warning when quantity falls below this threshold. Leave empty for no threshold."
                     />
 
                     <FormControlLabel
