@@ -24,12 +24,12 @@ model User {
 }
 
 model Mailing {
-  id                     Int       @id @default(autoincrement())
-  userId                 Int       @unique
-  Date_of_monthly_report DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  isSubscribed           Boolean   @default(true)
+  id                     Int      @id @default(autoincrement())
+  userId                 Int      @unique
+  Date_of_monthly_report Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  isSubscribed           Boolean  @default(true)
 
   // Enhanced email settings
   dayOfMonth        Int       @default(1)
