@@ -51,6 +51,7 @@ import {
   generateInventoryReport,
   previewInventoryReport,
 } from "src/app/inventory/components/report_generator";
+import { getLowComponents } from "./backent";
 
 interface EmailRecipient {
   id: string;
@@ -150,7 +151,7 @@ const EmailReportManager: React.FC = () => {
           recipientEmails: settings.recipients.map((r) => r.email),
           recipientName: "Test User",
           reportDate: new Date().toLocaleDateString(),
-          lowStockItems: summary.lowStockCount,
+          lowStockItems: summary.lowStockItems.length,
           reportUrl: settings.includeReportUrl
             ? `${window.location.origin}/inventory`
             : undefined,

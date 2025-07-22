@@ -74,7 +74,7 @@ export async function GET() {
   try {
     console.log("Generating PDF report buffer for email attachment...");
     // TODO: refactor to use componentLowComponents instead of the user variable lowStockThreshold
-    const reportBuffer = await generateInventoryReportBuffer(5);
+    const reportBuffer = await generateInventoryReportBuffer();
     const filename = `inventory-report-${today.toDateString()}.pdf`;
 
     attachments = [
@@ -97,7 +97,7 @@ export async function GET() {
         recipientName: mail.user.name || "Senzemo User",
         reportDate: today.toDateString(),
         sensorInventory: detailedSensorInventory,
-        lowStockItems: componentLowComponents.length,
+        // lowStockItems: componentLowComponents.length,
         // reportUrl,
       }),
       attachments,

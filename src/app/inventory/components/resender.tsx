@@ -1,4 +1,6 @@
 import * as React from "react";
+import { get } from "request";
+import { getLowComponents } from "./backent";
 
 interface SensorInventoryItem {
   sensorName: string;
@@ -13,7 +15,7 @@ interface InventoryEmailTemplateProps {
   recipientName: string;
   reportDate: string;
   sensorInventory: SensorInventoryItem[];
-  lowStockItems: number;
+  // lowStockItems: number;
   // reportUrl?: string;
 }
 
@@ -21,9 +23,17 @@ export function InventoryEmailTemplate({
   recipientName,
   reportDate,
   sensorInventory,
-  lowStockItems,
+  // lowStockItems,
   // reportUrl,
 }: InventoryEmailTemplateProps) {
+  const [lowStockItem, setLowStockItem] = React.useState<
+    { componentId: number; componentName: string; availableQuantity: number }[]
+  >([]);
+
+  React.useEffect(() => {
+    getLowComponents().then(setLowStockItem);
+  }, []);
+
   return (
     <div
       style={{
@@ -136,7 +146,7 @@ export function InventoryEmailTemplate({
           </div>
 
           {/* Low Stock Alert */}
-          {lowStockItems > 0 && (
+          {lowStockItem.length > 0 && (
             <div
               style={{
                 backgroundColor: "#FEF2F2",
@@ -156,7 +166,7 @@ export function InventoryEmailTemplate({
                 ⚠️ Low Stock Alert
               </h3>
               <p style={{ color: "#B91C1C", margin: "0", fontSize: "14px" }}>
-                {lowStockItems} items are running low on stock. Please review
+                {lowStockItem.length} items are running low on stock. Please review
                 the detailed report and consider restocking.
               </p>
             </div>

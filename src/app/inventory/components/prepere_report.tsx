@@ -193,7 +193,7 @@ interface InventoryReportProps {
   sensorStock: SensorStock[];
   componentStock: ComponentStock[];
   reportDate: Date;
-  lowStockThreshold?: number;
+  lowStockItems: { componentId: number; componentName: string; availableQuantity: number }[];
 }
 
 // Frequency analysis helper
@@ -213,7 +213,7 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
   sensorStock,
   componentStock,
   reportDate,
-  lowStockThreshold = 5,
+  lowStockItems,
 }) => {
   // Calculate summary statistics
   const totalSensors = sensorStock.reduce(
@@ -226,24 +226,6 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
   );
   const uniqueSensorTypes = sensorStock.length;
   const uniqueComponentTypes = componentStock.length;
-
-  // Find low stock items
-  const lowStockItems: LowStockItem[] = [
-    ...sensorStock
-      .filter((item) => item.quantity <= lowStockThreshold)
-      .map((item) => ({
-        name: item.sensorName,
-        quantity: item.quantity,
-        type: "sensor" as const,
-      })),
-    ...componentStock
-      .filter((item) => item.quantity <= lowStockThreshold)
-      .map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        type: "component" as const,
-      })),
-  ];
 
   // Analyze frequencies and locations
   const frequencyAnalysis = analyzeFrequencies(sensorStock);
@@ -312,10 +294,10 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
             <Text style={styles.warningTitle}> LOW STOCK ALERT</Text>
             <Text style={styles.warningText}>
               {lowStockItems.length} item(s) below threshold (
-              {lowStockThreshold} units):{" "}
               {lowStockItems
-                .map((item) => `${item.name} (${item.quantity})`)
+                .map((item) => `${item.componentName} (${item.availableQuantity})`)
                 .join(", ")}
+              )
             </Text>
           </View>
         )}

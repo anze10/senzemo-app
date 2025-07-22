@@ -1174,13 +1174,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-                ...group,
-                frequencies: group.frequencies.map((freq) =>
-                  freq.frequency === frequency
-                    ? { ...freq, expanded: !freq.expanded }
-                    : freq,
-                ),
-              }
+              ...group,
+              frequencies: group.frequencies.map((freq) =>
+                freq.frequency === frequency
+                  ? { ...freq, expanded: !freq.expanded }
+                  : freq,
+              ),
+            }
             : group,
         ) || [],
     );
@@ -2298,7 +2298,7 @@ export default function InventoryManagementPage() {
                                   </Typography>
                                   <Typography variant="body1" fontWeight={500}>
                                     {item1.price !== undefined &&
-                                    item1.price !== null
+                                      item1.price !== null
                                       ? `€${Number(item1.price).toFixed(2)}`
                                       : "-"}
                                   </Typography>
@@ -2313,8 +2313,8 @@ export default function InventoryManagementPage() {
                                   <Typography variant="body2">
                                     {item1.lastUpdated
                                       ? new Date(
-                                          item1.lastUpdated,
-                                        ).toLocaleDateString()
+                                        item1.lastUpdated,
+                                      ).toLocaleDateString()
                                       : "-"}
                                   </Typography>
                                 </Box>
@@ -2389,7 +2389,7 @@ export default function InventoryManagementPage() {
                                       fontWeight={500}
                                     >
                                       {item1.lowStockThreshold !== null &&
-                                      item1.lowStockThreshold !== undefined
+                                        item1.lowStockThreshold !== undefined
                                         ? `${item1.lowStockThreshold} units`
                                         : "No threshold set"}
                                     </Typography>
@@ -2718,7 +2718,7 @@ export default function InventoryManagementPage() {
                                 </TableCell>
                                 <TableCell>
                                   {item1.price !== undefined &&
-                                  item1.price !== null
+                                    item1.price !== null
                                     ? `€${Number(item1.price).toFixed(2)}`
                                     : "-"}
                                 </TableCell>
@@ -2764,13 +2764,13 @@ export default function InventoryManagementPage() {
                                 </TableCell>
                                 <TableCell>
                                   {Array.isArray(item1.sensorAssignments) &&
-                                  item1.sensorAssignments.length > 0
+                                    item1.sensorAssignments.length > 0
                                     ? item1.sensorAssignments
-                                        .map(
-                                          (sa) =>
-                                            `${sa.sensorName} (${sa.requiredQuantity})`,
-                                        )
-                                        .join(", ")
+                                      .map(
+                                        (sa) =>
+                                          `${sa.sensorName} (${sa.requiredQuantity})`,
+                                      )
+                                      .join(", ")
                                     : "-"}
                                 </TableCell>
                                 <TableCell>
@@ -2875,7 +2875,7 @@ export default function InventoryManagementPage() {
           )}
 
           {/* Production Capacity Summary - shown on both Devices and Components tabs */}
-          {(activeTab === 0 || activeTab === 1) && capacitySummary && (
+          {(activeTab === 0) && capacitySummary && (
             <Paper elevation={3} sx={{ mb: 3 }}>
               <Box sx={{ p: { xs: 2, md: 4 } }}>
                 <Box
@@ -3250,8 +3250,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                        "contactDetails" in editItem &&
-                        editItem.contactDetails?.supplier
+                          "contactDetails" in editItem &&
+                          editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }

@@ -1,7 +1,11 @@
 import { pdf } from "@react-pdf/renderer";
 import React from "react";
 import InventoryReport from "./prepere_report";
-import { getSensorsSortedByFrequency, showAllComponents } from "./backent";
+import {
+  getSensorsSortedByFrequency,
+  showAllComponents,
+  getLowComponents,
+} from "./backent";
 import type { DocumentProps } from "@react-pdf/renderer";
 
 // Types for the report data
@@ -59,9 +63,7 @@ const formatComponentData = async (): Promise<ComponentStockData[]> => {
 };
 
 // Main function to generate and download the inventory report
-export const generateInventoryReport = async (
-  lowStockThreshold: number = 5,
-): Promise<void> => {
+export const generateInventoryReport = async (): Promise<void> => {
   try {
     // Show loading state
     console.log("Generating inventory report...");
@@ -93,12 +95,15 @@ export const generateInventoryReport = async (
     // Generate the PDF
     const reportDate = new Date();
 
+    // Get low stock components
+    const lowStockItems = await getLowComponents();
+
     // Convert to blob and download
     const reportElement = React.createElement(InventoryReport, {
       sensorStock,
       componentStock,
       reportDate,
-      lowStockThreshold,
+      lowStockItems,
     });
 
     const blob = await pdf(
@@ -130,9 +135,7 @@ export const generateInventoryReport = async (
 };
 
 // Function to preview the report (opens in new tab)
-export const previewInventoryReport = async (
-  lowStockThreshold: number = 5,
-): Promise<void> => {
+export const previewInventoryReport = async (): Promise<void> => {
   try {
     console.log("Generating inventory report preview...");
 
@@ -164,12 +167,15 @@ export const previewInventoryReport = async (
     // Generate the PDF
     const reportDate = new Date();
 
+    // Get low stock components
+    const lowStockItems = await getLowComponents();
+
     // Convert to blob and open in new tab
     const reportElement = React.createElement(InventoryReport, {
       sensorStock,
       componentStock,
       reportDate,
-      lowStockThreshold,
+      lowStockItems,
     });
 
     const blob = await pdf(
@@ -186,9 +192,7 @@ export const previewInventoryReport = async (
 };
 
 // Function to generate PDF buffer for email attachment
-export const generateInventoryReportBuffer = async (
-  lowStockThreshold: number = 5,
-): Promise<Buffer> => {
+export const generateInventoryReportBuffer = async (): Promise<Buffer> => {
   try {
     console.log("Generating inventory report buffer...");
 
@@ -219,11 +223,14 @@ export const generateInventoryReportBuffer = async (
     // Generate the PDF
     const reportDate = new Date();
 
+    // Get low stock components
+    const lowStockItems = await getLowComponents();
+
     const reportElement = React.createElement(InventoryReport, {
       sensorStock,
       componentStock,
       reportDate,
-      lowStockThreshold,
+      lowStockItems,
     });
 
     // Generate PDF buffer
@@ -250,9 +257,10 @@ export const generateInventoryReportBuffer = async (
 // Function to get report summary without generating PDF
 export const getInventorySummary = async () => {
   try {
-    const [sensorData, componentData] = await Promise.all([
+    const [sensorData, componentData, lowStockData] = await Promise.all([
       formatSensorData(),
       formatComponentData(),
+      getLowComponents(),
     ]);
 
     const totalSensors = sensorData.reduce(
@@ -266,18 +274,14 @@ export const getInventorySummary = async () => {
     const uniqueSensorTypes = sensorData.length;
     const uniqueComponentTypes = componentData.length;
 
-    const lowStockItems = [
-      ...sensorData.filter((item) => item.quantity <= 5),
-      ...componentData.filter((item) => item.quantity <= 5),
-    ];
-
     return {
       totalSensors,
       totalComponents,
       uniqueSensorTypes,
       uniqueComponentTypes,
-      lowStockCount: lowStockItems.length,
       totalValue: totalSensors + totalComponents,
+      lowStockItems: lowStockData,
+      lowStockCount: lowStockData.length,
     };
   } catch (error) {
     console.error("Error getting inventory summary:", error);
