@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Alert,
@@ -89,7 +88,10 @@ const EmailReportManager: React.FC = () => {
   // Send test email
   const handleSendTest = async () => {
     if (!settings.userEmail) {
-      setMessage({ type: "error", text: "User email not found. Please ensure you're logged in." });
+      setMessage({
+        type: "error",
+        text: "User email not found. Please ensure you're logged in.",
+      });
       return;
     }
 
@@ -134,7 +136,6 @@ const EmailReportManager: React.FC = () => {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-
       await UpdateOrSetEmailSettings(
         settings.isEnabled,
         settings.dayOfMonth,
@@ -147,7 +148,7 @@ const EmailReportManager: React.FC = () => {
       // Refresh the settings from backend
       queryClient.invalidateQueries({ queryKey: ["emailSettings"] });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error("Error saving settings:", error);
       setMessage({ type: "error", text: "Failed to save settings" });
     } finally {
       setLoading(false);
@@ -216,7 +217,12 @@ const EmailReportManager: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, margin: "auto" }}>
       {settingsLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="200px"
+        >
           <CircularProgress />
         </Box>
       ) : (
@@ -457,13 +463,15 @@ const EmailReportManager: React.FC = () => {
                             {settings.userEmail}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
-                            Reports will be sent to your registered email address
+                            Reports will be sent to your registered email
+                            address
                           </Typography>
                         </Box>
                       </Alert>
                     ) : (
                       <Alert severity="warning" sx={{ mb: 2 }}>
-                        Email address not found. Please ensure you're logged in properly.
+                        Email address not found. Please ensure you're logged in
+                        properly.
                       </Alert>
                     )}
                   </Box>

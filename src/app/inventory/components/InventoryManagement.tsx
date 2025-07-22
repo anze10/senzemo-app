@@ -1177,13 +1177,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-              ...group,
-              frequencies: group.frequencies.map((freq) =>
-                freq.frequency === frequency
-                  ? { ...freq, expanded: !freq.expanded }
-                  : freq,
-              ),
-            }
+                ...group,
+                frequencies: group.frequencies.map((freq) =>
+                  freq.frequency === frequency
+                    ? { ...freq, expanded: !freq.expanded }
+                    : freq,
+                ),
+              }
             : group,
         ) || [],
     );
@@ -2115,8 +2115,12 @@ export default function InventoryManagementPage() {
                   const searchLower = componentSearchQuery.toLowerCase();
                   return (
                     component.name?.toLowerCase().includes(searchLower) ||
-                    component.contactDetails?.supplier?.toLowerCase().includes(searchLower) ||
-                    component.contactDetails?.email?.toLowerCase().includes(searchLower) ||
+                    component.contactDetails?.supplier
+                      ?.toLowerCase()
+                      .includes(searchLower) ||
+                    component.contactDetails?.email
+                      ?.toLowerCase()
+                      .includes(searchLower) ||
                     component.invoiceNumber?.toLowerCase().includes(searchLower)
                   );
                 });
@@ -2130,7 +2134,9 @@ export default function InventoryManagementPage() {
                         variant="outlined"
                         placeholder="Search components by name, supplier, email, or invoice..."
                         value={componentSearchQuery}
-                        onChange={(e) => setComponentSearchQuery(e.target.value)}
+                        onChange={(e) =>
+                          setComponentSearchQuery(e.target.value)
+                        }
                         sx={{
                           maxWidth: { xs: "100%", md: "400px" },
                           "& .MuiOutlinedInput-root": {
@@ -2146,8 +2152,13 @@ export default function InventoryManagementPage() {
                         }}
                       />
                       {componentSearchQuery && (
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                          Found {filteredComponents.length} component{filteredComponents.length !== 1 ? 's' : ''}
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ mt: 1, display: "block" }}
+                        >
+                          Found {filteredComponents.length} component
+                          {filteredComponents.length !== 1 ? "s" : ""}
                         </Typography>
                       )}
                     </Box>
@@ -2198,7 +2209,10 @@ export default function InventoryManagementPage() {
                                             getComponentAlertInfo(item1);
                                           const isInLowList =
                                             isComponentInLowList(item1);
-                                          if (alertInfo.showAlert || isInLowList) {
+                                          if (
+                                            alertInfo.showAlert ||
+                                            isInLowList
+                                          ) {
                                             return (
                                               <Box
                                                 sx={{
@@ -2240,7 +2254,10 @@ export default function InventoryManagementPage() {
                                               size="small"
                                               color="error"
                                               variant="filled"
-                                              sx={{ fontSize: "0.6rem", height: 20 }}
+                                              sx={{
+                                                fontSize: "0.6rem",
+                                                height: 20,
+                                              }}
                                             />
                                           </Box>
                                         )}
@@ -2282,17 +2299,25 @@ export default function InventoryManagementPage() {
                                         Quantity
                                       </Typography>
                                       <Box
-                                        sx={{ display: "flex", alignItems: "center" }}
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                        }}
                                       >
                                         <IconButton
                                           size="medium"
                                           onClick={() =>
-                                            openAdjustmentDialog(item1, "decrease")
+                                            openAdjustmentDialog(
+                                              item1,
+                                              "decrease",
+                                            )
                                           }
                                           sx={{
                                             bgcolor: "error.main",
                                             color: "white",
-                                            "&:hover": { bgcolor: "error.dark" },
+                                            "&:hover": {
+                                              bgcolor: "error.dark",
+                                            },
                                             minWidth: 44,
                                             minHeight: 44,
                                           }}
@@ -2313,12 +2338,17 @@ export default function InventoryManagementPage() {
                                         <IconButton
                                           size="medium"
                                           onClick={() =>
-                                            openAdjustmentDialog(item1, "increase")
+                                            openAdjustmentDialog(
+                                              item1,
+                                              "increase",
+                                            )
                                           }
                                           sx={{
                                             bgcolor: "success.main",
                                             color: "white",
-                                            "&:hover": { bgcolor: "success.dark" },
+                                            "&:hover": {
+                                              bgcolor: "success.dark",
+                                            },
                                             minWidth: 44,
                                             minHeight: 44,
                                           }}
@@ -2344,9 +2374,12 @@ export default function InventoryManagementPage() {
                                         >
                                           Price per Item
                                         </Typography>
-                                        <Typography variant="body1" fontWeight={500}>
+                                        <Typography
+                                          variant="body1"
+                                          fontWeight={500}
+                                        >
                                           {item1.price !== undefined &&
-                                            item1.price !== null
+                                          item1.price !== null
                                             ? `€${Number(item1.price).toFixed(2)}`
                                             : "-"}
                                         </Typography>
@@ -2361,8 +2394,8 @@ export default function InventoryManagementPage() {
                                         <Typography variant="body2">
                                           {item1.lastUpdated
                                             ? new Date(
-                                              item1.lastUpdated,
-                                            ).toLocaleDateString()
+                                                item1.lastUpdated,
+                                              ).toLocaleDateString()
                                             : "-"}
                                         </Typography>
                                       </Box>
@@ -2376,11 +2409,17 @@ export default function InventoryManagementPage() {
                                       >
                                         Supplier
                                       </Typography>
-                                      <Typography variant="body1" fontWeight={500}>
+                                      <Typography
+                                        variant="body1"
+                                        fontWeight={500}
+                                      >
                                         {item1.contactDetails?.supplier || "-"}
                                       </Typography>
                                       {item1.contactDetails?.email && (
-                                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ mt: 0.5 }}
+                                        >
                                           {item1.contactDetails.email.includes(
                                             "@",
                                           ) ? (
@@ -2437,7 +2476,8 @@ export default function InventoryManagementPage() {
                                             fontWeight={500}
                                           >
                                             {item1.lowStockThreshold !== null &&
-                                              item1.lowStockThreshold !== undefined
+                                            item1.lowStockThreshold !==
+                                              undefined
                                               ? `${item1.lowStockThreshold} units`
                                               : "No threshold set"}
                                           </Typography>
@@ -2447,7 +2487,10 @@ export default function InventoryManagementPage() {
                                             getComponentAlertInfo(item1);
                                           const isInLowList =
                                             isComponentInLowList(item1);
-                                          if (alertInfo.showAlert || isInLowList) {
+                                          if (
+                                            alertInfo.showAlert ||
+                                            isInLowList
+                                          ) {
                                             return (
                                               <Box
                                                 sx={{
@@ -2458,13 +2501,15 @@ export default function InventoryManagementPage() {
                                                   borderRadius: 1,
                                                   bgcolor: isInLowList
                                                     ? "error.light"
-                                                    : alertInfo.severity === "warning"
+                                                    : alertInfo.severity ===
+                                                        "warning"
                                                       ? "warning.light"
                                                       : "error.light",
                                                   border: 1,
                                                   borderColor: isInLowList
                                                     ? "error.main"
-                                                    : alertInfo.severity === "warning"
+                                                    : alertInfo.severity ===
+                                                        "warning"
                                                       ? "warning.main"
                                                       : "divider",
                                                 }}
@@ -2638,12 +2683,14 @@ export default function InventoryManagementPage() {
                               </motion.div>
                             ))
                           ) : (
-                            <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
+                            <Card
+                              elevation={2}
+                              sx={{ p: 6, textAlign: "center" }}
+                            >
                               <Typography color="text.secondary" variant="h6">
                                 {componentSearchQuery
                                   ? "No components match your search"
-                                  : "No components in inventory"
-                                }
+                                  : "No components in inventory"}
                               </Typography>
                               <Typography
                                 color="text.secondary"
@@ -2652,8 +2699,7 @@ export default function InventoryManagementPage() {
                               >
                                 {componentSearchQuery
                                   ? "Try adjusting your search terms"
-                                  : "Add your first component to get started"
-                                }
+                                  : "Add your first component to get started"}
                               </Typography>
                             </Card>
                           )}
@@ -2702,7 +2748,10 @@ export default function InventoryManagementPage() {
                                               getComponentAlertInfo(item1);
                                             const isInLowList =
                                               isComponentInLowList(item1);
-                                            if (alertInfo.showAlert || isInLowList) {
+                                            if (
+                                              alertInfo.showAlert ||
+                                              isInLowList
+                                            ) {
                                               return (
                                                 <Box
                                                   sx={{
@@ -2752,7 +2801,10 @@ export default function InventoryManagementPage() {
                                           <IconButton
                                             size="small"
                                             onClick={() =>
-                                              openAdjustmentDialog(item1, "decrease")
+                                              openAdjustmentDialog(
+                                                item1,
+                                                "decrease",
+                                              )
                                             }
                                           >
                                             <RemoveIcon />
@@ -2763,7 +2815,10 @@ export default function InventoryManagementPage() {
                                           <IconButton
                                             size="small"
                                             onClick={() =>
-                                              openAdjustmentDialog(item1, "increase")
+                                              openAdjustmentDialog(
+                                                item1,
+                                                "increase",
+                                              )
                                             }
                                           >
                                             <AddIcon />
@@ -2772,7 +2827,7 @@ export default function InventoryManagementPage() {
                                       </TableCell>
                                       <TableCell>
                                         {item1.price !== undefined &&
-                                          item1.price !== null
+                                        item1.price !== null
                                           ? `€${Number(item1.price).toFixed(2)}`
                                           : "-"}
                                       </TableCell>
@@ -2781,7 +2836,9 @@ export default function InventoryManagementPage() {
                                       </TableCell>
                                       <TableCell>
                                         {item1.contactDetails?.email ? (
-                                          item1.contactDetails.email.includes("@") ? (
+                                          item1.contactDetails.email.includes(
+                                            "@",
+                                          ) ? (
                                             <a
                                               href={`mailto:${item1.contactDetails.email}`}
                                               target="_blank"
@@ -2817,14 +2874,15 @@ export default function InventoryManagementPage() {
                                         )}
                                       </TableCell>
                                       <TableCell>
-                                        {Array.isArray(item1.sensorAssignments) &&
-                                          item1.sensorAssignments.length > 0
+                                        {Array.isArray(
+                                          item1.sensorAssignments,
+                                        ) && item1.sensorAssignments.length > 0
                                           ? item1.sensorAssignments
-                                            .map(
-                                              (sa) =>
-                                                `${sa.sensorName} (${sa.requiredQuantity})`,
-                                            )
-                                            .join(", ")
+                                              .map(
+                                                (sa) =>
+                                                  `${sa.sensorName} (${sa.requiredQuantity})`,
+                                              )
+                                              .join(", ")
                                           : "-"}
                                       </TableCell>
                                       <TableCell>
@@ -2888,7 +2946,8 @@ export default function InventoryManagementPage() {
                                         )}
                                       </TableCell>
                                       <TableCell>
-                                        {item1.lastUpdated?.toLocaleString?.() || "-"}
+                                        {item1.lastUpdated?.toLocaleString?.() ||
+                                          "-"}
                                       </TableCell>
                                       <TableCell>
                                         <IconButton
@@ -2932,7 +2991,7 @@ export default function InventoryManagementPage() {
           )}
 
           {/* Production Capacity Summary - shown on both Devices and Components tabs */}
-          {(activeTab === 0) && capacitySummary && (
+          {activeTab === 0 && capacitySummary && (
             <Paper elevation={3} sx={{ mb: 3 }}>
               <Box sx={{ p: { xs: 2, md: 4 } }}>
                 <Box
@@ -3307,8 +3366,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                          "contactDetails" in editItem &&
-                          editItem.contactDetails?.supplier
+                        "contactDetails" in editItem &&
+                        editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }

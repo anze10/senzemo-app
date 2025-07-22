@@ -57,6 +57,24 @@ import { InsertintoDB, type ProductionListWithoutId } from "./PrismaCode";
 import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
+import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent";
+import Izhod from "../../inventory/components/Izhod";
+
+// Konfiguracija za avtomatsko odštevanje komponent
+// TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
+const getAutoDeductComponents = (): boolean => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("autoDeductComponents");
+    return stored !== null ? JSON.parse(stored) : true; // privzeto omogočeno
+  }
+  return true;
+};
+
+const setAutoDeductComponents = (enabled: boolean): void => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("autoDeductComponents", JSON.stringify(enabled));
+  }
+};
 
 type ImportantSensorData = Record<
   string,
@@ -73,6 +91,16 @@ export function SensorCheckForm() {
   const sensor_parsers = useSensorStore((state) => state.current_decoder);
   const [showUnimportantParameters, setShowUnimportantParameters] =
     useState<boolean>(false);
+
+  // State za avtomatsko odštevanje komponent
+  const [autoDeductComponents, setAutoDeductComponentsState] =
+    useState<boolean>(() => getAutoDeductComponents());
+
+  // Funkcija za posodabljanje nastavitve
+  const updateAutoDeductComponents = (enabled: boolean) => {
+    setAutoDeductComponentsState(enabled);
+    setAutoDeductComponents(enabled);
+  };
 
   const current_sensor_index = useSensorStore(
     (state) => state.current_sensor_index,
@@ -639,6 +667,27 @@ export function SensorCheckForm() {
               </Button>
             </Box>
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
+              {/* Indikator za auto-deduct nastavitev */}
+              <Box
+                sx={{
+                  mr: 2,
+                  px: 1,
+                  py: 0.5,
+                  backgroundColor: autoDeductComponents
+                    ? "success.light"
+                    : "warning.light",
+                  borderRadius: 1,
+                  fontSize: "0.75rem",
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{ color: "white", fontWeight: "bold" }}
+                >
+                  {autoDeductComponents ? "Auto-deduct ON" : "Auto-deduct OFF"}
+                </Typography>
+              </Box>
+
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar alt="User Avatar" src={session.data?.user?.picture} />
@@ -667,6 +716,25 @@ export function SensorCheckForm() {
                   <Typography sx={{ textAlign: "center", color: "black" }}>
                     Account
                   </Typography>
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => {
+                    updateAutoDeductComponents(!autoDeductComponents);
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Checkbox
+                      checked={autoDeductComponents}
+                      onChange={(e) =>
+                        updateAutoDeductComponents(e.target.checked)
+                      }
+                      size="small"
+                    />
+                    <Typography sx={{ textAlign: "center", color: "black" }}>
+                      Auto-deduct Components
+                    </Typography>
+                  </Box>
                 </MenuItem>
 
                 <MenuItem
@@ -865,6 +933,60 @@ export function SensorCheckForm() {
                   // Insert current sensor data into database
                   console.log("Inserting current sensor data into database...");
                   await insertIntoDatabaseMutation.mutateAsync();
+
+                  // Odštej komponente iz zaloge po uspešni vstavitvi v bazo
+                  // Preverimo, ali je avtomatsko odštevanje omogočeno
+                  if (autoDeductComponents) {
+                    // Najprej poišči sensorId na podlagi family_id in product_id
+                    const familyId = current_sensor.data.family_id as number;
+                    const productId = current_sensor.data.product_id as number;
+
+                    if (familyId && productId && GetSensorName.data) {
+                      const foundSensor = GetSensorName.data.find(
+                        (sensor: {
+                          id: number;
+                          familyId: number;
+                          productId: number;
+                          sensorName: string;
+                        }) =>
+                          sensor.familyId === familyId &&
+                          sensor.productId === productId,
+                      );
+
+                      if (foundSensor) {
+                        try {
+                          console.log(
+                            `Removing components from stock for sensor ID: ${foundSensor.id} (${foundSensor.sensorName})`,
+                          );
+                          await removeComponentsFromStockForSensor(
+                            foundSensor.id,
+                          );
+                          console.log(
+                            "Components successfully removed from stock",
+                          );
+                        } catch (componentError) {
+                          console.error(
+                            "Error removing components from stock:",
+                            componentError,
+                          );
+                          // Ne prekini procesa, samo logiraj napako
+                          // Uporabnik lahko nadaljuje z delom, čeprav komponente niso bile odštete
+                        }
+                      } else {
+                        console.warn(
+                          `Sensor not found for familyId: ${familyId}, productId: ${productId}`,
+                        );
+                      }
+                    } else {
+                      console.warn(
+                        "Missing familyId, productId, or sensor data for component removal",
+                      );
+                    }
+                  } else {
+                    console.log(
+                      "Auto-deduct components is disabled, skipping component removal",
+                    );
+                  }
 
                   try {
                     await PrintSticker(

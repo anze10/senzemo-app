@@ -2667,3 +2667,253 @@ export async function getAllOrders() {
     throw new Error("Failed to fetch orders");
   }
 }
+
+export async function removeComponentsFromStockForSensor(
+  sensorId: number,
+  sensorsToManufacture: number = 1, // Za sedaj samo 1 senzor naenkrat
+) {
+  try {
+    // // Za sedaj podpiramo samo izdelavo enega senzorja naenkrat
+    // if (sensorsToManufacture !== 1) {
+    //   throw new Error(
+    //     "Currently only single sensor production is supported. Please use sensorsToManufacture = 1",
+    //   );
+    // }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Preveri, če senzor obstaja
+      const sensor = await tx.senzor.findUnique({
+        where: { id: sensorId },
+        include: {
+          components: {
+            include: {
+              component: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!sensor) {
+        throw new Error(`Sensor with ID ${sensorId} not found`);
+      }
+
+      if (sensor.components.length === 0) {
+        throw new Error(
+          `No components defined for sensor ${sensor.sensorName}`,
+        );
+      }
+
+      // 2. Preveri razpoložljivost vseh komponent PRED odštevanjem
+      const componentChecks = await Promise.all(
+        sensor.components.map(async (sensorComponent) => {
+          const totalNeeded =
+            sensorComponent.requiredQuantity * sensorsToManufacture;
+
+          const componentStock = await tx.componentStock.findFirst({
+            where: {
+              componentId: sensorComponent.componentId,
+              quantity: { gte: totalNeeded },
+            },
+          });
+
+          if (!componentStock) {
+            const availableStock = await tx.componentStock.findFirst({
+              where: { componentId: sensorComponent.componentId },
+            });
+
+            throw new Error(
+              `Not enough stock for component "${sensorComponent.component.name}". ` +
+                `Needed: ${totalNeeded}, Available: ${availableStock?.quantity || 0}`,
+            );
+          }
+
+          return {
+            componentStock,
+            component: sensorComponent.component,
+            quantityToDeduct: totalNeeded,
+          };
+        }),
+      );
+
+      // 3. Če so vse komponente na voljo, jih odštej
+      const updatedStocks = [];
+      const removedComponents = [];
+
+      for (const check of componentChecks) {
+        // Dodatno varnostno preverjanje tik pred update-om
+        const currentStock = await tx.componentStock.findUnique({
+          where: { id: check.componentStock.id },
+          select: { quantity: true },
+        });
+
+        if (!currentStock) {
+          throw new Error(
+            `Component stock with ID ${check.componentStock.id} not found during update`,
+          );
+        }
+
+        if (currentStock.quantity < check.quantityToDeduct) {
+          throw new Error(
+            `Insufficient stock during update for component "${check.component.name}". ` +
+              `Current stock: ${currentStock.quantity}, trying to deduct: ${check.quantityToDeduct}`,
+          );
+        }
+
+        // Preveri, da zaloga ne bo negativna
+        const newQuantity = currentStock.quantity - check.quantityToDeduct;
+        if (newQuantity < 0) {
+          throw new Error(
+            `Update would result in negative stock for component "${check.component.name}". ` +
+              `Current: ${currentStock.quantity}, deducting: ${check.quantityToDeduct}, result would be: ${newQuantity}`,
+          );
+        }
+
+        const updatedStock = await tx.componentStock.update({
+          where: { id: check.componentStock.id },
+          data: { quantity: { decrement: check.quantityToDeduct } },
+        });
+
+        updatedStocks.push(updatedStock);
+        removedComponents.push({
+          componentName: check.component.name,
+          componentId: check.component.id,
+          quantityRemoved: check.quantityToDeduct,
+          remainingStock: updatedStock.quantity,
+        });
+
+        // // 4. Logiraj vsako komponento posebej
+        // await tx.inventoryLog.create({
+        //   data: {
+        //     itemType: "component",
+        //     itemName: check.component.name,
+        //     change: -check.quantityToDeduct,
+        //     reason: `Used in production of ${sensorsToManufacture}x ${sensor.sensorName}`,
+        //     user: "Production System",
+        //     details: `Sensor ID: ${sensor.id} | Component: ${check.component.name} | Used: ${check.quantityToDeduct} | Remaining: ${updatedStock.quantity}`,
+        //     componentStockId: check.componentStock.id,
+        //   },
+        // });
+      }
+
+      // 5. Ustvari glavno log entry za proizvodnjo senzorja
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "sensor",
+          itemName: sensor.sensorName,
+          change: 0, // Ker ne dodajamo senzorja v zalogo tukaj
+          reason: `Components consumed for production`,
+          user: "Production System",
+          details: `Produced ${sensorsToManufacture}x ${sensor.sensorName}. Components used: ${removedComponents.map((c) => `${c.componentName}(${c.quantityRemoved})`).join(", ")}`,
+        },
+      });
+
+      return {
+        sensor: {
+          id: sensor.id,
+          name: sensor.sensorName,
+        },
+        sensorsManufactured: sensorsToManufacture,
+        componentsUsed: removedComponents,
+        updatedStocks: updatedStocks,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error(
+      "Error removing components from stock for sensor production:",
+      error,
+    );
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to remove components from stock for sensor production",
+    );
+  }
+}
+
+// /**
+//  * Preveri, ali lahko proizvedemo določeno količino senzorjev
+//  * Vrne informacije o razpoložljivosti komponent
+//  *
+//  * @param sensorId - ID senzorja za preverjanje
+//  * @param sensorsToManufacture - Število senzorjev za preverjanje (trenutno podprto samo 1)
+//  */
+export async function checkSensorProductionCapability(
+  sensorId: number,
+  sensorsToManufacture: number = 1, // Za sedaj samo 1 senzor naenkrat
+) {
+  try {
+    // Za sedaj podpiramo samo preverjanje za en senzor naenkrat
+    if (sensorsToManufacture !== 1) {
+      throw new Error(
+        "Currently only single sensor production capability check is supported. Please use sensorsToManufacture = 1",
+      );
+    }
+    const sensor = await prisma.senzor.findUnique({
+      where: { id: sensorId },
+      include: {
+        components: {
+          include: {
+            component: {
+              include: {
+                stockItems: {
+                  select: { quantity: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sensor) {
+      throw new Error(`Sensor with ID ${sensorId} not found`);
+    }
+
+    const componentStatus = [];
+    let canProduce = true;
+    let maxPossibleProduction = Infinity;
+
+    for (const sensorComponent of sensor.components) {
+      const totalNeeded =
+        sensorComponent.requiredQuantity * sensorsToManufacture;
+      const availableStock =
+        sensorComponent.component.stockItems[0]?.quantity || 0;
+      const maxWithThisComponent = Math.floor(
+        availableStock / sensorComponent.requiredQuantity,
+      );
+
+      if (availableStock < totalNeeded) {
+        canProduce = false;
+      }
+
+      if (maxWithThisComponent < maxPossibleProduction) {
+        maxPossibleProduction = maxWithThisComponent;
+      }
+
+      componentStatus.push({
+        componentName: sensorComponent.component.name,
+        requiredPerSensor: sensorComponent.requiredQuantity,
+        totalNeeded: totalNeeded,
+        available: availableStock,
+        sufficient: availableStock >= totalNeeded,
+        maxPossibleSensors: maxWithThisComponent,
+      });
+    }
+
+    return {
+      sensorName: sensor.sensorName,
+      requestedQuantity: sensorsToManufacture,
+      canProduce: canProduce,
+      maxPossibleProduction:
+        maxPossibleProduction === Infinity ? 0 : maxPossibleProduction,
+      componentStatus: componentStatus,
+    };
+  } catch (error) {
+    console.error("Error checking sensor production capability:", error);
+    throw new Error("Failed to check sensor production capability");
+  }
+}

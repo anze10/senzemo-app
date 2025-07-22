@@ -30,10 +30,6 @@ export function InventoryEmailTemplate({
   lowStockItems,
   reportUrl = "localhost:3000/inventory", // Default URL if not provided
 }: InventoryEmailTemplateProps) {
-
-
-
-
   return (
     <div
       style={{
@@ -166,8 +162,8 @@ export function InventoryEmailTemplate({
                 ⚠️ Low Stock Alert
               </h3>
               <p style={{ color: "#B91C1C", margin: "0", fontSize: "14px" }}>
-                {lowStockItems.length} items are running low on stock. Please review
-                the detailed report and consider restocking.
+                {lowStockItems.length} items are running low on stock. Please
+                review the detailed report and consider restocking.
               </p>
             </div>
           )}

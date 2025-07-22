@@ -31,6 +31,7 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
+import { InventorySettings } from "./InventorySettings";
 
 type DeviceType = {
   name: string;
@@ -325,6 +326,11 @@ export default function Parameters() {
               </Button>
             </Box>
           </Box>
+        </Box>
+
+        {/* Inventory Settings Section */}
+        <Box sx={{ mt: 4 }}>
+          <InventorySettings />
         </Box>
       </motion.div>
     </Container>

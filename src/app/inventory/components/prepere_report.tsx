@@ -193,7 +193,11 @@ interface InventoryReportProps {
   sensorStock: SensorStock[];
   componentStock: ComponentStock[];
   reportDate: Date;
-  lowStockItems: { componentId: number; componentName: string; availableQuantity: number }[];
+  lowStockItems: {
+    componentId: number;
+    componentName: string;
+    availableQuantity: number;
+  }[];
 }
 
 // Frequency analysis helper
@@ -295,7 +299,9 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
             <Text style={styles.warningText}>
               {lowStockItems.length} item(s) below threshold (
               {lowStockItems
-                .map((item) => `${item.componentName} (${item.availableQuantity})`)
+                .map(
+                  (item) => `${item.componentName} (${item.availableQuantity})`,
+                )
                 .join(", ")}
               )
             </Text>
