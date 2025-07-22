@@ -239,6 +239,9 @@ export default function InventoryManagementPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [deviceActionReason, setDeviceActionReason] = useState("");
 
+  // Add search state for components
+  const [componentSearchQuery, setComponentSearchQuery] = useState("");
+
   // Add query to fetch invoice files for a component
   const fetchComponentInvoiceHistory = useCallback(
     async (componentId: number) => {
@@ -2104,773 +2107,827 @@ export default function InventoryManagementPage() {
           ) : (
             // Components tab
             <>
-              {/* Mobile Card Layout */}
-              {isMobile ? (
-                <Box sx={{ mb: 3 }}>
-                  <AnimatePresence>
-                    {allComponents.length > 0 ? (
-                      allComponents.map((item1) => (
-                        <motion.div
-                          key={item1.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Card
-                            elevation={2}
-                            sx={{
-                              mb: 2,
-                              borderRadius: 2,
-                              border: "1px solid",
-                              borderColor: "divider",
-                            }}
-                          >
-                            <CardContent sx={{ p: 3 }}>
-                              {/* Header with name, warning light, and edit button */}
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "flex-start",
-                                  mb: 2,
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    flex: 1,
-                                    mr: 1,
-                                  }}
-                                >
-                                  {/* Alert Icon for Low Components */}
-                                  {(() => {
-                                    const alertInfo =
-                                      getComponentAlertInfo(item1);
-                                    const isInLowList =
-                                      isComponentInLowList(item1);
-                                    if (alertInfo.showAlert || isInLowList) {
-                                      return (
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            mr: 1,
-                                          }}
-                                        >
-                                          <WarningIcon
-                                            sx={{
-                                              color: isInLowList
-                                                ? "error.main"
-                                                : alertInfo.color,
-                                              fontSize: 24,
-                                            }}
-                                            className={
-                                              isInLowList
-                                                ? "pulse-fast glow-critical"
-                                                : "pulse-normal glow-warning"
-                                            }
-                                          />
-                                        </Box>
-                                      );
-                                    }
-                                    return null;
-                                  })()}
+              {/* Filter components based on search query */}
+              {(() => {
+                const filteredComponents = allComponents.filter((component) => {
+                  if (!componentSearchQuery.trim()) return true;
 
-                                  {/* Critical Component Indicator */}
-                                  {item1.isCritical && (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        mr: 1,
-                                      }}
-                                    >
-                                      <Chip
-                                        label="Critical"
-                                        size="small"
-                                        color="error"
-                                        variant="filled"
-                                        sx={{ fontSize: "0.6rem", height: 20 }}
-                                      />
-                                    </Box>
-                                  )}
-                                  <Typography
-                                    variant="h6"
-                                    sx={{
-                                      fontWeight: 600,
-                                      color: "primary.main",
-                                    }}
-                                  >
-                                    {item1.name || "Unnamed Component"}
-                                  </Typography>
-                                </Box>
-                                <IconButton
-                                  color="primary"
-                                  onClick={() => handleEditItem(item1)}
-                                  sx={{ p: 1 }}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              </Box>
+                  const searchLower = componentSearchQuery.toLowerCase();
+                  return (
+                    component.name?.toLowerCase().includes(searchLower) ||
+                    component.contactDetails?.supplier?.toLowerCase().includes(searchLower) ||
+                    component.contactDetails?.email?.toLowerCase().includes(searchLower) ||
+                    component.invoiceNumber?.toLowerCase().includes(searchLower)
+                  );
+                });
 
-                              {/* Quantity controls */}
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  mb: 2,
-                                  p: 2,
-                                  bgcolor: "grey.50",
-                                  borderRadius: 1,
-                                }}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  Quantity
-                                </Typography>
-                                <Box
-                                  sx={{ display: "flex", alignItems: "center" }}
-                                >
-                                  <IconButton
-                                    size="medium"
-                                    onClick={() =>
-                                      openAdjustmentDialog(item1, "decrease")
-                                    }
-                                    sx={{
-                                      bgcolor: "error.main",
-                                      color: "white",
-                                      "&:hover": { bgcolor: "error.dark" },
-                                      minWidth: 44,
-                                      minHeight: 44,
-                                    }}
-                                  >
-                                    <RemoveIcon />
-                                  </IconButton>
-                                  <Typography
-                                    variant="h6"
-                                    sx={{
-                                      mx: 3,
-                                      minWidth: 40,
-                                      textAlign: "center",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {item1.quantity ?? "0"}
-                                  </Typography>
-                                  <IconButton
-                                    size="medium"
-                                    onClick={() =>
-                                      openAdjustmentDialog(item1, "increase")
-                                    }
-                                    sx={{
-                                      bgcolor: "success.main",
-                                      color: "white",
-                                      "&:hover": { bgcolor: "success.dark" },
-                                      minWidth: 44,
-                                      minHeight: 44,
-                                    }}
-                                  >
-                                    <AddIcon />
-                                  </IconButton>
-                                </Box>
-                              </Box>
-
-                              {/* Component details grid */}
-                              <Box
-                                sx={{
-                                  display: "grid",
-                                  gridTemplateColumns: "1fr 1fr",
-                                  gap: 2,
-                                  mb: 2,
-                                }}
-                              >
-                                <Box>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                  >
-                                    Price per Item
-                                  </Typography>
-                                  <Typography variant="body1" fontWeight={500}>
-                                    {item1.price !== undefined &&
-                                      item1.price !== null
-                                      ? `€${Number(item1.price).toFixed(2)}`
-                                      : "-"}
-                                  </Typography>
-                                </Box>
-                                <Box>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                  >
-                                    Last Updated
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    {item1.lastUpdated
-                                      ? new Date(
-                                        item1.lastUpdated,
-                                      ).toLocaleDateString()
-                                      : "-"}
-                                  </Typography>
-                                </Box>
-                              </Box>
-
-                              {/* Supplier information */}
-                              <Box sx={{ mb: 2 }}>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                >
-                                  Supplier
-                                </Typography>
-                                <Typography variant="body1" fontWeight={500}>
-                                  {item1.contactDetails?.supplier || "-"}
-                                </Typography>
-                                {item1.contactDetails?.email && (
-                                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                    {item1.contactDetails.email.includes(
-                                      "@",
-                                    ) ? (
-                                      <a
-                                        href={`mailto:${item1.contactDetails.email}`}
-                                        style={{
-                                          color: "#0369a1",
-                                          textDecoration: "none",
-                                        }}
-                                      >
-                                        {item1.contactDetails.email}
-                                      </a>
-                                    ) : (
-                                      <a
-                                        href={
-                                          item1.contactDetails.email.startsWith(
-                                            "http",
-                                          )
-                                            ? item1.contactDetails.email
-                                            : `https://${item1.contactDetails.email}`
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                          color: "#0369a1",
-                                          textDecoration: "none",
-                                        }}
-                                      >
-                                        {item1.contactDetails.email}
-                                      </a>
-                                    )}
-                                  </Typography>
-                                )}
-                              </Box>
-
-                              {/* Threshold and Critical Status Information */}
-                              <Box sx={{ mb: 2 }}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    mb: 1,
-                                  }}
-                                >
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                    >
-                                      Low Stock Threshold
-                                    </Typography>
-                                    <Typography
-                                      variant="body2"
-                                      fontWeight={500}
-                                    >
-                                      {item1.lowStockThreshold !== null &&
-                                        item1.lowStockThreshold !== undefined
-                                        ? `${item1.lowStockThreshold} units`
-                                        : "No threshold set"}
-                                    </Typography>
-                                  </Box>
-                                  {(() => {
-                                    const alertInfo =
-                                      getComponentAlertInfo(item1);
-                                    const isInLowList =
-                                      isComponentInLowList(item1);
-                                    if (alertInfo.showAlert || isInLowList) {
-                                      return (
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: 0.5,
-                                            p: 1,
-                                            borderRadius: 1,
-                                            bgcolor: isInLowList
-                                              ? "error.light"
-                                              : alertInfo.severity === "warning"
-                                                ? "warning.light"
-                                                : "error.light",
-                                            border: 1,
-                                            borderColor: isInLowList
-                                              ? "error.main"
-                                              : alertInfo.severity === "warning"
-                                                ? "warning.main"
-                                                : "divider",
-                                          }}
-                                        >
-                                          <WarningIcon
-                                            sx={{
-                                              color: isInLowList
-                                                ? "error.main"
-                                                : alertInfo.color,
-                                              fontSize: 16,
-                                            }}
-                                          />
-                                          <Typography
-                                            variant="caption"
-                                            color={
-                                              isInLowList
-                                                ? "error.main"
-                                                : alertInfo.color
-                                            }
-                                            fontWeight={600}
-                                          >
-                                            {isInLowList
-                                              ? "CRITICALLY LOW"
-                                              : alertInfo.message}
-                                          </Typography>
-                                          {isInLowList && (
-                                            <Chip
-                                              label="DATABASE ALERT"
-                                              size="small"
-                                              color="error"
-                                              variant="filled"
-                                              sx={{
-                                                fontSize: "0.5rem",
-                                                height: 16,
-                                              }}
-                                            />
-                                          )}
-                                        </Box>
-                                      );
-                                    }
-                                    return null;
-                                  })()}
-                                </Box>
-                              </Box>
-
-                              {/* Sensor requirements */}
-                              {Array.isArray(item1.sensorAssignments) &&
-                                item1.sensorAssignments.length > 0 && (
-                                  <Box sx={{ mb: 2 }}>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                    >
-                                      Sensor Requirements
-                                    </Typography>
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        flexWrap: "wrap",
-                                        gap: 0.5,
-                                        mt: 0.5,
-                                      }}
-                                    >
-                                      {item1.sensorAssignments.map(
-                                        (sa, index) => (
-                                          <Chip
-                                            key={index}
-                                            label={`${sa.sensorName} (${sa.requiredQuantity})`}
-                                            size="small"
-                                            variant="outlined"
-                                            color="primary"
-                                          />
-                                        ),
-                                      )}
-                                    </Box>
-                                  </Box>
-                                )}
-
-                              {/* Invoice file information */}
-                              <Box sx={{ mb: 2 }}>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                >
-                                  Invoice Information
-                                </Typography>
-                                {item1.invoiceFile ? (
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 1,
-                                      mt: 0.5,
-                                      p: 1,
-                                      bgcolor: "grey.50",
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    <AttachFileIcon
-                                      sx={{
-                                        fontSize: 16,
-                                        color: "primary.main",
-                                      }}
-                                    />
-                                    <Box sx={{ flex: 1 }}>
-                                      <Typography
-                                        variant="body2"
-                                        fontWeight={500}
-                                      >
-                                        {item1.invoiceNumber ||
-                                          "Unknown Invoice"}
-                                      </Typography>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                      >
-                                        {item1.invoiceFile}
-                                      </Typography>
-                                    </Box>
-                                    <Button
-                                      size="small"
-                                      startIcon={<DownloadIcon />}
-                                      onClick={() =>
-                                        handleDownloadInvoiceFile(
-                                          item1.invoiceNumber || "",
-                                          item1.invoiceFile || "",
-                                        )
-                                      }
-                                      sx={{
-                                        textTransform: "none",
-                                        fontSize: "0.75rem",
-                                      }}
-                                    >
-                                      Download
-                                    </Button>
-                                  </Box>
-                                ) : item1.invoiceNumber ? (
-                                  <Box
-                                    sx={{
-                                      mt: 0.5,
-                                      p: 1,
-                                      bgcolor: "warning.light",
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    <Typography
-                                      variant="body2"
-                                      color="warning.dark"
-                                    >
-                                      Invoice: {item1.invoiceNumber}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="warning.dark"
-                                    >
-                                      No file uploaded
-                                    </Typography>
-                                  </Box>
-                                ) : (
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ mt: 0.5 }}
-                                  >
-                                    No invoice information
-                                  </Typography>
-                                )}
-                              </Box>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
-                        <Typography color="text.secondary" variant="h6">
-                          No components in inventory
+                return (
+                  <>
+                    {/* Search Bar */}
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        fullWidth
+                        variant="outlined"
+                        placeholder="Search components by name, supplier, email, or invoice..."
+                        value={componentSearchQuery}
+                        onChange={(e) => setComponentSearchQuery(e.target.value)}
+                        sx={{
+                          maxWidth: { xs: "100%", md: "400px" },
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 2,
+                          },
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <Box sx={{ mr: 1, color: "text.secondary" }}>
+                              🔍
+                            </Box>
+                          ),
+                        }}
+                      />
+                      {componentSearchQuery && (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                          Found {filteredComponents.length} component{filteredComponents.length !== 1 ? 's' : ''}
                         </Typography>
-                        <Typography
-                          color="text.secondary"
-                          variant="body2"
-                          sx={{ mt: 1 }}
-                        >
-                          Add your first component to get started
-                        </Typography>
-                      </Card>
-                    )}
-                  </AnimatePresence>
-                </Box>
-              ) : (
-                /* Desktop Table Layout */
-                <Paper elevation={3} className="mb-8 overflow-hidden">
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Quantity</TableCell>
-                          <TableCell>Price per Item</TableCell>
-                          <TableCell>Supplier</TableCell>
-                          <TableCell>Supplier Contact</TableCell>
-                          <TableCell>Sensor Requirements</TableCell>
-                          <TableCell>Invoice File</TableCell>
-                          <TableCell>Last Updated</TableCell>
-                          <TableCell>Actions</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
+                      )}
+                    </Box>
+
+                    {/* Mobile Card Layout */}
+                    {isMobile ? (
+                      <Box sx={{ mb: 3 }}>
                         <AnimatePresence>
-                          {allComponents.length > 0 &&
-                            allComponents.map((item1) => (
-                              <motion.tr
+                          {filteredComponents.length > 0 ? (
+                            filteredComponents.map((item1) => (
+                              <motion.div
                                 key={item1.id}
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
                                 transition={{ duration: 0.3 }}
                               >
-                                <TableCell className="font-bold">
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 1,
-                                    }}
-                                  >
-                                    {/* Alert Icon for Low Components */}
-                                    {(() => {
-                                      const alertInfo =
-                                        getComponentAlertInfo(item1);
-                                      const isInLowList =
-                                        isComponentInLowList(item1);
-                                      if (alertInfo.showAlert || isInLowList) {
-                                        return (
+                                <Card
+                                  elevation={2}
+                                  sx={{
+                                    mb: 2,
+                                    borderRadius: 2,
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                  }}
+                                >
+                                  <CardContent sx={{ p: 3 }}>
+                                    {/* Header with name, warning light, and edit button */}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        mb: 2,
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          flex: 1,
+                                          mr: 1,
+                                        }}
+                                      >
+                                        {/* Alert Icon for Low Components */}
+                                        {(() => {
+                                          const alertInfo =
+                                            getComponentAlertInfo(item1);
+                                          const isInLowList =
+                                            isComponentInLowList(item1);
+                                          if (alertInfo.showAlert || isInLowList) {
+                                            return (
+                                              <Box
+                                                sx={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  mr: 1,
+                                                }}
+                                              >
+                                                <WarningIcon
+                                                  sx={{
+                                                    color: isInLowList
+                                                      ? "error.main"
+                                                      : alertInfo.color,
+                                                    fontSize: 24,
+                                                  }}
+                                                  className={
+                                                    isInLowList
+                                                      ? "pulse-fast glow-critical"
+                                                      : "pulse-normal glow-warning"
+                                                  }
+                                                />
+                                              </Box>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+
+                                        {/* Critical Component Indicator */}
+                                        {item1.isCritical && (
                                           <Box
                                             sx={{
                                               display: "flex",
                                               alignItems: "center",
-                                              mr: 0.5,
+                                              mr: 1,
                                             }}
                                           >
-                                            <WarningIcon
-                                              sx={{
-                                                color: isInLowList
-                                                  ? "error.main"
-                                                  : alertInfo.color,
-                                                fontSize: 20,
-                                              }}
-                                              className={
-                                                isInLowList
-                                                  ? "pulse-fast glow-critical"
-                                                  : "pulse-normal glow-warning"
-                                              }
+                                            <Chip
+                                              label="Critical"
+                                              size="small"
+                                              color="error"
+                                              variant="filled"
+                                              sx={{ fontSize: "0.6rem", height: 20 }}
                                             />
                                           </Box>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-
-                                    {/* Critical Component Indicator */}
-                                    {item1.isCritical && (
-                                      <Chip
-                                        label="Critical"
-                                        size="small"
-                                        color="error"
-                                        variant="filled"
-                                        sx={{
-                                          fontSize: "0.6rem",
-                                          height: 18,
-                                          mr: 0.5,
-                                        }}
-                                      />
-                                    )}
-                                    {item1.name || "-"}
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <Box className="flex items-center">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() =>
-                                        openAdjustmentDialog(item1, "decrease")
-                                      }
-                                    >
-                                      <RemoveIcon />
-                                    </IconButton>
-                                    <Typography className="mx-2">
-                                      {item1.quantity ?? "-"}
-                                    </Typography>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() =>
-                                        openAdjustmentDialog(item1, "increase")
-                                      }
-                                    >
-                                      <AddIcon />
-                                    </IconButton>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  {item1.price !== undefined &&
-                                    item1.price !== null
-                                    ? `€${Number(item1.price).toFixed(2)}`
-                                    : "-"}
-                                </TableCell>
-                                <TableCell>
-                                  {item1.contactDetails?.supplier || "-"}
-                                </TableCell>
-                                <TableCell>
-                                  {item1.contactDetails?.email ? (
-                                    item1.contactDetails.email.includes("@") ? (
-                                      <a
-                                        href={`mailto:${item1.contactDetails.email}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                          color: "#0369a1",
-                                          textDecoration: "underline",
-                                        }}
+                                        )}
+                                        <Typography
+                                          variant="h6"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "primary.main",
+                                          }}
+                                        >
+                                          {item1.name || "Unnamed Component"}
+                                        </Typography>
+                                      </Box>
+                                      <IconButton
+                                        color="primary"
+                                        onClick={() => handleEditItem(item1)}
+                                        sx={{ p: 1 }}
                                       >
-                                        {item1.contactDetails.email}
-                                      </a>
-                                    ) : (
-                                      <a
-                                        href={
-                                          item1.contactDetails.email.startsWith(
-                                            "http",
-                                          )
-                                            ? item1.contactDetails.email
-                                            : `https://${item1.contactDetails.email}`
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                          color: "#0369a1",
-                                          textDecoration: "underline",
-                                        }}
-                                      >
-                                        {item1.contactDetails.email}
-                                      </a>
-                                    )
-                                  ) : (
-                                    "-"
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {Array.isArray(item1.sensorAssignments) &&
-                                    item1.sensorAssignments.length > 0
-                                    ? item1.sensorAssignments
-                                      .map(
-                                        (sa) =>
-                                          `${sa.sensorName} (${sa.requiredQuantity})`,
-                                      )
-                                      .join(", ")
-                                    : "-"}
-                                </TableCell>
-                                <TableCell>
-                                  {item1.invoiceFile ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      <AttachFileIcon
-                                        sx={{
-                                          fontSize: 16,
-                                          color: "text.secondary",
-                                        }}
-                                      />
-                                      <Button
-                                        size="small"
-                                        startIcon={<DownloadIcon />}
-                                        onClick={() =>
-                                          handleDownloadInvoiceFile(
-                                            item1.invoiceNumber || "",
-                                            item1.invoiceFile || "",
-                                          )
-                                        }
-                                        sx={{
-                                          textTransform: "none",
-                                          fontSize: "0.75rem",
-                                          minWidth: "auto",
-                                        }}
-                                      >
-                                        {item1.invoiceFile.length > 20
-                                          ? `${item1.invoiceFile.substring(0, 17)}...`
-                                          : item1.invoiceFile}
-                                      </Button>
+                                        <EditIcon />
+                                      </IconButton>
                                     </Box>
-                                  ) : item1.invoiceNumber ? (
+
+                                    {/* Quantity controls */}
                                     <Box
                                       sx={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: 1,
+                                        justifyContent: "space-between",
+                                        mb: 2,
+                                        p: 2,
+                                        bgcolor: "grey.50",
+                                        borderRadius: 1,
                                       }}
                                     >
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        Quantity
+                                      </Typography>
+                                      <Box
+                                        sx={{ display: "flex", alignItems: "center" }}
+                                      >
+                                        <IconButton
+                                          size="medium"
+                                          onClick={() =>
+                                            openAdjustmentDialog(item1, "decrease")
+                                          }
+                                          sx={{
+                                            bgcolor: "error.main",
+                                            color: "white",
+                                            "&:hover": { bgcolor: "error.dark" },
+                                            minWidth: 44,
+                                            minHeight: 44,
+                                          }}
+                                        >
+                                          <RemoveIcon />
+                                        </IconButton>
+                                        <Typography
+                                          variant="h6"
+                                          sx={{
+                                            mx: 3,
+                                            minWidth: 40,
+                                            textAlign: "center",
+                                            fontWeight: 600,
+                                          }}
+                                        >
+                                          {item1.quantity ?? "0"}
+                                        </Typography>
+                                        <IconButton
+                                          size="medium"
+                                          onClick={() =>
+                                            openAdjustmentDialog(item1, "increase")
+                                          }
+                                          sx={{
+                                            bgcolor: "success.main",
+                                            color: "white",
+                                            "&:hover": { bgcolor: "success.dark" },
+                                            minWidth: 44,
+                                            minHeight: 44,
+                                          }}
+                                        >
+                                          <AddIcon />
+                                        </IconButton>
+                                      </Box>
+                                    </Box>
+
+                                    {/* Component details grid */}
+                                    <Box
+                                      sx={{
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr 1fr",
+                                        gap: 2,
+                                        mb: 2,
+                                      }}
+                                    >
+                                      <Box>
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          Price per Item
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={500}>
+                                          {item1.price !== undefined &&
+                                            item1.price !== null
+                                            ? `€${Number(item1.price).toFixed(2)}`
+                                            : "-"}
+                                        </Typography>
+                                      </Box>
+                                      <Box>
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          Last Updated
+                                        </Typography>
+                                        <Typography variant="body2">
+                                          {item1.lastUpdated
+                                            ? new Date(
+                                              item1.lastUpdated,
+                                            ).toLocaleDateString()
+                                            : "-"}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+
+                                    {/* Supplier information */}
+                                    <Box sx={{ mb: 2 }}>
                                       <Typography
                                         variant="caption"
                                         color="text.secondary"
                                       >
-                                        {item1.invoiceNumber}
+                                        Supplier
                                       </Typography>
+                                      <Typography variant="body1" fontWeight={500}>
+                                        {item1.contactDetails?.supplier || "-"}
+                                      </Typography>
+                                      {item1.contactDetails?.email && (
+                                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                          {item1.contactDetails.email.includes(
+                                            "@",
+                                          ) ? (
+                                            <a
+                                              href={`mailto:${item1.contactDetails.email}`}
+                                              style={{
+                                                color: "#0369a1",
+                                                textDecoration: "none",
+                                              }}
+                                            >
+                                              {item1.contactDetails.email}
+                                            </a>
+                                          ) : (
+                                            <a
+                                              href={
+                                                item1.contactDetails.email.startsWith(
+                                                  "http",
+                                                )
+                                                  ? item1.contactDetails.email
+                                                  : `https://${item1.contactDetails.email}`
+                                              }
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                color: "#0369a1",
+                                                textDecoration: "none",
+                                              }}
+                                            >
+                                              {item1.contactDetails.email}
+                                            </a>
+                                          )}
+                                        </Typography>
+                                      )}
+                                    </Box>
+
+                                    {/* Threshold and Critical Status Information */}
+                                    <Box sx={{ mb: 2 }}>
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          mb: 1,
+                                        }}
+                                      >
+                                        <Box>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
+                                            Low Stock Threshold
+                                          </Typography>
+                                          <Typography
+                                            variant="body2"
+                                            fontWeight={500}
+                                          >
+                                            {item1.lowStockThreshold !== null &&
+                                              item1.lowStockThreshold !== undefined
+                                              ? `${item1.lowStockThreshold} units`
+                                              : "No threshold set"}
+                                          </Typography>
+                                        </Box>
+                                        {(() => {
+                                          const alertInfo =
+                                            getComponentAlertInfo(item1);
+                                          const isInLowList =
+                                            isComponentInLowList(item1);
+                                          if (alertInfo.showAlert || isInLowList) {
+                                            return (
+                                              <Box
+                                                sx={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: 0.5,
+                                                  p: 1,
+                                                  borderRadius: 1,
+                                                  bgcolor: isInLowList
+                                                    ? "error.light"
+                                                    : alertInfo.severity === "warning"
+                                                      ? "warning.light"
+                                                      : "error.light",
+                                                  border: 1,
+                                                  borderColor: isInLowList
+                                                    ? "error.main"
+                                                    : alertInfo.severity === "warning"
+                                                      ? "warning.main"
+                                                      : "divider",
+                                                }}
+                                              >
+                                                <WarningIcon
+                                                  sx={{
+                                                    color: isInLowList
+                                                      ? "error.main"
+                                                      : alertInfo.color,
+                                                    fontSize: 16,
+                                                  }}
+                                                />
+                                                <Typography
+                                                  variant="caption"
+                                                  color={
+                                                    isInLowList
+                                                      ? "error.main"
+                                                      : alertInfo.color
+                                                  }
+                                                  fontWeight={600}
+                                                >
+                                                  {isInLowList
+                                                    ? "CRITICALLY LOW"
+                                                    : alertInfo.message}
+                                                </Typography>
+                                                {isInLowList && (
+                                                  <Chip
+                                                    label="DATABASE ALERT"
+                                                    size="small"
+                                                    color="error"
+                                                    variant="filled"
+                                                    sx={{
+                                                      fontSize: "0.5rem",
+                                                      height: 16,
+                                                    }}
+                                                  />
+                                                )}
+                                              </Box>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </Box>
+                                    </Box>
+
+                                    {/* Sensor requirements */}
+                                    {Array.isArray(item1.sensorAssignments) &&
+                                      item1.sensorAssignments.length > 0 && (
+                                        <Box sx={{ mb: 2 }}>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
+                                            Sensor Requirements
+                                          </Typography>
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              flexWrap: "wrap",
+                                              gap: 0.5,
+                                              mt: 0.5,
+                                            }}
+                                          >
+                                            {item1.sensorAssignments.map(
+                                              (sa, index) => (
+                                                <Chip
+                                                  key={index}
+                                                  label={`${sa.sensorName} (${sa.requiredQuantity})`}
+                                                  size="small"
+                                                  variant="outlined"
+                                                  color="primary"
+                                                />
+                                              ),
+                                            )}
+                                          </Box>
+                                        </Box>
+                                      )}
+
+                                    {/* Invoice file information */}
+                                    <Box sx={{ mb: 2 }}>
                                       <Typography
                                         variant="caption"
-                                        color="warning.main"
+                                        color="text.secondary"
                                       >
-                                        (No file)
+                                        Invoice Information
                                       </Typography>
+                                      {item1.invoiceFile ? (
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 1,
+                                            mt: 0.5,
+                                            p: 1,
+                                            bgcolor: "grey.50",
+                                            borderRadius: 1,
+                                          }}
+                                        >
+                                          <AttachFileIcon
+                                            sx={{
+                                              fontSize: 16,
+                                              color: "primary.main",
+                                            }}
+                                          />
+                                          <Box sx={{ flex: 1 }}>
+                                            <Typography
+                                              variant="body2"
+                                              fontWeight={500}
+                                            >
+                                              {item1.invoiceNumber ||
+                                                "Unknown Invoice"}
+                                            </Typography>
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                            >
+                                              {item1.invoiceFile}
+                                            </Typography>
+                                          </Box>
+                                          <Button
+                                            size="small"
+                                            startIcon={<DownloadIcon />}
+                                            onClick={() =>
+                                              handleDownloadInvoiceFile(
+                                                item1.invoiceNumber || "",
+                                                item1.invoiceFile || "",
+                                              )
+                                            }
+                                            sx={{
+                                              textTransform: "none",
+                                              fontSize: "0.75rem",
+                                            }}
+                                          >
+                                            Download
+                                          </Button>
+                                        </Box>
+                                      ) : item1.invoiceNumber ? (
+                                        <Box
+                                          sx={{
+                                            mt: 0.5,
+                                            p: 1,
+                                            bgcolor: "warning.light",
+                                            borderRadius: 1,
+                                          }}
+                                        >
+                                          <Typography
+                                            variant="body2"
+                                            color="warning.dark"
+                                          >
+                                            Invoice: {item1.invoiceNumber}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            color="warning.dark"
+                                          >
+                                            No file uploaded
+                                          </Typography>
+                                        </Box>
+                                      ) : (
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ mt: 0.5 }}
+                                        >
+                                          No invoice information
+                                        </Typography>
+                                      )}
                                     </Box>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {item1.lastUpdated?.toLocaleString?.() || "-"}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton
-                                    color="primary"
-                                    onClick={() => handleEditItem(item1)}
-                                  >
-                                    <EditIcon />
-                                  </IconButton>
-                                </TableCell>
-                              </motion.tr>
-                            ))}
+                                  </CardContent>
+                                </Card>
+                              </motion.div>
+                            ))
+                          ) : (
+                            <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
+                              <Typography color="text.secondary" variant="h6">
+                                {componentSearchQuery
+                                  ? "No components match your search"
+                                  : "No components in inventory"
+                                }
+                              </Typography>
+                              <Typography
+                                color="text.secondary"
+                                variant="body2"
+                                sx={{ mt: 1 }}
+                              >
+                                {componentSearchQuery
+                                  ? "Try adjusting your search terms"
+                                  : "Add your first component to get started"
+                                }
+                              </Typography>
+                            </Card>
+                          )}
                         </AnimatePresence>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Paper>
-              )}
+                      </Box>
+                    ) : (
+                      /* Desktop Table Layout */
+                      <Paper elevation={3} className="mb-8 overflow-hidden">
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Quantity</TableCell>
+                                <TableCell>Price per Item</TableCell>
+                                <TableCell>Supplier</TableCell>
+                                <TableCell>Supplier Contact</TableCell>
+                                <TableCell>Sensor Requirements</TableCell>
+                                <TableCell>Invoice File</TableCell>
+                                <TableCell>Last Updated</TableCell>
+                                <TableCell>Actions</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <AnimatePresence>
+                                {filteredComponents.length > 0 &&
+                                  filteredComponents.map((item1) => (
+                                    <motion.tr
+                                      key={item1.id}
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.3 }}
+                                    >
+                                      <TableCell className="font-bold">
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 1,
+                                          }}
+                                        >
+                                          {/* Alert Icon for Low Components */}
+                                          {(() => {
+                                            const alertInfo =
+                                              getComponentAlertInfo(item1);
+                                            const isInLowList =
+                                              isComponentInLowList(item1);
+                                            if (alertInfo.showAlert || isInLowList) {
+                                              return (
+                                                <Box
+                                                  sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    mr: 0.5,
+                                                  }}
+                                                >
+                                                  <WarningIcon
+                                                    sx={{
+                                                      color: isInLowList
+                                                        ? "error.main"
+                                                        : alertInfo.color,
+                                                      fontSize: 20,
+                                                    }}
+                                                    className={
+                                                      isInLowList
+                                                        ? "pulse-fast glow-critical"
+                                                        : "pulse-normal glow-warning"
+                                                    }
+                                                  />
+                                                </Box>
+                                              );
+                                            }
+                                            return null;
+                                          })()}
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: { xs: "center", md: "flex-end" },
-                  width: "100%",
-                }}
-              >
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleClickOpen}
-                  startIcon={<AddIcon />}
-                  size={isMobile ? "large" : "medium"}
-                  sx={{ minWidth: { xs: "200px", md: "auto" } }}
-                >
-                  Add {activeTab === 0 ? "Device" : "Component"}
-                </Button>
-              </Box>
+                                          {/* Critical Component Indicator */}
+                                          {item1.isCritical && (
+                                            <Chip
+                                              label="Critical"
+                                              size="small"
+                                              color="error"
+                                              variant="filled"
+                                              sx={{
+                                                fontSize: "0.6rem",
+                                                height: 18,
+                                                mr: 0.5,
+                                              }}
+                                            />
+                                          )}
+                                          {item1.name || "-"}
+                                        </Box>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Box className="flex items-center">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() =>
+                                              openAdjustmentDialog(item1, "decrease")
+                                            }
+                                          >
+                                            <RemoveIcon />
+                                          </IconButton>
+                                          <Typography className="mx-2">
+                                            {item1.quantity ?? "-"}
+                                          </Typography>
+                                          <IconButton
+                                            size="small"
+                                            onClick={() =>
+                                              openAdjustmentDialog(item1, "increase")
+                                            }
+                                          >
+                                            <AddIcon />
+                                          </IconButton>
+                                        </Box>
+                                      </TableCell>
+                                      <TableCell>
+                                        {item1.price !== undefined &&
+                                          item1.price !== null
+                                          ? `€${Number(item1.price).toFixed(2)}`
+                                          : "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        {item1.contactDetails?.supplier || "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        {item1.contactDetails?.email ? (
+                                          item1.contactDetails.email.includes("@") ? (
+                                            <a
+                                              href={`mailto:${item1.contactDetails.email}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                color: "#0369a1",
+                                                textDecoration: "underline",
+                                              }}
+                                            >
+                                              {item1.contactDetails.email}
+                                            </a>
+                                          ) : (
+                                            <a
+                                              href={
+                                                item1.contactDetails.email.startsWith(
+                                                  "http",
+                                                )
+                                                  ? item1.contactDetails.email
+                                                  : `https://${item1.contactDetails.email}`
+                                              }
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                color: "#0369a1",
+                                                textDecoration: "underline",
+                                              }}
+                                            >
+                                              {item1.contactDetails.email}
+                                            </a>
+                                          )
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {Array.isArray(item1.sensorAssignments) &&
+                                          item1.sensorAssignments.length > 0
+                                          ? item1.sensorAssignments
+                                            .map(
+                                              (sa) =>
+                                                `${sa.sensorName} (${sa.requiredQuantity})`,
+                                            )
+                                            .join(", ")
+                                          : "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        {item1.invoiceFile ? (
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 1,
+                                            }}
+                                          >
+                                            <AttachFileIcon
+                                              sx={{
+                                                fontSize: 16,
+                                                color: "text.secondary",
+                                              }}
+                                            />
+                                            <Button
+                                              size="small"
+                                              startIcon={<DownloadIcon />}
+                                              onClick={() =>
+                                                handleDownloadInvoiceFile(
+                                                  item1.invoiceNumber || "",
+                                                  item1.invoiceFile || "",
+                                                )
+                                              }
+                                              sx={{
+                                                textTransform: "none",
+                                                fontSize: "0.75rem",
+                                                minWidth: "auto",
+                                              }}
+                                            >
+                                              {item1.invoiceFile.length > 20
+                                                ? `${item1.invoiceFile.substring(0, 17)}...`
+                                                : item1.invoiceFile}
+                                            </Button>
+                                          </Box>
+                                        ) : item1.invoiceNumber ? (
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 1,
+                                            }}
+                                          >
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                            >
+                                              {item1.invoiceNumber}
+                                            </Typography>
+                                            <Typography
+                                              variant="caption"
+                                              color="warning.main"
+                                            >
+                                              (No file)
+                                            </Typography>
+                                          </Box>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {item1.lastUpdated?.toLocaleString?.() || "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <IconButton
+                                          color="primary"
+                                          onClick={() => handleEditItem(item1)}
+                                        >
+                                          <EditIcon />
+                                        </IconButton>
+                                      </TableCell>
+                                    </motion.tr>
+                                  ))}
+                              </AnimatePresence>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper>
+                    )}
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: { xs: "center", md: "flex-end" },
+                        width: "100%",
+                      }}
+                    >
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleClickOpen}
+                        startIcon={<AddIcon />}
+                        size={isMobile ? "large" : "medium"}
+                        sx={{ minWidth: { xs: "200px", md: "auto" } }}
+                      >
+                        Add {activeTab === 0 ? "Device" : "Component"}
+                      </Button>
+                    </Box>
+                  </>
+                );
+              })()}
             </>
           )}
 
