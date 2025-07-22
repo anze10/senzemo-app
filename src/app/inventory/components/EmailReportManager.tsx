@@ -7,7 +7,6 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
-  Divider,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -470,8 +469,8 @@ const EmailReportManager: React.FC = () => {
                       </Alert>
                     ) : (
                       <Alert severity="warning" sx={{ mb: 2 }}>
-                        Email address not found. Please ensure you're logged in
-                        properly.
+                        Email address not found. Please ensure you&apos;re
+                        logged in properly.
                       </Alert>
                     )}
                   </Box>

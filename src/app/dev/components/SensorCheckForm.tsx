@@ -58,7 +58,6 @@ import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent";
-import Izhod from "../../inventory/components/Izhod";
 
 // Konfiguracija za avtomatsko odštevanje komponent
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah

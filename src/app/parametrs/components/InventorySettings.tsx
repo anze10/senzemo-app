@@ -1,13 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  Box,
-  Paper,
-  Typography,
-  FormControlLabel,
-  Switch,
-  Divider,
   Alert,
+  Box,
+  Divider,
+  FormControlLabel,
+  Paper,
+  Switch,
+  Typography,
 } from "@mui/material";
 
 // Konfiguracija za avtomatsko odštevanje komponent
@@ -68,7 +68,8 @@ export function InventorySettings() {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Ko je omogočeno, se komponente avtomatsko odštejejo iz zaloge
-                vsakič ko pritisnete "Accept" gumb pri sestavljanju senzorjev.
+                vsakič ko pritisnete &quot;Accept&quot; gumb pri sestavljanju
+                senzorjev.
               </Typography>
             </Box>
           }

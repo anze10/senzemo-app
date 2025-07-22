@@ -5,7 +5,6 @@ import {
   getDetailedSensorInventory,
   getLowComponents,
 } from "src/app/inventory/components/backent";
-import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

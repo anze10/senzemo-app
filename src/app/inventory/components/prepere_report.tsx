@@ -183,12 +183,6 @@ interface ComponentStock {
   lastUpdated: Date;
 }
 
-interface LowStockItem {
-  name: string;
-  quantity: number;
-  type: "sensor" | "component";
-}
-
 interface InventoryReportProps {
   sensorStock: SensorStock[];
   componentStock: ComponentStock[];

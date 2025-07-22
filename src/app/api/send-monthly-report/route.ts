@@ -1,19 +1,16 @@
-import { NextRequest } from "next/server";
+// import { NextRequest } from "next/server";
 import { InventoryEmailTemplate } from "src/app/inventory/components/resender";
 import { Resend } from "resend";
 import {
-  getDetailedComponentInventory,
   getDetailedSensorInventory,
   getLowComponents,
-  getProductionHierarchy,
-  showAllComponents,
 } from "src/app/inventory/components/backent";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const today = new Date();
     const dayOfTheMonth = today.getDate();
@@ -27,17 +24,8 @@ export async function POST(request: NextRequest) {
       },
     });
     // Fetch real inventory data
-    const [
-      sensorData,
-      componentData,
-      rawSensorInventory,
-      componentDataDetailed,
-      lowStockComponents,
-    ] = await Promise.all([
-      getProductionHierarchy(),
-      showAllComponents(),
+    const [rawSensorInventory, lowStockComponents] = await Promise.all([
       getDetailedSensorInventory(),
-      getDetailedComponentInventory(),
       getLowComponents(),
     ]);
 
@@ -64,10 +52,6 @@ export async function POST(request: NextRequest) {
         ),
       }),
     );
-
-    // Calculate statistics
-    const uniqueSensorTypes = sensorData.length;
-    const uniqueComponentTypes = componentData.length;
 
     // Generate PDF report buffer for attachment
     console.log("Generating PDF report buffer for email attachment...");

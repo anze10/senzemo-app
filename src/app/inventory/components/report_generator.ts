@@ -2,9 +2,9 @@ import { pdf } from "@react-pdf/renderer";
 import React from "react";
 import InventoryReport from "./prepere_report";
 import {
+  getLowComponents,
   getSensorsSortedByFrequency,
   showAllComponents,
-  getLowComponents,
 } from "./backent";
 import type { DocumentProps } from "@react-pdf/renderer";
 

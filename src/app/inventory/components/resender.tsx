@@ -1,6 +1,4 @@
 import * as React from "react";
-import { get } from "request";
-import { getLowComponents } from "./backent";
 
 interface SensorInventoryItem {
   sensorName: string;
