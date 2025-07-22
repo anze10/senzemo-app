@@ -15,24 +15,24 @@ interface InventoryEmailTemplateProps {
   recipientName: string;
   reportDate: string;
   sensorInventory: SensorInventoryItem[];
-  // lowStockItems: number;
-  // reportUrl?: string;
+  lowStockItems: Array<{
+    componentId: number;
+    componentName: string;
+    availableQuantity: number;
+  }>;
+  reportUrl?: string;
 }
 
 export function InventoryEmailTemplate({
   recipientName,
   reportDate,
   sensorInventory,
-  // lowStockItems,
-  // reportUrl,
+  lowStockItems,
+  reportUrl = "localhost:3000/inventory", // Default URL if not provided
 }: InventoryEmailTemplateProps) {
-  const [lowStockItem, setLowStockItem] = React.useState<
-    { componentId: number; componentName: string; availableQuantity: number }[]
-  >([]);
 
-  React.useEffect(() => {
-    getLowComponents().then(setLowStockItem);
-  }, []);
+
+
 
   return (
     <div
@@ -146,7 +146,7 @@ export function InventoryEmailTemplate({
           </div>
 
           {/* Low Stock Alert */}
-          {lowStockItem.length > 0 && (
+          {lowStockItems.length > 0 && (
             <div
               style={{
                 backgroundColor: "#FEF2F2",
@@ -166,7 +166,7 @@ export function InventoryEmailTemplate({
                 ⚠️ Low Stock Alert
               </h3>
               <p style={{ color: "#B91C1C", margin: "0", fontSize: "14px" }}>
-                {lowStockItem.length} items are running low on stock. Please review
+                {lowStockItems.length} items are running low on stock. Please review
                 the detailed report and consider restocking.
               </p>
             </div>
@@ -193,9 +193,11 @@ export function InventoryEmailTemplate({
             dashboard.
           </p>
 
-          {/* reportUrl && (
+          {reportUrl && (
             <a
-              href={reportUrl}
+              href={`https://${reportUrl.replace(/^https?:\/\//, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 display: "inline-block",
                 backgroundColor: "#2563EB",
@@ -209,7 +211,7 @@ export function InventoryEmailTemplate({
             >
               View Full Report
             </a>
-          ) */}
+          )}
         </div>
 
         {/* Footer */}

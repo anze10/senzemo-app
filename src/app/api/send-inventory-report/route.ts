@@ -9,49 +9,18 @@ import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-/* interface InventoryReportData {
-  recipientEmails: string[];
-  recipientName: string;
-  reportDate: string;
-  lowStockItems: number;
-  reportUrl?: string;
-  subject?: string;
-  includePdfAttachment?: boolean;
-  lowStockThreshold?: number;
-} */
-
-export async function GET() {
-  // const body: InventoryReportData = await request.json();
-
-  /* const {
-      recipientEmails,
-      recipientName,
-      reportDate,
-      lowStockItems,
-      reportUrl,
-      subject = `Senzemo Inventory Report - ${reportDate}`,
-      includePdfAttachment = true,
-      lowStockThreshold = 5,
-    } = body; */
-
+export async function POST() {
   const today = new Date();
-  const dayOfTheMonth = today.getDate();
 
-  const mailingList = await prisma.mailing.findMany({
-    where: {
-      Date_of_monthly_report: dayOfTheMonth,
-    },
-    include: {
-      user: true,
-    },
-  });
+  // Test email configuration - only send to one test email
+  const testEmail = "anze.repse@gmail.com"; // Replace with your test email
+  const testUserName = "Test User";
 
   const componentLowComponents = await getLowComponents();
 
   // Get detailed inventory data for email
   const rawSensorInventory = await getDetailedSensorInventory();
 
-  // Ensure proper typing for email template
   const detailedSensorInventory = rawSensorInventory.map(
     (sensor: {
       sensorName: string;
@@ -88,26 +57,45 @@ export async function GET() {
     // Continue without attachment rather than failing the email
   }
 
-  for (const mail of mailingList) {
-    const fields = {
-      from: "anze.repse@sensedge.co", // Use Resend's test domain
-      to: mail.user.email,
-      subject: `Senzemo Inventory Report - ${today.toDateString()}`,
-      react: InventoryEmailTemplate({
-        recipientName: mail.user.name || "Senzemo User",
-        reportDate: today.toDateString(),
-        sensorInventory: detailedSensorInventory,
-        // lowStockItems: componentLowComponents.length,
-        // reportUrl,
-      }),
-      attachments,
-    };
+  // Send test email to single recipient
+  const fields = {
+    from: "delivered@resend.dev", // Use Resend's test domain
+    to: testEmail,
+    subject: `Senzemo Inventory Report (TEST) - ${today.toDateString()}`,
+    react: InventoryEmailTemplate({
+      recipientName: testUserName,
+      reportDate: today.toDateString(),
+      sensorInventory: detailedSensorInventory,
+      lowStockItems: componentLowComponents,
+      // reportUrl,
+    }),
+    attachments,
+  };
 
-    // Send email using Resend
-    const { error } = await resend.emails.send(fields);
+  // Send email using Resend
+  try {
+    const { data, error } = await resend.emails.send(fields);
 
     if (error) {
-      console.error("Error sending email:", error);
+      console.error("Error sending test email:", error);
+      return Response.json(
+        { error: "Failed to send test email", details: error },
+        { status: 500 },
+      );
     }
+
+    console.log("Test email sent successfully:", data);
+    return Response.json({
+      success: true,
+      message: "Test inventory email sent successfully",
+      emailId: data?.id,
+      sentTo: testEmail,
+    });
+  } catch (emailError) {
+    console.error("Error sending test email:", emailError);
+    return Response.json(
+      { error: "Failed to send test email", details: emailError },
+      { status: 500 },
+    );
   }
 }

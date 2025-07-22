@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import {
   getDetailedComponentInventory,
   getDetailedSensorInventory,
+  getLowComponents,
   getProductionHierarchy,
   showAllComponents,
 } from "src/app/inventory/components/backent";
@@ -26,11 +27,18 @@ export async function POST(request: NextRequest) {
       },
     });
     // Fetch real inventory data
-    const [sensorData, componentData, rawSensorInventory] = await Promise.all([
+    const [
+      sensorData,
+      componentData,
+      rawSensorInventory,
+      componentDataDetailed,
+      lowStockComponents,
+    ] = await Promise.all([
       getProductionHierarchy(),
       showAllComponents(),
       getDetailedSensorInventory(),
       getDetailedComponentInventory(),
+      getLowComponents(),
     ]);
 
     // Ensure proper typing for email template
@@ -77,6 +85,7 @@ export async function POST(request: NextRequest) {
           recipientName: mail.user.name || "Senzemo User",
           reportDate: today.toDateString(),
           sensorInventory: detailedSensorInventory,
+          lowStockItems: lowStockComponents,
         }),
         attachments: [
           {
