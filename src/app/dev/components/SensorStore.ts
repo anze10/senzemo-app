@@ -54,6 +54,7 @@ export interface SensorState {
   current_sensor_index: number;
   target_sensor_data?: ParsedSensorData;
   sensors: RatedSensorData[];
+  OrderID: number | null; // Optional Order ID for the current sensor data
   start_time: number; // Time in milliseconds
   end_time: number; // Time in milliseconds
   reset: () => void;
@@ -62,6 +63,7 @@ export interface SensorState {
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
   set_sensor_data: (sensor_number: number, data: ParsedSensorData) => void;
+  set_order_id: (orderId: number | null) => void;
   remove_duplicate_sensors: () => void;
   remove_sensor: (sensor_index: number) => void;
   validate_sensor_uniqueness: () => {
@@ -75,6 +77,7 @@ const initial_state = {
   current_sensor_index: 0,
   start_time: 0,
   end_time: 0,
+  OrderID: null,
   sensors: [],
 } satisfies Partial<SensorState>;
 
@@ -89,6 +92,13 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
     set(
       produce((state: SensorState) => {
         state.target_sensor_data = data;
+      }),
+    );
+  },
+  set_order_id: (orderId: number | null) => {
+    set(
+      produce((state: SensorState) => {
+        state.OrderID = orderId;
       }),
     );
   },

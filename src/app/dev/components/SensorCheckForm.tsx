@@ -53,7 +53,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
-import { InsertintoDB, type ProductionListWithoutId } from "./PrismaCode";
+import { insertIntoDB, type ProductionListWithoutId } from "./PrismaCode";
 import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
@@ -100,7 +100,7 @@ export function SensorCheckForm() {
     setAutoDeductComponentsState(enabled);
     setAutoDeductComponents(enabled);
   };
-
+  const orderId = useSensorStore((state) => state.OrderID);
   const current_sensor_index = useSensorStore(
     (state) => state.current_sensor_index,
   );
@@ -510,7 +510,7 @@ export function SensorCheckForm() {
         "Final dataforDB being sent to database:",
         JSON.stringify(dataforDB, null, 2),
       );
-      return InsertintoDB(dataforDB);
+      return insertIntoDB(dataforDB, orderId);
     },
     onMutate: async () => {
       console.log("DATABASE MUTATION STARTING - onMutate");

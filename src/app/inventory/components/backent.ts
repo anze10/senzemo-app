@@ -5,6 +5,7 @@ import type {
   ComponentStockItem,
   LogEntry,
 } from "~/app/inventory/components/InventoryManagement";
+
 //import { getUser } from "src/server/LOGIN_LUCIA_ACTION/lucia"
 
 export async function getSensors() {
@@ -1918,7 +1919,6 @@ export async function getDeviceDetailsByDevEUI(devEUI: string) {
             id: true,
             customerName: true,
             orderDate: true,
-            quantity: true,
           },
         },
       },
@@ -2631,9 +2631,9 @@ export async function getLowComponents() {
 export async function getAllOrders() {
   try {
     const orders = await prisma.order.findMany({
-      orderBy: { orderDate: "desc" },
+      orderBy: { id: "desc" },
       include: {
-        senzor: {
+        Senzor: {
           select: { sensorName: true },
         },
         productionLists: {
@@ -2650,17 +2650,11 @@ export async function getAllOrders() {
       id: order.id,
       customerName: order.customerName,
       assemblerName: order.assemblerName,
+      orderNumber: order.orderNumber,
       senzorId: order.senzorId,
-      sensorName: order.senzor.sensorName,
-      quantity: order.quantity,
-      frequency: order.frequency,
-      orderDate: order.orderDate,
-      otherParameters: order.otherParameters,
+      sensorName: order.Senzor?.sensorName || null,
       assignedDevices: order.productionLists.length,
-      remainingToAssign: Math.max(
-        0,
-        order.quantity - order.productionLists.length,
-      ),
+      date: order.orderDate.toISOString(),
     }));
   } catch (error) {
     console.error("Error fetching orders:", error);

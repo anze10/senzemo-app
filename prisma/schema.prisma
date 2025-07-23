@@ -200,14 +200,13 @@ model Sale {
 model Order {
   id              Int              @id @default(autoincrement())
   customerName    String
+  orderNumber     Int              @unique
   assemblerName   String
-  senzorId        Int
-  quantity        Int
-  frequency       String
-  orderDate       DateTime
-  otherParameters String?
+  orderDate       DateTime         @default(now())
   productionLists ProductionList[]
-  senzor          Senzor           @relation(fields: [senzorId], references: [id])
+
+  Senzor   Senzor? @relation(fields: [senzorId], references: [id])
+  senzorId Int?
 }
 
 model ProductionList {

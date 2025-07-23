@@ -41,11 +41,12 @@ type FrontendSensor = {
   sensorName: string;
   familyId: number;
   productId: number;
+  frequency?: string | null;
   photograph?: string | null;
   payloadDecoder?: string | null;
   decoder?: JsonValue;
-  description?: string | null;
   zpl?: string | null;
+  description?: string | null;
 };
 
 export default function SensorList() {
@@ -76,9 +77,11 @@ export default function SensorList() {
         sensorName: sensor.sensorName,
         familyId: sensor.familyId,
         productId: sensor.productId,
+        frequency: sensor.frequency,
         photograph: sensor.photograph,
         payloadDecoder: sensor.payloadDecoder,
         decoder: sensor.decoder,
+        zpl: sensor.zpl,
         description: sensor.description,
       }));
     },
@@ -91,12 +94,12 @@ export default function SensorList() {
         sensorName: params.sensorName,
         familyId: params.familyId,
         productId: params.productId,
+        frequency: params.frequency || null,
         photograph: params.photograph || null,
         payloadDecoder: params.payloadDecoder || null,
         decoder: params.decoder !== undefined ? params.decoder : null,
-        description: params.description || null,
         zpl: params.zpl || null,
-        frequency: null,
+        description: params.description || null,
       });
     },
     onSuccess: () => {
@@ -123,12 +126,12 @@ export default function SensorList() {
         sensorName: params.sensorName,
         familyId: params.familyId,
         productId: params.productId,
+        frequency: params.frequency || null,
         photograph: params.photograph || null,
         payloadDecoder: params.payloadDecoder || null,
         decoder: params.decoder !== undefined ? params.decoder : null,
-        description: params.description || null,
         zpl: params.zpl || null,
-        frequency: null,
+        description: params.description || null,
       });
     },
     onSuccess: () => {
@@ -172,13 +175,31 @@ export default function SensorList() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
+    // Parse JSON decoder field
+    let decoderValue: JsonValue = null;
+    const decoderString = formData.get("decoder") as string;
+    if (decoderString?.trim()) {
+      try {
+        decoderValue = JSON.parse(decoderString);
+      } catch {
+        setSnackbar({
+          open: true,
+          message: "Nepravilna JSON sintaksa v polju Decoder",
+          severity: "error",
+        });
+        return;
+      }
+    }
+
     const sensorData = {
       sensorName: formData.get("sensorName") as string,
       familyId: Number(formData.get("familyId")),
       productId: Number(formData.get("productId")),
+      frequency: formData.get("frequency") as string,
       photograph: formData.get("photograph") as string,
       payloadDecoder: formData.get("payloadDecoder") as string,
-      decoder: formData.get("decoder") as JsonValue,
+      decoder: decoderValue,
+      zpl: formData.get("zpl") as string,
       description: formData.get("description") as string,
     };
 
@@ -242,36 +263,40 @@ export default function SensorList() {
           elevation={3}
           sx={{
             borderRadius: 2,
-            overflow: "hidden",
-            "& .MuiTable-root": {
-              minWidth: { xs: 800, md: "auto" },
-            },
+            overflow: "auto",
+            maxHeight: "70vh",
           }}
         >
           <Table stickyHeader>
             <TableHead>
               <TableRow>
                 {[
-                  "ID",
-                  "Ime senzorja",
-                  "ID družine",
-                  "ID produkta",
-                  "Fotografija",
-                  "Payload Decoder",
-                  "Decoder",
-                  "Opis",
-                  "Akcije",
+                  { label: "ID", minWidth: 60 },
+                  { label: "Ime senzorja", minWidth: 150 },
+                  { label: "ID družine", minWidth: 100 },
+                  { label: "ID produkta", minWidth: 100 },
+                  { label: "Frekvenca", minWidth: 120 },
+                  { label: "Fotografija", minWidth: 140 },
+                  { label: "Payload Decoder", minWidth: 180 },
+                  { label: "Decoder", minWidth: 180 },
+                  { label: "ZPL", minWidth: 180 },
+                  { label: "Opis", minWidth: 140 },
+                  { label: "Akcije", minWidth: 100 },
                 ].map((header) => (
                   <TableCell
-                    key={header}
+                    key={header.label}
                     sx={{
                       backgroundColor: "primary.main",
                       color: "primary.contrastText",
                       fontWeight: 600,
                       fontSize: { xs: "0.875rem", md: "1rem" },
+                      minWidth: header.minWidth,
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 10,
                     }}
                   >
-                    {header}
+                    {header.label}
                   </TableCell>
                 ))}
               </TableRow>
@@ -286,58 +311,186 @@ export default function SensorList() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <TableCell>{sensor.id}</TableCell>
-                    <TableCell sx={{ fontWeight: 500 }}>
-                      {sensor.sensorName}
-                    </TableCell>
-                    <TableCell>{sensor.familyId}</TableCell>
-                    <TableCell>{sensor.productId}</TableCell>
-                    <TableCell>{sensor.photograph}</TableCell>
+                    <TableCell sx={{ minWidth: 60 }}>{sensor.id}</TableCell>
                     <TableCell
                       sx={{
-                        maxWidth: "200px",
+                        fontWeight: 500,
+                        minWidth: 150,
+                        maxWidth: 200,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {sensor.payloadDecoder}
+                      {sensor.sensorName}
                     </TableCell>
-                    <TableCell sx={{ maxWidth: "300px" }}>
+                    <TableCell sx={{ minWidth: 100 }}>
+                      {sensor.familyId}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>
+                      {sensor.productId}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        minWidth: 120,
+                        maxWidth: 150,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {sensor.frequency || "-"}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 140, maxWidth: 180 }}>
+                      {sensor.photograph ? (
+                        <Box
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: "0.75rem",
+                          }}
+                          title={sensor.photograph}
+                        >
+                          {sensor.photograph.length > 20
+                            ? `${sensor.photograph.substring(0, 20)}...`
+                            : sensor.photograph}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180, maxWidth: 220 }}>
+                      {sensor.payloadDecoder ? (
+                        <Box
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace",
+                            backgroundColor: "grey.50",
+                            p: 0.5,
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "grey.300",
+                            cursor: "pointer",
+                            "&:hover": {
+                              backgroundColor: "grey.100",
+                            },
+                          }}
+                          title={sensor.payloadDecoder}
+                        >
+                          {sensor.payloadDecoder.length > 30
+                            ? `${sensor.payloadDecoder.substring(0, 30)}...`
+                            : sensor.payloadDecoder}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180, maxWidth: 220 }}>
+                      {sensor.decoder ? (
+                        <Box
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace",
+                            backgroundColor: "grey.50",
+                            p: 0.5,
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "grey.300",
+                            cursor: "pointer",
+                            "&:hover": {
+                              backgroundColor: "grey.100",
+                            },
+                          }}
+                          title={JSON.stringify(sensor.decoder, null, 2)}
+                        >
+                          {JSON.stringify(sensor.decoder).length > 30
+                            ? `${JSON.stringify(sensor.decoder).substring(0, 30)}...`
+                            : JSON.stringify(sensor.decoder)}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180, maxWidth: 220 }}>
+                      {sensor.zpl ? (
+                        <Box
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace",
+                            backgroundColor: "grey.50",
+                            p: 0.5,
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "grey.300",
+                            cursor: "pointer",
+                            "&:hover": {
+                              backgroundColor: "grey.100",
+                            },
+                          }}
+                          title={sensor.zpl}
+                        >
+                          {sensor.zpl.length > 30
+                            ? `${sensor.zpl.substring(0, 30)}...`
+                            : sensor.zpl}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 140, maxWidth: 180 }}>
+                      {sensor.description ? (
+                        <Box
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={sensor.description}
+                        >
+                          {sensor.description.length > 25
+                            ? `${sensor.description.substring(0, 25)}...`
+                            : sensor.description}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>
                       <Box
                         sx={{
-                          maxHeight: 100,
-                          overflow: "auto",
-                          fontSize: "0.75rem",
-                          fontFamily: "monospace",
-                          backgroundColor: "grey.50",
-                          p: 1,
-                          borderRadius: 1,
+                          display: "flex",
+                          gap: 0.5,
+                          justifyContent: "center",
                         }}
                       >
-                        {JSON.stringify(sensor.decoder, null, 2)}
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={{ maxWidth: "200px" }}>
-                      {sensor.description}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
                         <IconButton
                           onClick={() => {
                             setEditingSensor(sensor);
                             setOpen(true);
                           }}
                           color="primary"
-                          size={isMobile ? "large" : "medium"}
+                          size="small"
+                          title="Uredi senzor"
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           color="error"
                           onClick={() => deleteMutation.mutate(sensor.id)}
-                          size={isMobile ? "large" : "medium"}
+                          size="small"
+                          title="Izbriši senzor"
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Box>
                     </TableCell>
@@ -352,10 +505,14 @@ export default function SensorList() {
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        maxWidth="md"
+        maxWidth="xl"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 },
+          sx: {
+            borderRadius: isMobile ? 0 : 2,
+            maxHeight: "95vh",
+          },
         }}
       >
         <DialogTitle
@@ -376,6 +533,11 @@ export default function SensorList() {
                 gap: { xs: 2, md: 3 },
               }}
             >
+              {/* Basic Information */}
+              <Typography variant="h6" color="primary" sx={{ mb: 1 }}>
+                Osnovne informacije
+              </Typography>
+
               <TextField
                 fullWidth
                 name="sensorName"
@@ -383,6 +545,7 @@ export default function SensorList() {
                 defaultValue={editingSensor?.sensorName}
                 required
               />
+
               <Box
                 sx={{
                   display: "flex",
@@ -407,46 +570,23 @@ export default function SensorList() {
                   required
                 />
               </Box>
+
+              <TextField
+                fullWidth
+                name="frequency"
+                label="Frekvenca"
+                defaultValue={editingSensor?.frequency}
+                placeholder="npr. 868 MHz"
+              />
+
               <TextField
                 fullWidth
                 name="photograph"
                 label="URL fotografije"
                 defaultValue={editingSensor?.photograph}
+                placeholder="https://example.com/image.jpg"
               />
-              <TextField
-                fullWidth
-                name="payloadDecoder"
-                label="Payload Decoder"
-                defaultValue={editingSensor?.payloadDecoder}
-                multiline
-                minRows={4}
-                maxRows={8}
-                inputProps={{
-                  maxLength: 5000,
-                  style: {
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                    whiteSpace: "pre-wrap",
-                  },
-                }}
-              />
-              <TextField
-                fullWidth
-                name="decoder"
-                label="Decoder (JSON)"
-                defaultValue={
-                  editingSensor?.decoder
-                    ? JSON.stringify(editingSensor.decoder, null, 2)
-                    : ""
-                }
-                multiline
-                minRows={6}
-                maxRows={12}
-                helperText='Enter valid JSON (e.g., { "key": "value" })'
-                InputProps={{
-                  style: { fontFamily: "monospace" },
-                }}
-              />
+
               <TextField
                 fullWidth
                 name="description"
@@ -454,7 +594,116 @@ export default function SensorList() {
                 defaultValue={editingSensor?.description}
                 multiline
                 rows={3}
+                placeholder="Opis senzorja..."
               />
+
+              {/* Technical Information */}
+              <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 1 }}>
+                Tehnične informacije
+              </Typography>
+
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  fullWidth
+                  name="payloadDecoder"
+                  label="Payload Decoder"
+                  defaultValue={editingSensor?.payloadDecoder}
+                  multiline
+                  minRows={6}
+                  maxRows={12}
+                  placeholder="function decode(payload) {&#10;  // Your decoder logic here&#10;  return {};&#10;}"
+                  inputProps={{
+                    maxLength: 10000,
+                    style: {
+                      fontFamily: "Fira Code, Monaco, Consolas, monospace",
+                      fontSize: "0.875rem",
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                    },
+                  }}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      backgroundColor: "grey.50",
+                    },
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, display: "block" }}
+                >
+                  JavaScript koda za dekodiranje payload-a
+                </Typography>
+              </Box>
+
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  fullWidth
+                  name="decoder"
+                  label="Decoder Configuration (JSON)"
+                  defaultValue={
+                    editingSensor?.decoder
+                      ? JSON.stringify(editingSensor.decoder, null, 2)
+                      : ""
+                  }
+                  multiline
+                  minRows={8}
+                  maxRows={16}
+                  placeholder='{&#10;  "type": "lorawan",&#10;  "version": "1.0",&#10;  "parameters": {&#10;    "key": "value"&#10;  }&#10;}'
+                  InputProps={{
+                    style: {
+                      fontFamily: "Fira Code, Monaco, Consolas, monospace",
+                      fontSize: "0.875rem",
+                      lineHeight: 1.5,
+                    },
+                  }}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      backgroundColor: "grey.50",
+                    },
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, display: "block" }}
+                >
+                  JSON konfiguracija za decoder (pustite prazno za null)
+                </Typography>
+              </Box>
+
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  fullWidth
+                  name="zpl"
+                  label="ZPL Template"
+                  defaultValue={editingSensor?.zpl}
+                  multiline
+                  minRows={6}
+                  maxRows={12}
+                  placeholder="^XA&#10;^FO50,50^A0N,50,50^FDSenzor: {sensorName}^FS&#10;^XZ"
+                  InputProps={{
+                    style: {
+                      fontFamily: "Fira Code, Monaco, Consolas, monospace",
+                      fontSize: "0.875rem",
+                      lineHeight: 1.5,
+                    },
+                  }}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      backgroundColor: "grey.50",
+                    },
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, display: "block" }}
+                >
+                  ZPL template za tiskanje etiket
+                </Typography>
+              </Box>
+
               <Button
                 type="submit"
                 variant="contained"
@@ -464,6 +713,7 @@ export default function SensorList() {
                   py: { xs: 1.5, md: 2 },
                   fontSize: { xs: "1rem", md: "1.1rem" },
                   fontWeight: 600,
+                  mt: 2,
                 }}
               >
                 {editingSensor ? "Shrani spremembe" : "Dodaj senzor"}

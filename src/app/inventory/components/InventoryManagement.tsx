@@ -64,7 +64,7 @@ import {
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
-  getAllOrders,
+  // getAllOrders,
   getInvoiceFileDownloadUrl,
   getLowComponents,
   getProductionByFrequency,
@@ -347,7 +347,13 @@ export default function InventoryManagementPage() {
   }, [activeTab]);
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({
+      file,
+      componentName,
+    }: {
+      file: File;
+      componentName: string;
+    }) => {
       // Create a new file with the invoice number as filename, preserving extension
       const fileExtension = file.name.split(".").pop();
       const newFileName = `${invoiceNumber}.${fileExtension}`;
@@ -358,7 +364,7 @@ export default function InventoryManagementPage() {
       const filePath = await uploadPDFToB2(
         renamedFile,
         invoiceNumber,
-        "components",
+        componentName,
       );
       return filePath; // Return the actual file path from B2
     },
@@ -413,13 +419,13 @@ export default function InventoryManagementPage() {
     refetchOnWindowFocus: false,
   });
 
-  // Query to fetch all orders for device assignment
-  const { data: allOrders = [] } = useQuery({
-    queryKey: ["orders"],
-    queryFn: getAllOrders,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  // // Query to fetch all orders for device assignment
+  // const { data: allOrders = [] } = useQuery({
+  //   queryKey: ["orders"],
+  //   queryFn: getAllOrders,
+  //   staleTime: 5 * 60 * 1000,
+  //   refetchOnWindowFocus: false,
+  // });
 
   const { data: productionHierarchy = [] } = useQuery({
     queryKey: ["production-hierarchy"],
@@ -936,7 +942,10 @@ export default function InventoryManagementPage() {
       if (invoiceFile) {
         setUploading(true);
         try {
-          fileKey = await uploadMutation.mutateAsync(invoiceFile);
+          fileKey = await uploadMutation.mutateAsync({
+            file: invoiceFile,
+            componentName: updatedItem.name,
+          });
         } catch (error) {
           setUploading(false);
           throw new Error(`File upload failed: ${(error as Error).message}`);
@@ -1079,7 +1088,10 @@ export default function InventoryManagementPage() {
       ) {
         setUploading(true);
         try {
-          fileKey = await uploadMutation.mutateAsync(invoiceFile);
+          fileKey = await uploadMutation.mutateAsync({
+            file: invoiceFile,
+            componentName: (currentAdjustItem as ComponentStockItem).name,
+          });
         } catch (error) {
           setUploading(false);
           throw new Error(`File upload failed: ${(error as Error).message}`);
@@ -4270,7 +4282,7 @@ export default function InventoryManagementPage() {
                 </Button>
               </Box>
 
-              {/* Order Selection for Assignment */}
+              {/* Order Selection for Assignment
               {!currentDevice?.isAvailable ? null : (
                 <Box sx={{ mt: 3 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -4294,7 +4306,7 @@ export default function InventoryManagementPage() {
                     ))}
                   </Select>
                 </Box>
-              )}
+              )} */}
 
               {/* Reason Input */}
               <Box sx={{ mt: 3 }}>

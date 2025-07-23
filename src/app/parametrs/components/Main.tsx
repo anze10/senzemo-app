@@ -29,7 +29,7 @@ import type {
   SensorParserCombinator,
 } from "~/app/dev/components/Reader/ParseSensorData";
 import { useQuery } from "@tanstack/react-query";
-import { GetSensors } from "./db";
+import { CreateOrder, GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
 import { InventorySettings } from "./InventorySettings";
 
@@ -52,6 +52,7 @@ export default function Parameters() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const router = useRouter();
+  const set_order_id = useSensorStore((state) => state.set_order_id);
   const set_target_sensor_data = useSensorStore(
     (state) => state.set_target_sensor_data,
   );
@@ -309,6 +310,10 @@ export default function Parameters() {
                     order_number: addToStock ? "" : order_number,
                     ...formValues,
                   };
+
+                  set_order_id(
+                    await CreateOrder(company_name, Number(order_number)),
+                  );
 
                   set_target_sensor_data(formData);
                   console.log("Data stored:", formData);

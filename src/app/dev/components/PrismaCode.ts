@@ -24,11 +24,28 @@ export type ProductionListWithoutId = Omit<ProductionList, "id">;
 
 // export async function checkDevEUIUniqueness(devEUI: string): Promise<boolean> {
 
-export async function InsertintoDB(data: ProductionListWithoutId) {
-  const record = await prisma.productionList.upsert({
+export async function insertIntoDB(
+  data: ProductionListWithoutId,
+  orderId: number | null,
+) {
+  const existing = await prisma.productionList.findUnique({
     where: { DevEUI: data.DevEUI ?? undefined },
-    update: {},
-    create: { ...data },
   });
-  return record;
+
+  if (existing) {
+    if (orderId && existing.orderId == null) {
+      return await prisma.productionList.update({
+        where: { DevEUI: data.DevEUI ?? undefined },
+        data: { orderId: orderId },
+      });
+    }
+    return existing;
+  }
+
+  return await prisma.productionList.create({
+    data: {
+      ...data,
+      orderId: orderId ?? null,
+    },
+  });
 }

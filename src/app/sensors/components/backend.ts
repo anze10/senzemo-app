@@ -1,48 +1,46 @@
 "use server";
 
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
-
 import type { Senzor } from "@prisma/client";
-import type { JsonValue } from "@prisma/client/runtime/library";
 
 export async function UpdateorAddSenor(params: Senzor) {
+  const updateData = {
+    sensorName: params.sensorName,
+    familyId: params.familyId,
+    productId: params.productId,
+    photograph: params.photograph,
+    payloadDecoder: params.payloadDecoder,
+    description: params.description,
+    zpl: params.zpl,
+    frequency: params.frequency,
+    ...(params.decoder !== null && { decoder: params.decoder }),
+  };
+
   return prisma.senzor.upsert({
     where: { id: params.id },
-    update: {
-      sensorName: params.sensorName,
-      familyId: params.familyId,
-      productId: params.productId,
-      photograph: params.photograph,
-      payloadDecoder: params.payloadDecoder,
-      description: params.description,
-      decoder: params.decoder ? params.decoder : undefined,
-    },
-    create: {
-      sensorName: params.sensorName,
-      familyId: params.familyId,
-      productId: params.productId,
-      photograph: params.photograph,
-      payloadDecoder: params.payloadDecoder,
-      description: params.description,
-      decoder: params.decoder ? params.decoder : undefined,
-    },
+    update: updateData,
+    create: updateData,
   });
 }
 
 export async function InsertSensor(params: Omit<Senzor, "id">) {
-  console.log("Decoder type:", typeof params.decoder); // Should log "object"
+  console.log("Decoder type:", typeof params.decoder);
+  console.log("Decoder value:", params.decoder);
 
-  console.log("Decoder value:", params.decoder); // Should show parsed JSON object
+  const createData = {
+    sensorName: params.sensorName,
+    familyId: params.familyId,
+    productId: params.productId,
+    photograph: params.photograph,
+    payloadDecoder: params.payloadDecoder,
+    description: params.description,
+    zpl: params.zpl,
+    frequency: params.frequency,
+    ...(params.decoder !== null && { decoder: params.decoder }),
+  };
+
   return prisma.senzor.create({
-    data: {
-      sensorName: params.sensorName,
-      familyId: params.familyId,
-      productId: params.productId,
-      photograph: params.photograph,
-      payloadDecoder: params.payloadDecoder,
-      description: params.description,
-      decoder: (params.decoder as JsonValue) ?? undefined,
-    },
+    data: createData,
   });
 }
 

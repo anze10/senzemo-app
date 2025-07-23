@@ -283,7 +283,10 @@ export function Konec() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => posli(sensor_data, sensors)}
+          onClick={() => {
+            posli(sensor_data, sensors);
+            resetStore();
+          }}
         >
           Dodaj podatke v drive
         </Button>
@@ -291,7 +294,6 @@ export function Konec() {
           variant="outlined"
           color="secondary"
           onClick={() => {
-            resetStore();
             router.push("/parametrs");
           }}
         >
