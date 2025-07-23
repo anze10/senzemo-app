@@ -283,9 +283,11 @@ export function Konec() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => {
-            posli(sensor_data, sensors);
+          onClick={async () => {
+            alert("Dodajanje podatkov v Drive je v teku...");
+            await posli(sensor_data, sensors);
             resetStore();
+            alert("Podatki so bili uspešno dodani v Drive!");
           }}
         >
           Dodaj podatke v drive
