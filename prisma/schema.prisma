@@ -72,7 +72,7 @@ model Senzor {
   sensorName     String
   familyId       Int
   productId      Int
-  frequency      String? // Dodano za frekvenco
+  pricePerItem   Int? // Dodano za ceno na enoto
   photograph     String?
   payloadDecoder String?
   decoder        Json?
@@ -83,7 +83,7 @@ model Senzor {
   components SenzorComponent[]
   stockItems SenzorStock[]
   sales      Sale[]
-  orders     Order[]
+  orderItems OrderItem[]
 }
 
 model Component {
@@ -197,16 +197,44 @@ model Sale {
   senzor       Senzor   @relation(fields: [senzorId], references: [id])
 }
 
+enum OrderStatus {
+  Pending
+  Taken
+  Shipped
+  Arrived
+}
+
 model Order {
   id              Int              @id @default(autoincrement())
+  orderName       String
+  assemblier      String?
   customerName    String
-  orderNumber     Int              @unique
-  assemblerName   String
+  street          String
+  city            String
+  postalCode      String
+  country         String
+  frequency       String
+  date            String
+  description     String
+  status          OrderStatus      @default(Pending)
+  shippingCost    Float
+  receiptUrl      String?
+  priority        String
   orderDate       DateTime         @default(now())
   productionLists ProductionList[]
+  items           OrderItem[]
+}
 
-  Senzor   Senzor? @relation(fields: [senzorId], references: [id])
-  senzorId Int?
+model OrderItem {
+  id       Int @id @default(autoincrement())
+  orderId  Int
+  sensorId Int
+  quantity Int
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sensor Senzor @relation(fields: [sensorId], references: [id])
+
+  @@unique([orderId, sensorId])
 }
 
 model ProductionList {

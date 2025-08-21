@@ -11,7 +11,7 @@ import type {
 export async function getSensors() {
   try {
     const sensors = await prisma.senzor.findMany({
-      select: { id: true, sensorName: true },
+      select: { id: true, sensorName: true, pricePerItem: true },
     });
     return sensors;
   } catch (error) {
@@ -2347,7 +2347,7 @@ export async function getDetailedSensorInventory() {
       },
       include: {
         order: {
-          select: { senzorId: true },
+          // select: { senzorId: true },
         },
       },
     });
@@ -2633,8 +2633,12 @@ export async function getAllOrders() {
     const orders = await prisma.order.findMany({
       orderBy: { id: "desc" },
       include: {
-        Senzor: {
-          select: { sensorName: true },
+        items: {
+          include: {
+            sensor: {
+              select: { sensorName: true },
+            },
+          },
         },
         productionLists: {
           select: {
@@ -2649,11 +2653,15 @@ export async function getAllOrders() {
     return orders.map((order) => ({
       id: order.id,
       customerName: order.customerName,
-      assemblerName: order.assemblerName,
-      orderNumber: order.orderNumber,
-      senzorId: order.senzorId,
-      sensorName: order.Senzor?.sensorName || null,
+      assemblier: order.assemblier,
+      orderName: order.orderName,
+      items: order.items.map((item) => ({
+        sensorId: item.sensorId,
+        sensorName: item.sensor.sensorName,
+        quantity: item.quantity,
+      })),
       assignedDevices: order.productionLists.length,
+      status: order.status,
       date: order.orderDate.toISOString(),
     }));
   } catch (error) {
@@ -2835,6 +2843,63 @@ export async function removeComponentsFromStockForSensor(
 //  * @param sensorId - ID senzorja za preverjanje
 //  * @param sensorsToManufacture - Število senzorjev za preverjanje (trenutno podprto samo 1)
 //  */
+/**
+ * Check available finished sensors by sensor ID
+ * This checks the ProductionList table for devices that match sensor specifications
+ */
+export async function getAvailableFinishedSensors(sensorId: number) {
+  try {
+    // First get the sensor details to match with ProductionList
+    const sensor = await prisma.senzor.findUnique({
+      where: { id: sensorId },
+      select: {
+        id: true,
+        sensorName: true,
+        familyId: true,
+        productId: true,
+      },
+    });
+
+    if (!sensor) {
+      throw new Error(`Sensor with ID ${sensorId} not found`);
+    }
+
+    // Count available devices in ProductionList that match this sensor
+    // Assuming DeviceType corresponds to sensor name or family
+    const availableDevices = await prisma.productionList.findMany({
+      where: {
+        orderId: null, // Not assigned to any order (available in inventory)
+        DevEUI: { not: null }, // Must have a DevEUI
+        // You might need to adjust this mapping based on how sensors relate to ProductionList
+        DeviceType: {
+          contains: sensor.sensorName, // or use a more specific mapping
+        },
+      },
+      select: {
+        id: true,
+        DevEUI: true,
+        DeviceType: true,
+        FrequencyRegion: true,
+      },
+    });
+
+    return {
+      sensorId: sensor.id,
+      sensorName: sensor.sensorName,
+      availableCount: availableDevices.length,
+      availableDevices: availableDevices.map((device) => ({
+        id: device.id,
+        devEUI: device.DevEUI,
+        deviceType: device.DeviceType,
+        frequency: device.FrequencyRegion,
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching available finished sensors:", error);
+    throw new Error("Failed to fetch available finished sensors");
+  }
+}
+
 export async function checkSensorProductionCapability(
   sensorId: number,
   sensorsToManufacture: number = 1, // Za sedaj samo 1 senzor naenkrat

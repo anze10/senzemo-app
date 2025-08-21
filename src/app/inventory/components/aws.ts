@@ -1,6 +1,5 @@
 "use server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-//import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const b2Client = new S3Client({
   endpoint: process.env.AWS_ENDPOINT,
@@ -9,87 +8,56 @@ const b2Client = new S3Client({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
-  forcePathStyle: true, // Required for Backblaze B2
+  forcePathStyle: true,
 });
 
-// export const generateUploadUrl = async (fileName: string) => {
-//     const command = new PutObjectCommand({
-//         Bucket: process.env.AWS_BUCKET_NAME!,
-//         Key: `invoices/${fileName}`,
-//         ContentType: "application/pdf",
-//     });
+// Sanitize S3 key components (critical for B2 compatibility)
+const sanitizeKeyComponent = (input: string): string => {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+    .replace(/[^a-zA-Z0-9!\-_.*'()]/g, "_") // Replace invalid chars
+    .replace(/_+/g, "_") // Collapse multiple underscores
+    .replace(/^_|_$/g, ""); // Trim leading/trailing underscores
+};
 
-//     return await getSignedUrl(b2Client, command, { expiresIn: 3600 });
-// };
 export const uploadPDFToB2 = async (
   file: File,
   invoiceNumber = "test",
   productName: string,
 ) => {
-  const fileName = `${invoiceNumber || "invoice"}-${Date.now()}.pdf`;
+  // Sanitize inputs for S3 key
+  const safeProductName = sanitizeKeyComponent(productName);
+  const safeInvoiceNumber = sanitizeKeyComponent(invoiceNumber);
 
-  // Convert File to Buffer for S3 upload
+  const fileName = `${safeInvoiceNumber}-${Date.now()}.pdf`;
+  const key = `invoices/${safeProductName}/${fileName}`;
+
+  // Convert File to Buffer
   const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-  // Debug logging
-  console.log("File size:", file.size);
-  console.log("Buffer size:", fileBuffer.length);
-  console.log("Bucket name:", process.env.AWS_BUCKET_NAME);
-  console.log("Endpoint:", process.env.AWS_ENDPOINT);
-  console.log("Region:", process.env.AWS_REGION);
-  console.log("File name:", fileName);
-
-  if (fileBuffer.length === 0) {
-    throw new Error("File buffer is empty");
-  }
-
   try {
-    // Upload to B2 with additional headers
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME!,
-      Key: `invoices/${productName}/${fileName}`,
+      Key: key,
       Body: fileBuffer,
       ContentType: "application/pdf",
       ContentLength: fileBuffer.length,
     });
 
-    const result = await b2Client.send(command);
-    console.log("Upload successful:", result);
-
-    // Return the full file path
-    return `invoices/${productName}/${fileName}`;
+    await b2Client.send(command);
+    return key; // Return the full storage path
   } catch (error) {
-    console.error("Upload error details:", error);
-    throw error;
+    console.error("Upload error:", {
+      key,
+      size: fileBuffer.length,
+      error: (error as Error).message,
+    });
+    throw new Error(`Upload failed: ${(error as Error).message}`);
   }
 };
 
-// export const getPublicUrl = (fileKey: string) => {
-//     return `${process.env.B2_PUBLIC_URL}/${fileKey}`;
-// };
-
+// Simplified direct upload handler
 export const uploadToB2 = async (file: File, invoiceNumber: string) => {
-  const fileName = `${invoiceNumber}-${Date.now()}.pdf`;
-
-  // Get signed URL from backend
-  const response = await fetch("/api/b2-upload-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName }),
-  });
-
-  if (!response.ok) throw new Error("Failed to get upload URL");
-
-  const { url } = await response.json();
-
-  // Upload directly to B2
-  const uploadResponse = await fetch(url, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": "application/pdf" },
-  });
-
-  if (!uploadResponse.ok) throw new Error("Upload failed");
-
-  return `invoices/${fileName}`;
+  return uploadPDFToB2(file, invoiceNumber, "invoices");
 };

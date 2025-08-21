@@ -303,28 +303,37 @@ export default function Parameters() {
                     return;
                   }
 
-                  const formData = {
-                    family_id,
-                    addToStock,
-                    company_name: addToStock ? "" : company_name,
-                    order_number: addToStock ? "" : order_number,
-                    ...formValues,
-                  };
+                  try {
+                    const formData = {
+                      family_id,
+                      addToStock,
+                      company_name: addToStock ? "" : company_name,
+                      order_number: addToStock ? "" : order_number,
+                      ...formValues,
+                    };
 
-                  set_order_id(
-                    await CreateOrder(company_name, Number(order_number)),
-                  );
+                    set_order_id(
+                      await CreateOrder(company_name, Number(order_number)),
+                    );
 
-                  set_target_sensor_data(formData);
-                  console.log("Data stored:", formData);
+                    set_target_sensor_data(formData);
+                    console.log("Data stored:", formData);
 
-                  const result = await createFolderAndSpreadsheet(
-                    addToStock ? null : company_name,
-                    addToStock ? null : order_number,
-                  );
+                    const result = await createFolderAndSpreadsheet(
+                      addToStock ? null : company_name,
+                      addToStock ? null : order_number,
+                    );
 
-                  set_credentials(result);
-                  router.push("/dev");
+                    set_credentials(result);
+                    router.push("/dev");
+                  } catch (error) {
+                    console.error("Error creating order:", error);
+                    if (error instanceof Error) {
+                      alert(`Error: ${error.message}`);
+                    } else {
+                      alert("An unknown error occurred while creating the order.");
+                    }
+                  }
                 }}
               >
                 Start Scan
