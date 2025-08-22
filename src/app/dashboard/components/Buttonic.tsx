@@ -39,6 +39,13 @@ export default function Dashboard() {
       description: "Manage inventory and stock",
     },
     {
+      title: "Orders",
+      icon: <FileBox size={20} />,
+      href: "/orders",
+      buttonText: "Preglej naročila",
+      description: "Manage customer orders",
+    },
+    {
       title: "Google Drive",
       icon: <Cloud size={20} />,
       href: "https://drive.google.com",
