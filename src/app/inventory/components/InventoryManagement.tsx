@@ -53,8 +53,9 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import SearchIcon from "@mui/icons-material/Search";
 import EmailReportManager from "./EmailReportManager";
-import { uploadPDFToB2 } from "./aws";
+import { getSensorImageUrl, uploadPDFToB2 } from "./aws";
 import {
   addComponentToInventory,
   addSensorToInventory,
@@ -64,6 +65,7 @@ import {
   deleteComponentFromInventory,
   deleteSensorFromInventory,
   getAllComponents,
+  getAllOrders,
   // getAllOrders,
   getInvoiceFileDownloadUrl,
   getLowComponents,
@@ -79,9 +81,10 @@ import {
   // showSensorInInventory,
   updateComponentSensorAssignments,
   updateComponentStock,
+  updateSensorFrequency,
 } from "src/app/inventory/components/backent";
 
-type Frequency = "868 MHz" | "915 MHz" | "433 MHz" | "2.4 GHz" | "Custom";
+type Frequency = "AS923" | "EU868" | "US915" | "2.4 GHz";
 
 type LowComponentItem = {
   componentId: number;
@@ -186,6 +189,157 @@ type ProductionDevice = {
   isAvailable: boolean;
 };
 
+// Component for handling sensor images with fallback
+const SensorImage = ({ sensorName }: { sensorName: string }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    console.log("🖼️ SensorImage component mounted for sensor:", sensorName);
+    let isMounted = true;
+    const fetchImageUrl = async () => {
+      try {
+        console.log("📥 Fetching image URL for sensor:", sensorName);
+        const url = await getSensorImageUrl(sensorName);
+        console.log("📤 Received image URL:", url);
+
+        if (isMounted) {
+          setImageUrl(url);
+          console.log("✅ Image URL set in state:", url);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching image URL:", error);
+        if (isMounted) setImageUrl("");
+      }
+    };
+    fetchImageUrl();
+    return () => {
+      isMounted = false;
+      console.log("🧹 SensorImage component unmounted for sensor:", sensorName);
+    };
+  }, [sensorName]);
+
+  const handleImageError = () => {
+    console.error("🚨 Image failed to load:", {
+      sensorName,
+      imageUrl,
+      message: "Check if the image exists at this URL",
+    });
+    setImageError(true);
+  };
+
+  const handleImageLoad = () => {
+    console.log("🎉 Image loaded successfully:", {
+      sensorName,
+      imageUrl,
+    });
+    setImageLoaded(true);
+  };
+
+  // Debug current state
+  console.log("🔍 SensorImage render state:", {
+    sensorName,
+    imageUrl,
+    imageError,
+    imageLoaded,
+    hasUrl: !!imageUrl,
+  });
+
+  if (imageError || !imageUrl) {
+    console.log("🔄 Showing fallback placeholder for:", sensorName, {
+      imageError,
+      hasUrl: !!imageUrl,
+      reason: imageError ? "Image load failed" : "No URL generated",
+    });
+    // Fallback placeholder
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          aspectRatio: "1 / 1", // Square shape
+          backgroundColor: "grey.100",
+          borderRadius: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px dashed",
+          borderColor: "grey.300",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
+            color: "grey.500",
+          }}
+        >
+          <MemoryIcon sx={{ fontSize: 40 }} />
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 500,
+              textAlign: "center",
+            }}
+          >
+            {sensorName}
+            <br />
+            {imageError ? "Load Failed" : "No Image"}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  console.log("🖼️ Rendering actual image for:", sensorName, "URL:", imageUrl);
+  return (
+    <Box
+      sx={{
+        width: "100%",
+        aspectRatio: "1 / 1", // Square shape
+        position: "relative",
+        borderRadius: 1,
+        overflow: "hidden",
+        backgroundColor: imageLoaded ? "transparent" : "grey.100",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {!imageLoaded && (
+        <Box
+          sx={{
+            position: "absolute",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+            color: "grey.500",
+          }}
+        >
+          <MemoryIcon sx={{ fontSize: 40 }} />
+        </Box>
+      )}
+      <img
+        src={imageUrl}
+        alt={`${sensorName} sensor`}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain", // Show full image within square bounds
+          display: imageLoaded ? "block" : "none",
+          borderRadius: "4px",
+        }}
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+      />
+    </Box>
+  );
+};
+
 export default function InventoryManagementPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -238,9 +392,19 @@ export default function InventoryManagementPage() {
   );
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [deviceActionReason, setDeviceActionReason] = useState("");
+  const [showOrderSelection, setShowOrderSelection] = useState(false);
+
+  // Add frequency edit dialog state
+  const [frequencyEditDialogOpen, setFrequencyEditDialogOpen] = useState(false);
+  const [editingFrequencyDevice, setEditingFrequencyDevice] =
+    useState<ProductionDevice | null>(null);
+  const [newFrequency, setNewFrequency] = useState<string>("");
 
   // Add search state for components
   const [componentSearchQuery, setComponentSearchQuery] = useState("");
+
+  // Add search state for device EUI
+  const [deviceSearchQuery, setDeviceSearchQuery] = useState("");
 
   // Add query to fetch invoice files for a component
   const fetchComponentInvoiceHistory = useCallback(
@@ -273,13 +437,7 @@ export default function InventoryManagementPage() {
   );
 
   const queryClient = useQueryClient();
-  const frequencyOptions: Frequency[] = [
-    "868 MHz",
-    "915 MHz",
-    "433 MHz",
-    "2.4 GHz",
-    "Custom",
-  ];
+  const frequencyOptions: Frequency[] = ["AS923", "EU868", "US915", "2.4 GHz"];
 
   // Helper function to check if component is below threshold
 
@@ -345,6 +503,34 @@ export default function InventoryManagementPage() {
       } as ComponentStockItem;
     }
   }, [activeTab]);
+
+  // Add keyboard shortcut for search (Ctrl+F or Cmd+F)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "f" &&
+        activeTab === 0
+      ) {
+        event.preventDefault();
+        // Focus the search input
+        const searchInput = document.querySelector(
+          '[placeholder*="Search by Device EUI"]',
+        ) as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+      // Escape to clear search
+      if (event.key === "Escape" && deviceSearchQuery && activeTab === 0) {
+        setDeviceSearchQuery("");
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, deviceSearchQuery]);
 
   const uploadMutation = useMutation({
     mutationFn: async ({
@@ -420,12 +606,12 @@ export default function InventoryManagementPage() {
   });
 
   // // Query to fetch all orders for device assignment
-  // const { data: allOrders = [] } = useQuery({
-  //   queryKey: ["orders"],
-  //   queryFn: getAllOrders,
-  //   staleTime: 5 * 60 * 1000,
-  //   refetchOnWindowFocus: false,
-  // });
+  const { data: allOrders = [] } = useQuery({
+    queryKey: ["orders"],
+    queryFn: getAllOrders,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const { data: productionHierarchy = [] } = useQuery({
     queryKey: ["production-hierarchy"],
@@ -1189,13 +1375,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-                ...group,
-                frequencies: group.frequencies.map((freq) =>
-                  freq.frequency === frequency
-                    ? { ...freq, expanded: !freq.expanded }
-                    : freq,
-                ),
-              }
+              ...group,
+              frequencies: group.frequencies.map((freq) =>
+                freq.frequency === frequency
+                  ? { ...freq, expanded: !freq.expanded }
+                  : freq,
+              ),
+            }
             : group,
         ) || [],
     );
@@ -1257,10 +1443,10 @@ export default function InventoryManagementPage() {
   const handleAssignToOrder = async (
     device: ProductionDevice,
     orderId: number,
-    reason: string,
+    //reason: string,
   ) => {
     try {
-      await assignDeviceToOrder(device.devEUI, orderId, reason);
+      await assignDeviceToOrder(device.devEUI, orderId);
       // Refresh the production hierarchy data
       queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -1305,6 +1491,7 @@ export default function InventoryManagementPage() {
     setCurrentDevice(device);
     setDeviceActionReason("");
     setSelectedOrderId(null);
+    setShowOrderSelection(false);
     setDeviceActionDialogOpen(true);
   };
 
@@ -1319,7 +1506,7 @@ export default function InventoryManagementPage() {
       await handleAssignToOrder(
         currentDevice,
         selectedOrderId,
-        deviceActionReason || "Assigned to order",
+        //deviceActionReason || "Assigned to order",
       );
     } else if (action === "release") {
       await handleReleaseFromOrder(
@@ -1329,6 +1516,41 @@ export default function InventoryManagementPage() {
     }
 
     setDeviceActionDialogOpen(false);
+    setShowOrderSelection(false);
+    setSelectedOrderId(null);
+  };
+
+  const openFrequencyEditDialog = (device: ProductionDevice) => {
+    setEditingFrequencyDevice(device);
+    setNewFrequency(device.frequency || "");
+    setFrequencyEditDialogOpen(true);
+  };
+
+  const handleUpdateFrequency = async () => {
+    if (!editingFrequencyDevice || !newFrequency) return;
+
+    try {
+      await updateSensorFrequency(editingFrequencyDevice.devEUI, newFrequency);
+
+      // Refetch the production devices
+      queryClient.invalidateQueries({ queryKey: ["productionDevices"] });
+
+      setSnackbar({
+        open: true,
+        message: `Frequency updated successfully for device ${editingFrequencyDevice.devEUI}!`,
+        severity: "success",
+      });
+
+      setFrequencyEditDialogOpen(false);
+      setEditingFrequencyDevice(null);
+      setNewFrequency("");
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to update frequency: " + (error as Error).message,
+        severity: "error",
+      });
+    }
   };
 
   return (
@@ -1711,389 +1933,683 @@ export default function InventoryManagementPage() {
                     Device Inventory - Hierarchical View
                   </Typography>
 
-                  {productionHierarchy.length === 0 ? (
-                    <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
-                      <Typography color="text.secondary" variant="h6">
-                        No devices in inventory
-                      </Typography>
-                      <Typography
-                        color="text.secondary"
-                        variant="body2"
-                        sx={{ mt: 1 }}
-                      >
-                        Add devices to see them organized by type and frequency
-                      </Typography>
-                    </Card>
-                  ) : (
-                    <Box
-                      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  {/* Device Search Field */}
+                  <Box sx={{ mb: 3 }}>
+                    <Tooltip
+                      title="Press Ctrl+F to focus search, Esc to clear"
+                      placement="top"
                     >
-                      {productionHierarchy.map((sensorGroup) => (
-                        <Card
-                          key={sensorGroup.deviceType}
-                          elevation={1}
-                          sx={{
+                      <TextField
+                        value={deviceSearchQuery}
+                        onChange={(e) => setDeviceSearchQuery(e.target.value)}
+                        placeholder="Search by Device EUI or App EUI..."
+                        fullWidth
+                        size="small"
+                        InputProps={{
+                          startAdornment: (
+                            <SearchIcon
+                              sx={{ mr: 1, color: "text.secondary" }}
+                            />
+                          ),
+                          endAdornment: deviceSearchQuery && (
+                            <IconButton
+                              size="small"
+                              onClick={() => setDeviceSearchQuery("")}
+                              sx={{ p: 0.5 }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          ),
+                        }}
+                        sx={{
+                          maxWidth: { xs: "100%", md: 400 },
+                          "& .MuiOutlinedInput-root": {
                             borderRadius: 2,
-                            border: "1px solid",
-                            borderColor: "divider",
-                          }}
-                        >
-                          {/* Level 1: Device Type */}
-                          <Box
-                            onClick={() =>
-                              toggleSensorExpanded(sensorGroup.deviceType)
-                            }
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              p: { xs: 2, md: 3 },
-                              bgcolor: "grey.50",
-                              cursor: "pointer",
-                              minHeight: { xs: 60, md: "auto" },
-                              "&:hover": {
-                                bgcolor: "grey.100",
-                              },
-                            }}
+                          },
+                        }}
+                      />
+                    </Tooltip>
+                    {deviceSearchQuery && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ mt: 1, display: "block" }}
+                      >
+                        Searching for: &ldquo;{deviceSearchQuery}&rdquo;
+                        {(() => {
+                          const totalFilteredDevices = productionHierarchy
+                            .flatMap((sensorGroup) => sensorGroup.frequencies)
+                            .flatMap((freqGroup) => freqGroup.devices)
+                            .filter((device) => {
+                              const searchLower =
+                                deviceSearchQuery.toLowerCase();
+                              return (
+                                device.devEUI
+                                  ?.toLowerCase()
+                                  .includes(searchLower) ||
+                                device.appEUI
+                                  ?.toLowerCase()
+                                  .includes(searchLower)
+                              );
+                            }).length;
+
+                          return totalFilteredDevices > 0
+                            ? ` - ${totalFilteredDevices} device${totalFilteredDevices !== 1 ? "s" : ""} found`
+                            : "";
+                        })()}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {(() => {
+                    // Filter devices based on search query
+                    const filteredHierarchy = deviceSearchQuery.trim()
+                      ? productionHierarchy
+                        .map((sensorGroup) => ({
+                          ...sensorGroup,
+                          frequencies: sensorGroup.frequencies
+                            .map((freqGroup) => ({
+                              ...freqGroup,
+                              devices: freqGroup.devices.filter((device) => {
+                                const searchLower =
+                                  deviceSearchQuery.toLowerCase();
+                                return (
+                                  device.devEUI
+                                    ?.toLowerCase()
+                                    .includes(searchLower) ||
+                                  device.appEUI
+                                    ?.toLowerCase()
+                                    .includes(searchLower)
+                                );
+                              }),
+                            }))
+                            .filter(
+                              (freqGroup) => freqGroup.devices.length > 0,
+                            ),
+                        }))
+                        .filter(
+                          (sensorGroup) => sensorGroup.frequencies.length > 0,
+                        )
+                      : productionHierarchy;
+
+                    // Show appropriate empty state
+                    if (productionHierarchy.length === 0) {
+                      return (
+                        <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
+                          <Typography color="text.secondary" variant="h6">
+                            No devices in inventory
+                          </Typography>
+                          <Typography
+                            color="text.secondary"
+                            variant="body2"
+                            sx={{ mt: 1 }}
                           >
-                            <Box
+                            Add devices to see them organized by type and
+                            frequency
+                          </Typography>
+                        </Card>
+                      );
+                    }
+
+                    if (
+                      deviceSearchQuery.trim() &&
+                      filteredHierarchy.length === 0
+                    ) {
+                      return (
+                        <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
+                          <SearchIcon
+                            sx={{
+                              fontSize: 64,
+                              color: "text.secondary",
+                              mb: 2,
+                            }}
+                          />
+                          <Typography color="text.secondary" variant="h6">
+                            No devices found
+                          </Typography>
+                          <Typography
+                            color="text.secondary"
+                            variant="body2"
+                            sx={{ mt: 1 }}
+                          >
+                            No devices match &ldquo;{deviceSearchQuery}&rdquo;
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            onClick={() => setDeviceSearchQuery("")}
+                            sx={{ mt: 2 }}
+                            size="small"
+                          >
+                            Clear Search
+                          </Button>
+                        </Card>
+                      );
+                    }
+
+                    return (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                        }}
+                      >
+                        {(() => {
+                          // Filter devices based on search query
+                          const filteredHierarchy = deviceSearchQuery.trim()
+                            ? productionHierarchy
+                              .map((sensorGroup) => ({
+                                ...sensorGroup,
+                                frequencies: sensorGroup.frequencies
+                                  .map((freqGroup) => ({
+                                    ...freqGroup,
+                                    devices: freqGroup.devices.filter(
+                                      (device) =>
+                                        device.devEUI
+                                          ?.toLowerCase()
+                                          .includes(
+                                            deviceSearchQuery.toLowerCase(),
+                                          ),
+                                    ),
+                                  }))
+                                  .filter(
+                                    (freqGroup) =>
+                                      freqGroup.devices.length > 0,
+                                  ),
+                              }))
+                              .filter(
+                                (sensorGroup) =>
+                                  sensorGroup.frequencies.length > 0,
+                              )
+                            : productionHierarchy;
+
+                          return filteredHierarchy.map((sensorGroup) => (
+                            <Card
+                              key={sensorGroup.deviceType}
+                              elevation={1}
                               sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: { xs: 1, md: 2 },
+                                borderRadius: 2,
+                                border: "1px solid",
+                                borderColor: "divider",
                               }}
                             >
-                              <IconButton
-                                size={isMobile ? "medium" : "small"}
+                              {/* Level 1: Device Type */}
+                              <Box
+                                onClick={() =>
+                                  toggleSensorExpanded(sensorGroup.deviceType)
+                                }
                                 sx={{
-                                  minWidth: { xs: 44, md: "auto" },
-                                  minHeight: { xs: 44, md: "auto" },
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  p: { xs: 2, md: 3 },
+                                  bgcolor: "grey.50",
+                                  cursor: "pointer",
+                                  minHeight: { xs: 60, md: "auto" },
+                                  "&:hover": {
+                                    bgcolor: "grey.100",
+                                  },
                                 }}
                               >
-                                {sensorGroup.expanded ? (
-                                  <ExpandMoreIcon />
-                                ) : (
-                                  <ChevronRightIcon />
-                                )}
-                              </IconButton>
-                              <MemoryIcon sx={{ color: "text.secondary" }} />
-                              <Typography
-                                variant={isMobile ? "subtitle1" : "h6"}
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "text.primary",
-                                }}
-                              >
-                                {sensorGroup.deviceType}
-                              </Typography>
-                              <Chip
-                                label={`${sensorGroup.totalDevices} total`}
-                                color="primary"
-                                size={isMobile ? "medium" : "small"}
-                              />
-                            </Box>
-                          </Box>
-
-                          {/* Level 2: Frequencies */}
-                          <AnimatePresence>
-                            {sensorGroup.expanded && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                {sensorGroup.frequencies.map((freqGroup) => (
-                                  <Box
-                                    key={freqGroup.frequency}
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: { xs: 1, md: 2 },
+                                  }}
+                                >
+                                  <IconButton
+                                    size={isMobile ? "medium" : "small"}
                                     sx={{
-                                      borderTop: 1,
-                                      borderColor: "divider",
+                                      minWidth: { xs: 44, md: "auto" },
+                                      minHeight: { xs: 44, md: "auto" },
                                     }}
                                   >
-                                    <Box
-                                      onClick={() =>
-                                        toggleFrequencyExpanded(
-                                          sensorGroup.deviceType,
-                                          freqGroup.frequency,
-                                        )
-                                      }
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        p: { xs: 2, md: 3 },
-                                        pl: { xs: 3, md: 6 },
-                                        bgcolor: "grey.25",
-                                        cursor: "pointer",
-                                        minHeight: { xs: 56, md: "auto" },
-                                        "&:hover": {
-                                          bgcolor: "grey.50",
-                                        },
-                                      }}
-                                    >
-                                      <Box
-                                        sx={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: { xs: 1, md: 2 },
-                                        }}
-                                      >
-                                        <IconButton
-                                          size={isMobile ? "medium" : "small"}
-                                          sx={{
-                                            minWidth: { xs: 44, md: "auto" },
-                                            minHeight: { xs: 44, md: "auto" },
-                                          }}
-                                        >
-                                          {freqGroup.expanded ? (
-                                            <ExpandMoreIcon />
-                                          ) : (
-                                            <ChevronRightIcon />
-                                          )}
-                                        </IconButton>
-                                        <RadioIcon
-                                          sx={{ color: "text.secondary" }}
-                                        />
-                                        <Typography
-                                          variant={
-                                            isMobile ? "body1" : "subtitle1"
-                                          }
-                                          sx={{ fontWeight: 500 }}
-                                        >
-                                          {freqGroup.frequency}
-                                        </Typography>
-                                        <Chip
-                                          label={`${freqGroup.count} devices`}
-                                          color="secondary"
-                                          size="small"
-                                          variant="outlined"
-                                        />
-                                      </Box>
-                                    </Box>
+                                    {sensorGroup.expanded ? (
+                                      <ExpandMoreIcon />
+                                    ) : (
+                                      <ChevronRightIcon />
+                                    )}
+                                  </IconButton>
+                                  <MemoryIcon
+                                    sx={{ color: "text.secondary" }}
+                                  />
+                                  <Typography
+                                    variant={isMobile ? "subtitle1" : "h6"}
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: "text.primary",
+                                    }}
+                                  >
+                                    {sensorGroup.deviceType}
+                                  </Typography>
+                                  <Chip
+                                    label={`${sensorGroup.totalDevices} total`}
+                                    color="primary"
+                                    size={isMobile ? "medium" : "small"}
+                                  />
+                                </Box>
+                              </Box>
 
-                                    {/* Level 3: Individual devices */}
-                                    <AnimatePresence>
-                                      {freqGroup.expanded && (
-                                        <motion.div
-                                          initial={{ opacity: 0, height: 0 }}
-                                          animate={{
-                                            opacity: 1,
-                                            height: "auto",
+                              {/* Level 2: Frequencies */}
+                              <AnimatePresence>
+                                {sensorGroup.expanded && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    {sensorGroup.frequencies.map(
+                                      (freqGroup) => (
+                                        <Box
+                                          key={freqGroup.frequency}
+                                          sx={{
+                                            borderTop: 1,
+                                            borderColor: "divider",
                                           }}
-                                          exit={{ opacity: 0, height: 0 }}
-                                          transition={{ duration: 0.3 }}
                                         >
-                                          <Box sx={{ bgcolor: "grey.25" }}>
-                                            {freqGroup.devices.map((device) => (
-                                              <Box
-                                                key={device.id}
+                                          <Box
+                                            onClick={() =>
+                                              toggleFrequencyExpanded(
+                                                sensorGroup.deviceType,
+                                                freqGroup.frequency,
+                                              )
+                                            }
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                              p: { xs: 2, md: 3 },
+                                              pl: { xs: 3, md: 6 },
+                                              bgcolor: "grey.25",
+                                              cursor: "pointer",
+                                              minHeight: { xs: 56, md: "auto" },
+                                              "&:hover": {
+                                                bgcolor: "grey.50",
+                                              },
+                                            }}
+                                          >
+                                            <Box
+                                              sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: { xs: 1, md: 2 },
+                                              }}
+                                            >
+                                              <IconButton
+                                                size={
+                                                  isMobile ? "medium" : "small"
+                                                }
                                                 sx={{
-                                                  p: { xs: 2, md: 3 },
-                                                  pl: { xs: 4, md: 10 },
-                                                  borderTop: "1px solid",
-                                                  borderColor: "divider",
-                                                  "&:hover": {
-                                                    bgcolor: "grey.50",
+                                                  minWidth: {
+                                                    xs: 44,
+                                                    md: "auto",
+                                                  },
+                                                  minHeight: {
+                                                    xs: 44,
+                                                    md: "auto",
                                                   },
                                                 }}
                                               >
-                                                <Box
-                                                  sx={{
-                                                    display: "flex",
-                                                    flexDirection: {
-                                                      xs: "column",
-                                                      md: "row",
-                                                    },
-                                                    alignItems: {
-                                                      xs: "flex-start",
-                                                      md: "center",
-                                                    },
-                                                    justifyContent:
-                                                      "space-between",
-                                                    gap: { xs: 1, md: 2 },
-                                                  }}
-                                                >
-                                                  <Box
-                                                    sx={{
-                                                      display: "flex",
-                                                      flexDirection: {
-                                                        xs: "column",
-                                                        sm: "row",
-                                                      },
-                                                      gap: { xs: 1, sm: 2 },
-                                                      flex: 1,
-                                                    }}
-                                                  >
-                                                    <Typography
-                                                      variant="body2"
-                                                      sx={{
-                                                        fontFamily: "monospace",
-                                                        fontWeight: 500,
-                                                        color: "primary.main",
-                                                      }}
-                                                    >
-                                                      DevEUI:{" "}
-                                                      {device.devEUI || "N/A"}
-                                                    </Typography>
-                                                    {!isMobile && (
-                                                      <>
-                                                        <Typography
-                                                          variant="body2"
-                                                          color="text.secondary"
-                                                        >
-                                                          AppEUI:{" "}
-                                                          {device.appEUI ||
-                                                            "N/A"}
-                                                        </Typography>
-                                                        <Typography
-                                                          variant="body2"
-                                                          color="text.secondary"
-                                                        >
-                                                          HW:{" "}
-                                                          {device.hwVersion ||
-                                                            "N/A"}
-                                                        </Typography>
-                                                        <Typography
-                                                          variant="body2"
-                                                          color="text.secondary"
-                                                        >
-                                                          FW:{" "}
-                                                          {device.fwVersion ||
-                                                            "N/A"}
-                                                        </Typography>
-                                                      </>
-                                                    )}
-                                                  </Box>
-
-                                                  <Box
-                                                    sx={{
-                                                      display: "flex",
-                                                      alignItems: "center",
-                                                      gap: 1,
-                                                    }}
-                                                  >
-                                                    <Chip
-                                                      label={
-                                                        device.isAvailable
-                                                          ? "Available"
-                                                          : "Assigned"
-                                                      }
-                                                      color={
-                                                        device.isAvailable
-                                                          ? "success"
-                                                          : "warning"
-                                                      }
-                                                      size="small"
-                                                    />
-
-                                                    {/* Device Action Buttons */}
-                                                    <Box
-                                                      sx={{
-                                                        display: "flex",
-                                                        gap: 0.5,
-                                                      }}
-                                                    >
-                                                      <Tooltip title="Device Actions">
-                                                        <IconButton
-                                                          size="small"
-                                                          onClick={() =>
-                                                            openDeviceActionDialog(
-                                                              device,
-                                                            )
-                                                          }
-                                                          sx={{
-                                                            color:
-                                                              "primary.main",
-                                                            "&:hover": {
-                                                              bgcolor:
-                                                                "primary.main",
-                                                              color:
-                                                                "primary.contrastText",
-                                                            },
-                                                          }}
-                                                        >
-                                                          <AssignmentIcon fontSize="small" />
-                                                        </IconButton>
-                                                      </Tooltip>
-
-                                                      <Tooltip title="Remove from Inventory">
-                                                        <IconButton
-                                                          size="small"
-                                                          onClick={() =>
-                                                            handleRemoveDevice(
-                                                              device,
-                                                            )
-                                                          }
-                                                          sx={{
-                                                            color: "error.main",
-                                                            "&:hover": {
-                                                              bgcolor:
-                                                                "error.main",
-                                                              color:
-                                                                "error.contrastText",
-                                                            },
-                                                          }}
-                                                        >
-                                                          <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                      </Tooltip>
-                                                    </Box>
-                                                  </Box>
-                                                </Box>
-                                                {isMobile && (
-                                                  <Box
-                                                    sx={{
-                                                      mt: 1,
-                                                      display: "grid",
-                                                      gridTemplateColumns:
-                                                        "1fr 1fr",
-                                                      gap: 1,
-                                                    }}
-                                                  >
-                                                    <Typography
-                                                      variant="caption"
-                                                      color="text.secondary"
-                                                    >
-                                                      AppEUI:{" "}
-                                                      {device.appEUI || "N/A"}
-                                                    </Typography>
-                                                    <Typography
-                                                      variant="caption"
-                                                      color="text.secondary"
-                                                    >
-                                                      HW:{" "}
-                                                      {device.hwVersion ||
-                                                        "N/A"}
-                                                    </Typography>
-                                                    <Typography
-                                                      variant="caption"
-                                                      color="text.secondary"
-                                                      sx={{
-                                                        gridColumn: "1 / -1",
-                                                      }}
-                                                    >
-                                                      FW:{" "}
-                                                      {device.fwVersion ||
-                                                        "N/A"}
-                                                    </Typography>
-                                                  </Box>
+                                                {freqGroup.expanded ? (
+                                                  <ExpandMoreIcon />
+                                                ) : (
+                                                  <ChevronRightIcon />
                                                 )}
-                                              </Box>
-                                            ))}
+                                              </IconButton>
+                                              <RadioIcon
+                                                sx={{ color: "text.secondary" }}
+                                              />
+                                              <Typography
+                                                variant={
+                                                  isMobile
+                                                    ? "body1"
+                                                    : "subtitle1"
+                                                }
+                                                sx={{ fontWeight: 500 }}
+                                              >
+                                                {freqGroup.frequency}
+                                              </Typography>
+                                              <Chip
+                                                label={`${freqGroup.count} devices`}
+                                                color="secondary"
+                                                size="small"
+                                                variant="outlined"
+                                              />
+                                            </Box>
                                           </Box>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                  </Box>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </Card>
-                      ))}
-                    </Box>
-                  )}
+
+                                          {/* Level 3: Individual devices */}
+                                          <AnimatePresence>
+                                            {freqGroup.expanded && (
+                                              <motion.div
+                                                initial={{
+                                                  opacity: 0,
+                                                  height: 0,
+                                                }}
+                                                animate={{
+                                                  opacity: 1,
+                                                  height: "auto",
+                                                }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                              >
+                                                <Box
+                                                  sx={{ bgcolor: "grey.25" }}
+                                                >
+                                                  {freqGroup.devices.map(
+                                                    (device) => (
+                                                      <Box
+                                                        key={device.id}
+                                                        sx={{
+                                                          p: { xs: 2, md: 3 },
+                                                          pl: { xs: 4, md: 10 },
+                                                          borderTop:
+                                                            "1px solid",
+                                                          borderColor:
+                                                            "divider",
+                                                          "&:hover": {
+                                                            bgcolor: "grey.50",
+                                                          },
+                                                        }}
+                                                      >
+                                                        <Box
+                                                          sx={{
+                                                            display: "flex",
+                                                            flexDirection: {
+                                                              xs: "column",
+                                                              md: "row",
+                                                            },
+                                                            alignItems: {
+                                                              xs: "flex-start",
+                                                              md: "center",
+                                                            },
+                                                            justifyContent:
+                                                              "space-between",
+                                                            gap: {
+                                                              xs: 1,
+                                                              md: 2,
+                                                            },
+                                                          }}
+                                                        >
+                                                          <Box
+                                                            sx={{
+                                                              display: "flex",
+                                                              flexDirection: {
+                                                                xs: "column",
+                                                                sm: "row",
+                                                              },
+                                                              gap: {
+                                                                xs: 1,
+                                                                sm: 2,
+                                                              },
+                                                              flex: 1,
+                                                            }}
+                                                          >
+                                                            <Typography
+                                                              variant="body2"
+                                                              sx={{
+                                                                fontFamily:
+                                                                  "monospace",
+                                                                fontWeight: 500,
+                                                                color:
+                                                                  "primary.main",
+                                                              }}
+                                                            >
+                                                              DevEUI:{" "}
+                                                              {device.devEUI ||
+                                                                "N/A"}
+                                                            </Typography>
+                                                            {isMobile && (
+                                                              <Box
+                                                                sx={{
+                                                                  display:
+                                                                    "flex",
+                                                                  alignItems:
+                                                                    "center",
+                                                                  gap: 0.5,
+                                                                  mt: 0.5,
+                                                                }}
+                                                              >
+                                                                <Typography
+                                                                  variant="body2"
+                                                                  color="text.secondary"
+                                                                >
+                                                                  Frequency:{" "}
+                                                                  {device.frequency ||
+                                                                    "N/A"}
+                                                                </Typography>
+                                                                <Tooltip title="Edit Frequency">
+                                                                  <IconButton
+                                                                    size="small"
+                                                                    onClick={() =>
+                                                                      openFrequencyEditDialog(
+                                                                        device,
+                                                                      )
+                                                                    }
+                                                                    sx={{
+                                                                      color:
+                                                                        "text.secondary",
+                                                                      "&:hover":
+                                                                      {
+                                                                        color:
+                                                                          "primary.main",
+                                                                      },
+                                                                      p: 0.25,
+                                                                    }}
+                                                                  >
+                                                                    <EditIcon fontSize="small" />
+                                                                  </IconButton>
+                                                                </Tooltip>
+                                                              </Box>
+                                                            )}
+                                                            {!isMobile && (
+                                                              <>
+                                                                <Typography
+                                                                  variant="body2"
+                                                                  color="text.secondary"
+                                                                >
+                                                                  AppEUI:{" "}
+                                                                  {device.appEUI ||
+                                                                    "N/A"}
+                                                                </Typography>
+                                                                <Typography
+                                                                  variant="body2"
+                                                                  color="text.secondary"
+                                                                >
+                                                                  HW:{" "}
+                                                                  {device.hwVersion ||
+                                                                    "N/A"}
+                                                                </Typography>
+                                                                <Typography
+                                                                  variant="body2"
+                                                                  color="text.secondary"
+                                                                >
+                                                                  FW:{" "}
+                                                                  {device.fwVersion ||
+                                                                    "N/A"}
+                                                                </Typography>
+                                                                <Box
+                                                                  sx={{
+                                                                    display:
+                                                                      "flex",
+                                                                    alignItems:
+                                                                      "center",
+                                                                    gap: 0.5,
+                                                                  }}
+                                                                >
+                                                                  <Typography
+                                                                    variant="body2"
+                                                                    color="text.secondary"
+                                                                  >
+                                                                    Freq:{" "}
+                                                                    {device.frequency ||
+                                                                      "N/A"}
+                                                                  </Typography>
+                                                                  <Tooltip title="Edit Frequency">
+                                                                    <IconButton
+                                                                      size="small"
+                                                                      onClick={() =>
+                                                                        openFrequencyEditDialog(
+                                                                          device,
+                                                                        )
+                                                                      }
+                                                                      sx={{
+                                                                        color:
+                                                                          "text.secondary",
+                                                                        "&:hover":
+                                                                        {
+                                                                          color:
+                                                                            "primary.main",
+                                                                        },
+                                                                        p: 0.25,
+                                                                      }}
+                                                                    >
+                                                                      <EditIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                  </Tooltip>
+                                                                </Box>
+                                                              </>
+                                                            )}
+                                                          </Box>
+
+                                                          <Box
+                                                            sx={{
+                                                              display: "flex",
+                                                              alignItems:
+                                                                "center",
+                                                              gap: 1,
+                                                            }}
+                                                          >
+                                                            <Chip
+                                                              label={
+                                                                device.isAvailable
+                                                                  ? "Available"
+                                                                  : "Assigned"
+                                                              }
+                                                              color={
+                                                                device.isAvailable
+                                                                  ? "success"
+                                                                  : "warning"
+                                                              }
+                                                              size="small"
+                                                            />
+
+                                                            {/* Device Action Buttons */}
+                                                            <Box
+                                                              sx={{
+                                                                display: "flex",
+                                                                gap: 0.5,
+                                                              }}
+                                                            >
+                                                              <Tooltip title="Device Actions">
+                                                                <IconButton
+                                                                  size="small"
+                                                                  onClick={() =>
+                                                                    openDeviceActionDialog(
+                                                                      device,
+                                                                    )
+                                                                  }
+                                                                  sx={{
+                                                                    color:
+                                                                      "primary.main",
+                                                                    "&:hover": {
+                                                                      bgcolor:
+                                                                        "primary.main",
+                                                                      color:
+                                                                        "primary.contrastText",
+                                                                    },
+                                                                  }}
+                                                                >
+                                                                  <AssignmentIcon fontSize="small" />
+                                                                </IconButton>
+                                                              </Tooltip>
+
+                                                              <Tooltip title="Remove from Inventory">
+                                                                <IconButton
+                                                                  size="small"
+                                                                  onClick={() =>
+                                                                    handleRemoveDevice(
+                                                                      device,
+                                                                    )
+                                                                  }
+                                                                  sx={{
+                                                                    color:
+                                                                      "error.main",
+                                                                    "&:hover": {
+                                                                      bgcolor:
+                                                                        "error.main",
+                                                                      color:
+                                                                        "error.contrastText",
+                                                                    },
+                                                                  }}
+                                                                >
+                                                                  <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                              </Tooltip>
+                                                            </Box>
+                                                          </Box>
+                                                        </Box>
+                                                        {isMobile && (
+                                                          <Box
+                                                            sx={{
+                                                              mt: 1,
+                                                              display: "grid",
+                                                              gridTemplateColumns:
+                                                                "1fr 1fr",
+                                                              gap: 1,
+                                                            }}
+                                                          >
+                                                            <Typography
+                                                              variant="caption"
+                                                              color="text.secondary"
+                                                            >
+                                                              AppEUI:{" "}
+                                                              {device.appEUI ||
+                                                                "N/A"}
+                                                            </Typography>
+                                                            <Typography
+                                                              variant="caption"
+                                                              color="text.secondary"
+                                                            >
+                                                              HW:{" "}
+                                                              {device.hwVersion ||
+                                                                "N/A"}
+                                                            </Typography>
+                                                            <Typography
+                                                              variant="caption"
+                                                              color="text.secondary"
+                                                              sx={{
+                                                                gridColumn:
+                                                                  "1 / -1",
+                                                              }}
+                                                            >
+                                                              FW:{" "}
+                                                              {device.fwVersion ||
+                                                                "N/A"}
+                                                            </Typography>
+                                                          </Box>
+                                                        )}
+                                                      </Box>
+                                                    ),
+                                                  )}
+                                                </Box>
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </Box>
+                                      ),
+                                    )}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </Card>
+                          ));
+                        })()}
+                      </Box>
+                    );
+                  })()}
                 </Box>
               </Paper>
 
@@ -2391,7 +2907,7 @@ export default function InventoryManagementPage() {
                                           fontWeight={500}
                                         >
                                           {item1.price !== undefined &&
-                                          item1.price !== null
+                                            item1.price !== null
                                             ? `€${Number(item1.price).toFixed(2)}`
                                             : "-"}
                                         </Typography>
@@ -2406,8 +2922,8 @@ export default function InventoryManagementPage() {
                                         <Typography variant="body2">
                                           {item1.lastUpdated
                                             ? new Date(
-                                                item1.lastUpdated,
-                                              ).toLocaleDateString()
+                                              item1.lastUpdated,
+                                            ).toLocaleDateString()
                                             : "-"}
                                         </Typography>
                                       </Box>
@@ -2488,7 +3004,7 @@ export default function InventoryManagementPage() {
                                             fontWeight={500}
                                           >
                                             {item1.lowStockThreshold !== null &&
-                                            item1.lowStockThreshold !==
+                                              item1.lowStockThreshold !==
                                               undefined
                                               ? `${item1.lowStockThreshold} units`
                                               : "No threshold set"}
@@ -2514,14 +3030,14 @@ export default function InventoryManagementPage() {
                                                   bgcolor: isInLowList
                                                     ? "error.light"
                                                     : alertInfo.severity ===
-                                                        "warning"
+                                                      "warning"
                                                       ? "warning.light"
                                                       : "error.light",
                                                   border: 1,
                                                   borderColor: isInLowList
                                                     ? "error.main"
                                                     : alertInfo.severity ===
-                                                        "warning"
+                                                      "warning"
                                                       ? "warning.main"
                                                       : "divider",
                                                 }}
@@ -2839,7 +3355,7 @@ export default function InventoryManagementPage() {
                                       </TableCell>
                                       <TableCell>
                                         {item1.price !== undefined &&
-                                        item1.price !== null
+                                          item1.price !== null
                                           ? `€${Number(item1.price).toFixed(2)}`
                                           : "-"}
                                       </TableCell>
@@ -2890,11 +3406,11 @@ export default function InventoryManagementPage() {
                                           item1.sensorAssignments,
                                         ) && item1.sensorAssignments.length > 0
                                           ? item1.sensorAssignments
-                                              .map(
-                                                (sa) =>
-                                                  `${sa.sensorName} (${sa.requiredQuantity})`,
-                                              )
-                                              .join(", ")
+                                            .map(
+                                              (sa) =>
+                                                `${sa.sensorName} (${sa.requiredQuantity})`,
+                                            )
+                                            .join(", ")
                                           : "-"}
                                       </TableCell>
                                       <TableCell>
@@ -3062,6 +3578,11 @@ export default function InventoryManagementPage() {
                           }}
                         >
                           <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            {/* Sensor Product Image */}
+                            <Box sx={{ mb: 2 }}>
+                              <SensorImage sensorName={sensor.sensorName} />
+                            </Box>
+
                             <Box
                               sx={{
                                 display: "flex",
@@ -3378,8 +3899,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                        "contactDetails" in editItem &&
-                        editItem.contactDetails?.supplier
+                          "contactDetails" in editItem &&
+                          editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }
@@ -4245,8 +4766,7 @@ export default function InventoryManagementPage() {
                   startIcon={<ShoppingCartIcon />}
                   onClick={() => {
                     // Show order selection
-                    setDeviceActionDialogOpen(false);
-                    // We'll handle this inline for simplicity
+                    setShowOrderSelection(true);
                   }}
                   disabled={!currentDevice?.isAvailable}
                   fullWidth
@@ -4254,6 +4774,23 @@ export default function InventoryManagementPage() {
                 >
                   Assign to Order
                   {!currentDevice?.isAvailable && " (Already Assigned)"}
+                </Button>
+
+                {/* Edit Frequency */}
+                <Button
+                  variant="outlined"
+                  startIcon={<RadioIcon />}
+                  onClick={() => {
+                    if (currentDevice) {
+                      openFrequencyEditDialog(currentDevice);
+                    }
+                  }}
+                  fullWidth
+                  sx={{ justifyContent: "flex-start" }}
+                >
+                  Edit Frequency
+                  {currentDevice?.frequency &&
+                    ` (Current: ${currentDevice.frequency})`}
                 </Button>
 
                 {/* Release from Order */}
@@ -4282,8 +4819,8 @@ export default function InventoryManagementPage() {
                 </Button>
               </Box>
 
-              {/* Order Selection for Assignment
-              {!currentDevice?.isAvailable ? null : (
+              {/* Order Selection for Assignment */}
+              {showOrderSelection && currentDevice?.isAvailable && (
                 <Box sx={{ mt: 3 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
                     Select Order (for assignment):
@@ -4298,15 +4835,44 @@ export default function InventoryManagementPage() {
                     <MenuItem value="">
                       <em>Select an order...</em>
                     </MenuItem>
-                    {allOrders.map((order) => (
-                      <MenuItem key={order.id} value={order.id}>
-                        Order #{order.id} - {order.customerName} (
-                        {order.remainingToAssign} remaining)
-                      </MenuItem>
-                    ))}
+                    {allOrders.map((order) => {
+                      const totalQuantity = order.items.reduce(
+                        (sum, item) => sum + item.quantity,
+                        0,
+                      );
+                      const remainingToAssign =
+                        totalQuantity - order.assignedDevices;
+                      if (remainingToAssign <= 0) return null;
+                      return (
+                        <MenuItem key={order.id} value={order.id}>
+                          Order #{order.id} - {order.customerName} (
+                          {remainingToAssign} remaining)
+                        </MenuItem>
+                      );
+                    })}
                   </Select>
+                  <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setShowOrderSelection(false);
+                        setSelectedOrderId(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => confirmDeviceAction("assign")}
+                      disabled={!selectedOrderId}
+                    >
+                      Confirm Assignment
+                    </Button>
+                  </Box>
                 </Box>
-              )} */}
+              )}
 
               {/* Reason Input */}
               <Box sx={{ mt: 3 }}>
@@ -4333,20 +4899,109 @@ export default function InventoryManagementPage() {
             }}
           >
             <Button
-              onClick={() => setDeviceActionDialogOpen(false)}
+              onClick={() => {
+                setDeviceActionDialogOpen(false);
+                setShowOrderSelection(false);
+                setSelectedOrderId(null);
+              }}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Cancel
+            </Button>
+            {!showOrderSelection && (
+              <Button
+                onClick={() => confirmDeviceAction("assign")}
+                disabled={!selectedOrderId || !currentDevice?.isAvailable}
+                variant="contained"
+                fullWidth={isMobile}
+                size={isMobile ? "large" : "medium"}
+              >
+                Assign to Selected Order
+              </Button>
+            )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Frequency Edit Dialog */}
+        <Dialog
+          open={frequencyEditDialogOpen}
+          onClose={() => setFrequencyEditDialogOpen(false)}
+          fullScreen={isMobile}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, md: 2 },
+              m: { xs: 0, md: 2 },
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              fontWeight: 600,
+              fontSize: { xs: "1.25rem", md: "1.5rem" },
+            }}
+          >
+            Edit Frequency - {editingFrequencyDevice?.devEUI}
+          </DialogTitle>
+          <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Current frequency:{" "}
+                {editingFrequencyDevice?.frequency || "Not set"}
+              </Typography>
+
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Select New Frequency:
+              </Typography>
+              <Select
+                value={newFrequency}
+                onChange={(e) => setNewFrequency(e.target.value)}
+                fullWidth
+                size="small"
+                displayEmpty
+              >
+                <MenuItem value="">
+                  <em>Select frequency...</em>
+                </MenuItem>
+                {frequencyOptions.map((freq) => (
+                  <MenuItem key={freq} value={freq}>
+                    {freq}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+          </DialogContent>
+          <DialogActions
+            sx={{
+              p: { xs: 2, md: 3 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+            }}
+          >
+            <Button
+              onClick={() => {
+                setFrequencyEditDialogOpen(false);
+                setEditingFrequencyDevice(null);
+                setNewFrequency("");
+              }}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
               Cancel
             </Button>
             <Button
-              onClick={() => confirmDeviceAction("assign")}
-              disabled={!selectedOrderId || !currentDevice?.isAvailable}
+              onClick={handleUpdateFrequency}
+              disabled={
+                !newFrequency ||
+                newFrequency === editingFrequencyDevice?.frequency
+              }
               variant="contained"
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
-              Assign to Selected Order
+              Update Frequency
             </Button>
           </DialogActions>
         </Dialog>

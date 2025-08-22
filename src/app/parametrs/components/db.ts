@@ -22,15 +22,24 @@ export async function CreateOrUpdateOrder(
   orderNumber: number,
 ) {
   const order = await prisma.order.upsert({
-    where: { orderNumber },
+    where: { id: orderNumber }, // Using id instead since orderNumber doesn't exist as unique field
     update: {
       customerName,
-      assemblerName: "", // Update assembler name if needed
+      assemblier: "", // Update assembler name if needed (note: it's 'assemblier' in schema, not 'assemblerName')
     },
     create: {
+      orderName: `Order-${orderNumber}`, // Generate orderName from orderNumber
       customerName,
-      assemblerName: "", // Set a default value or pass it as a parameter
-      orderNumber,
+      assemblier: "", // Set a default value or pass it as a parameter
+      street: "",
+      city: "",
+      postalCode: "",
+      country: "",
+      frequency: "",
+      date: "",
+      description: "",
+      shippingCost: 0,
+      priority: "",
     },
   });
   return order.id;
@@ -38,28 +47,37 @@ export async function CreateOrUpdateOrder(
 
 export async function GetNextOrderNumber(): Promise<number> {
   const lastOrder = await prisma.order.findFirst({
-    orderBy: { orderNumber: "desc" },
-    select: { orderNumber: true },
+    orderBy: { id: "desc" }, // Using id instead of orderNumber
+    select: { id: true },
   });
 
-  return lastOrder ? lastOrder.orderNumber + 1 : 1;
+  return lastOrder ? lastOrder.id + 1 : 1;
 }
 
 export async function CreateOrder(customerName: string, orderNumber: number) {
-  // Check if order number already exists
+  // Check if order ID already exists
   const existingOrder = await prisma.order.findUnique({
-    where: { orderNumber },
+    where: { id: orderNumber },
   });
 
   if (existingOrder) {
-    throw new Error(`Order with number ${orderNumber} already exists`);
+    throw new Error(`Order with ID ${orderNumber} already exists`);
   }
 
   const order = await prisma.order.create({
     data: {
+      orderName: `Order-${orderNumber}`,
       customerName,
-      assemblerName: "", // Set a default value or pass it as a parameter
-      orderNumber,
+      assemblier: "", // Set a default value or pass it as a parameter
+      street: "",
+      city: "",
+      postalCode: "",
+      country: "",
+      frequency: "",
+      date: "",
+      description: "",
+      shippingCost: 0,
+      priority: "",
     },
   });
   return order.id;
@@ -70,9 +88,18 @@ export async function CreateOrderWithAutoNumber(customerName: string) {
 
   const order = await prisma.order.create({
     data: {
+      orderName: `Order-${nextOrderNumber}`,
       customerName,
-      assemblerName: "", // Set a default value or pass it as a parameter
-      orderNumber: nextOrderNumber,
+      assemblier: "", // Set a default value or pass it as a parameter
+      street: "",
+      city: "",
+      postalCode: "",
+      country: "",
+      frequency: "",
+      date: "",
+      description: "",
+      shippingCost: 0,
+      priority: "",
     },
   });
   return { id: order.id, orderNumber: nextOrderNumber };

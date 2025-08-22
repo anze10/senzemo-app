@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Order as PrismaOrder, OrderItem as PrismaOrderItem } from "@prisma/client";
+import type {
+  Order as PrismaOrder,
+  OrderItem as PrismaOrderItem,
+} from "@prisma/client";
 
 // Define the extended types based on what we get from the database
 type OrderItem = PrismaOrderItem & {
@@ -77,7 +80,11 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeleteOrderFromDB, GetOrdersFromDB, UpsertOrderInDB } from "./order";
-import { checkSensorProductionCapability, getAvailableFinishedSensors, getSensors } from "../../inventory/components/backent";
+import {
+  checkSensorProductionCapability,
+  getAvailableFinishedSensors,
+  getSensors,
+} from "../../inventory/components/backent";
 
 // Sensor options for dropdown - will be loaded from database
 const SENSOR_OPTIONS = [
@@ -88,7 +95,7 @@ const SENSOR_OPTIONS = [
 ];
 
 // Frequency options for dropdown
-const FREQUENCY_OPTIONS = ["433 MHz", "EU868", "US915", "2.4 GHz"];
+const FREQUENCY_OPTIONS = ["AS923", "EU868", "US915", "2.4 GHz"];
 
 // Priority options
 const PRIORITY_OPTIONS = ["Urgent", "Medium", "Low"];
@@ -111,13 +118,13 @@ export default function OrderManagement() {
 
   // Fetch orders from database
   const { data: orders = [], isLoading } = useQuery({
-    queryKey: ['orders'],
+    queryKey: ["orders"],
     queryFn: GetOrdersFromDB,
   });
 
   // Fetch sensors from database
   const { data: sensors = [] } = useQuery({
-    queryKey: ['sensors'],
+    queryKey: ["sensors"],
     queryFn: getSensors,
   });
 
@@ -125,7 +132,7 @@ export default function OrderManagement() {
   const upsertOrderMutation = useMutation({
     mutationFn: UpsertOrderInDB,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
         message: "Order saved successfully!",
@@ -138,13 +145,13 @@ export default function OrderManagement() {
         message: `Error saving order: ${error.message}`,
         severity: "error",
       });
-    }
+    },
   });
 
   const deleteOrderMutation = useMutation({
     mutationFn: DeleteOrderFromDB,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
         message: "Order deleted successfully!",
@@ -157,7 +164,7 @@ export default function OrderManagement() {
         message: `Error deleting order: ${error.message}`,
         severity: "error",
       });
-    }
+    },
   });
 
   const [open, setOpen] = useState(false);
@@ -215,7 +222,10 @@ export default function OrderManagement() {
           postalCode: editingOrder.postalCode || "",
           country: editingOrder.country || "Slovenia",
         },
-        items: editingOrder.items.map(item => ({ sensorId: item.sensorId, quantity: item.quantity })) || [{ sensorId: 1, quantity: 1 }],
+        items: editingOrder.items.map((item) => ({
+          sensorId: item.sensorId,
+          quantity: item.quantity,
+        })) || [{ sensorId: 1, quantity: 1 }],
         frequency: editingOrder.frequency || FREQUENCY_OPTIONS[0] || "EU868",
         date: editingOrder.date || new Date().toISOString().split("T")[0] || "",
         description: editingOrder.description || "",
@@ -256,67 +266,92 @@ export default function OrderManagement() {
   };
 
   // Single item stock validation
-  const [itemStockStatus, setItemStockStatus] = useState<Record<number, {
-    loading: boolean;
-    canProduce: boolean;
-    maxPossible: number;
-    issues: string[];
-  }>>({});
+  const [itemStockStatus, setItemStockStatus] = useState<
+    Record<
+      number,
+      {
+        loading: boolean;
+        canProduce: boolean;
+        maxPossible: number;
+        issues: string[];
+      }
+    >
+  >({});
 
-  const checkSingleItemStock = async (sensorId: number, quantity: number, itemIndex: number) => {
-    setItemStockStatus(prev => ({
+  const checkSingleItemStock = async (
+    sensorId: number,
+    quantity: number,
+    itemIndex: number,
+  ) => {
+    setItemStockStatus((prev) => ({
       ...prev,
-      [itemIndex]: { loading: true, canProduce: false, maxPossible: 0, issues: [] }
+      [itemIndex]: {
+        loading: true,
+        canProduce: false,
+        maxPossible: 0,
+        issues: [],
+      },
     }));
 
     try {
       // Check both finished sensors and production capability
       const [finishedSensors, productionResult] = await Promise.all([
         getAvailableFinishedSensors(sensorId),
-        checkSensorProductionCapability(sensorId, 1)
+        checkSensorProductionCapability(sensorId, 1),
       ]);
 
       // Calculate total availability
-      const totalAvailable = finishedSensors.availableCount + productionResult.maxPossibleProduction;
+      const totalAvailable =
+        finishedSensors.availableCount + productionResult.maxPossibleProduction;
       const canFulfillRequest = totalAvailable >= quantity;
       const issues: string[] = [];
 
       if (!canFulfillRequest) {
         if (totalAvailable === 0) {
-          issues.push("No finished sensors and cannot produce any with current components");
+          issues.push(
+            "No finished sensors and cannot produce any with current components",
+          );
         } else {
-          issues.push(`Total available: ${totalAvailable} (${finishedSensors.availableCount} finished + ${productionResult.maxPossibleProduction} can produce), requested: ${quantity}`);
+          issues.push(
+            `Total available: ${totalAvailable} (${finishedSensors.availableCount} finished + ${productionResult.maxPossibleProduction} can produce), requested: ${quantity}`,
+          );
         }
       } else if (finishedSensors.availableCount < quantity) {
         const needToProduce = quantity - finishedSensors.availableCount;
-        issues.push(`✓ Available: ${finishedSensors.availableCount} finished + ${needToProduce} to manufacture`);
+        issues.push(
+          `✓ Available: ${finishedSensors.availableCount} finished + ${needToProduce} to manufacture`,
+        );
       } else {
-        issues.push(`✓ ${finishedSensors.availableCount} finished sensors available`);
+        issues.push(
+          `✓ ${finishedSensors.availableCount} finished sensors available`,
+        );
       }
 
-      setItemStockStatus(prev => ({
+      setItemStockStatus((prev) => ({
         ...prev,
         [itemIndex]: {
           loading: false,
           canProduce: canFulfillRequest,
           maxPossible: totalAvailable,
-          issues
-        }
+          issues,
+        },
       }));
     } catch (error) {
-      console.error('Error checking stock:', error);
-      setItemStockStatus(prev => ({
+      console.error("Error checking stock:", error);
+      setItemStockStatus((prev) => ({
         ...prev,
         [itemIndex]: {
           loading: false,
           canProduce: false,
           maxPossible: 0,
-          issues: ['Error checking stock']
-        }
+          issues: ["Error checking stock"],
+        },
       }));
     }
   };
-  const validateStock = async (items: FormOrderItem[]): Promise<{
+  const validateStock = async (
+    items: FormOrderItem[],
+  ): Promise<{
     isValid: boolean;
     warnings: Array<{
       sensorId: number;
@@ -333,17 +368,21 @@ export default function OrderManagement() {
     for (const item of items) {
       try {
         // First check if we have finished sensors available
-        const finishedSensors = await getAvailableFinishedSensors(item.sensorId);
+        const finishedSensors = await getAvailableFinishedSensors(
+          item.sensorId,
+        );
 
         // Then check production capability for manufacturing more
         const productionCapability = await checkSensorProductionCapability(
           item.sensorId,
-          1
+          1,
         );
 
         const issues: string[] = [];
         let canFulfillOrder = false;
-        const totalAvailable = finishedSensors.availableCount + productionCapability.maxPossibleProduction;
+        const totalAvailable =
+          finishedSensors.availableCount +
+          productionCapability.maxPossibleProduction;
 
         // Check if we can fulfill the order with existing stock + production
         if (finishedSensors.availableCount >= item.quantity) {
@@ -353,24 +392,36 @@ export default function OrderManagement() {
           // We can fulfill with finished sensors + production
           canFulfillOrder = true;
           const needToProduce = item.quantity - finishedSensors.availableCount;
-          issues.push(`Need to produce ${needToProduce} additional sensors (${finishedSensors.availableCount} finished + ${needToProduce} to manufacture)`);
+          issues.push(
+            `Need to produce ${needToProduce} additional sensors (${finishedSensors.availableCount} finished + ${needToProduce} to manufacture)`,
+          );
         } else {
           // Cannot fulfill the order
           isValid = false;
           canFulfillOrder = false;
 
-          if (finishedSensors.availableCount === 0 && productionCapability.maxPossibleProduction === 0) {
-            issues.push("No finished sensors available and cannot produce any with current components");
+          if (
+            finishedSensors.availableCount === 0 &&
+            productionCapability.maxPossibleProduction === 0
+          ) {
+            issues.push(
+              "No finished sensors available and cannot produce any with current components",
+            );
           } else {
-            issues.push(`Total available: ${totalAvailable} (${finishedSensors.availableCount} finished + ${productionCapability.maxPossibleProduction} can produce), requested: ${item.quantity}`);
+            issues.push(
+              `Total available: ${totalAvailable} (${finishedSensors.availableCount} finished + ${productionCapability.maxPossibleProduction} can produce), requested: ${item.quantity}`,
+            );
           }
 
           // Add specific component issues if production is limited
-          if (productionCapability.maxPossibleProduction < item.quantity - finishedSensors.availableCount) {
-            productionCapability.componentStatus.forEach(comp => {
+          if (
+            productionCapability.maxPossibleProduction <
+            item.quantity - finishedSensors.availableCount
+          ) {
+            productionCapability.componentStatus.forEach((comp) => {
               if (!comp.sufficient) {
                 issues.push(
-                  `${comp.componentName}: need ${comp.requiredPerSensor * item.quantity}, have ${comp.available}`
+                  `${comp.componentName}: need ${comp.requiredPerSensor * item.quantity}, have ${comp.available}`,
                 );
               }
             });
@@ -388,7 +439,10 @@ export default function OrderManagement() {
           });
         }
       } catch (error) {
-        console.error(`Error checking stock for sensor ${item.sensorId}:`, error);
+        console.error(
+          `Error checking stock for sensor ${item.sensorId}:`,
+          error,
+        );
         isValid = false;
         warnings.push({
           sensorId: item.sensorId,
@@ -441,7 +495,7 @@ export default function OrderManagement() {
     setProceedWithOrder(true);
     setShowStockWarning(false);
     // Re-trigger form submission
-    const form = document.querySelector('form');
+    const form = document.querySelector("form");
     if (form) {
       form.requestSubmit();
     }
@@ -457,7 +511,7 @@ export default function OrderManagement() {
   };
 
   const handleStatusChange = (id: number, newStatus: OrderStatus) => {
-    const order = orders.find(o => o.id === id);
+    const order = orders.find((o) => o.id === id);
     if (order) {
       const updatedOrder = { ...order, status: newStatus };
       upsertOrderMutation.mutate(updatedOrder);
@@ -523,19 +577,24 @@ export default function OrderManagement() {
   const handleItemChange = (
     index: number,
     field: keyof FormOrderItem,
-    value: string | number
+    value: string | number,
   ) => {
     const newItems = [...formState.items];
     if (newItems[index]) {
       newItems[index] = {
-        sensorId: field === "sensorId" ? Number(value) : newItems[index].sensorId,
-        quantity: field === "quantity" ? Number(value) : newItems[index].quantity,
+        sensorId:
+          field === "sensorId" ? Number(value) : newItems[index].sensorId,
+        quantity:
+          field === "quantity" ? Number(value) : newItems[index].quantity,
       };
       setFormState({ ...formState, items: newItems });
     }
   };
 
-  const handleAddressChange = (field: keyof FormOrder["shippingAddress"], value: string) => {
+  const handleAddressChange = (
+    field: keyof FormOrder["shippingAddress"],
+    value: string,
+  ) => {
     setFormState({
       ...formState,
       shippingAddress: {
@@ -588,8 +647,9 @@ export default function OrderManagement() {
 
   const calculateTotalCost = (order: Order) => {
     const itemsCost = order.items.reduce(
-      (sum, item) => sum + (DEFAULT_SENSOR_PRICES[item.sensorId] || 0) * item.quantity,
-      0
+      (sum, item) =>
+        sum + (DEFAULT_SENSOR_PRICES[item.sensorId] || 0) * item.quantity,
+      0,
     );
 
     return itemsCost + order.shippingCost;
@@ -597,7 +657,16 @@ export default function OrderManagement() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 }, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+      <Container
+        maxWidth="xl"
+        sx={{
+          py: { xs: 2, md: 4 },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "50vh",
+        }}
+      >
         <Typography variant="h6">Loading orders...</Typography>
       </Container>
     );
@@ -697,16 +766,11 @@ export default function OrderManagement() {
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>
                       <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography variant="body2">{order.street}</Typography>
                         <Typography variant="body2">
-                          {order.street}
+                          {order.postalCode} {order.city}
                         </Typography>
-                        <Typography variant="body2">
-                          {order.postalCode}{" "}
-                          {order.city}
-                        </Typography>
-                        <Typography variant="body2">
-                          {order.country}
-                        </Typography>
+                        <Typography variant="body2">{order.country}</Typography>
                         <Button
                           size="small"
                           startIcon={<ContentCopyIcon />}
@@ -774,7 +838,9 @@ export default function OrderManagement() {
                       {order.status === "Taken" && (
                         <IconButton
                           color="secondary"
-                          onClick={() => handleStatusChange(order.id, "Shipped")}
+                          onClick={() =>
+                            handleStatusChange(order.id, "Shipped")
+                          }
                           title="Mark as Shipped"
                         >
                           <LocalShippingIcon />
@@ -784,7 +850,9 @@ export default function OrderManagement() {
                       {order.status === "Shipped" && (
                         <IconButton
                           color="success"
-                          onClick={() => handleStatusChange(order.id, "Arrived")}
+                          onClick={() =>
+                            handleStatusChange(order.id, "Arrived")
+                          }
                           title="Mark as Arrived"
                         >
                           <CheckCircleIcon />
@@ -867,7 +935,9 @@ export default function OrderManagement() {
                   label="Address"
                   placeholder="Search streets, businesses or places"
                   value={formState.shippingAddress.street}
-                  onChange={(e) => handleAddressChange("street", e.target.value)}
+                  onChange={(e) =>
+                    handleAddressChange("street", e.target.value)
+                  }
                   required
                 />
               </Grid>
@@ -911,7 +981,9 @@ export default function OrderManagement() {
                     fullWidth
                     label="City"
                     value={formState.shippingAddress.city}
-                    onChange={(e) => handleAddressChange("city", e.target.value)}
+                    onChange={(e) =>
+                      handleAddressChange("city", e.target.value)
+                    }
                     required
                   />
                 </Grid>
@@ -945,7 +1017,7 @@ export default function OrderManagement() {
                             handleItemChange(
                               index,
                               "sensorId",
-                              Number(e.target.value)
+                              Number(e.target.value),
                             )
                           }
                           required
@@ -970,7 +1042,7 @@ export default function OrderManagement() {
                           handleItemChange(
                             index,
                             "quantity",
-                            Number(e.target.value)
+                            Number(e.target.value),
                           )
                         }
                         required
@@ -982,11 +1054,19 @@ export default function OrderManagement() {
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => checkSingleItemStock(item.sensorId, item.quantity, index)}
+                        onClick={() =>
+                          checkSingleItemStock(
+                            item.sensorId,
+                            item.quantity,
+                            index,
+                          )
+                        }
                         disabled={itemStockStatus[index]?.loading}
-                        sx={{ height: '56px' }}
+                        sx={{ height: "56px" }}
                       >
-                        {itemStockStatus[index]?.loading ? "..." : "Check Stock"}
+                        {itemStockStatus[index]?.loading
+                          ? "..."
+                          : "Check Stock"}
                       </Button>
                     </Grid>
 
@@ -996,35 +1076,46 @@ export default function OrderManagement() {
                         color="error"
                         onClick={() => handleRemoveItem(index)}
                         disabled={formState.items.length <= 1}
-                        sx={{ height: '56px' }}
+                        sx={{ height: "56px" }}
                       >
                         Remove
                       </Button>
                     </Grid>
 
                     {/* Stock Status Indicator */}
-                    {itemStockStatus[index] && !itemStockStatus[index].loading && (
-                      <Grid item xs={12}>
-                        <Box sx={{
-                          p: 1,
-                          bgcolor: itemStockStatus[index].canProduce ? 'success.light' : 'error.light',
-                          borderRadius: 1,
-                          mt: 1
-                        }}>
-                          <Typography variant="body2" color={itemStockStatus[index].canProduce ? 'success.dark' : 'error.dark'}>
-                            {itemStockStatus[index].canProduce
-                              ? `✓ Can produce ${item.quantity} sensors (Max: ${itemStockStatus[index].maxPossible})`
-                              : `⚠ Cannot produce ${item.quantity} sensors (Max: ${itemStockStatus[index].maxPossible})`
-                            }
-                          </Typography>
-                          {itemStockStatus[index].issues.length > 0 && (
-                            <Typography variant="caption" display="block">
-                              {itemStockStatus[index].issues.join(', ')}
+                    {itemStockStatus[index] &&
+                      !itemStockStatus[index].loading && (
+                        <Grid item xs={12}>
+                          <Box
+                            sx={{
+                              p: 1,
+                              bgcolor: itemStockStatus[index].canProduce
+                                ? "success.light"
+                                : "error.light",
+                              borderRadius: 1,
+                              mt: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              color={
+                                itemStockStatus[index].canProduce
+                                  ? "success.dark"
+                                  : "error.dark"
+                              }
+                            >
+                              {itemStockStatus[index].canProduce
+                                ? `✓ Can produce ${item.quantity} sensors (Max: ${itemStockStatus[index].maxPossible})`
+                                : `⚠ Cannot produce ${item.quantity} sensors (Max: ${itemStockStatus[index].maxPossible})`}
                             </Typography>
-                          )}
-                        </Box>
-                      </Grid>
-                    )}
+                            {itemStockStatus[index].issues.length > 0 && (
+                              <Typography variant="caption" display="block">
+                                {itemStockStatus[index].issues.join(", ")}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Grid>
+                      )}
                   </Grid>
                 ))}
 
@@ -1204,16 +1295,11 @@ export default function OrderManagement() {
                 <Typography variant="body2">
                   {selectedOrder.customerName}
                 </Typography>
+                <Typography variant="body2">{selectedOrder.street}</Typography>
                 <Typography variant="body2">
-                  {selectedOrder.street}
+                  {selectedOrder.postalCode} {selectedOrder.city}
                 </Typography>
-                <Typography variant="body2">
-                  {selectedOrder.postalCode}{" "}
-                  {selectedOrder.city}
-                </Typography>
-                <Typography variant="body2">
-                  {selectedOrder.country}
-                </Typography>
+                <Typography variant="body2">{selectedOrder.country}</Typography>
               </Box>
 
               <Box sx={{ my: 2 }}>
@@ -1320,7 +1406,9 @@ export default function OrderManagement() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: "warning.light", color: "warning.contrastText" }}>
+        <DialogTitle
+          sx={{ bgcolor: "warning.light", color: "warning.contrastText" }}
+        >
           ⚠️ Stock Availability Warning
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -1331,7 +1419,10 @@ export default function OrderManagement() {
           </Typography>
 
           {stockValidation.warnings.map((warning, index) => (
-            <Box key={index} sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
+            <Box
+              key={index}
+              sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}
+            >
               <Typography variant="subtitle1" fontWeight="bold">
                 {warning.sensorName} (Requested: {warning.requestedQuantity})
               </Typography>
@@ -1340,7 +1431,12 @@ export default function OrderManagement() {
               </Typography>
 
               {warning.issues.map((issue, issueIndex) => (
-                <Typography key={issueIndex} variant="body2" color="error" sx={{ ml: 2 }}>
+                <Typography
+                  key={issueIndex}
+                  variant="body2"
+                  color="error"
+                  sx={{ ml: 2 }}
+                >
                   • {issue}
                 </Typography>
               ))}
@@ -1354,10 +1450,7 @@ export default function OrderManagement() {
           </Typography>
         </DialogContent>
         <Box sx={{ p: 2, display: "flex", gap: 2, justifyContent: "flex-end" }}>
-          <Button
-            variant="outlined"
-            onClick={() => setShowStockWarning(false)}
-          >
+          <Button variant="outlined" onClick={() => setShowStockWarning(false)}>
             Cancel
           </Button>
           <Button
@@ -1385,7 +1478,6 @@ export default function OrderManagement() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container >
+    </Container>
   );
 }
-

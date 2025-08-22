@@ -2019,7 +2019,7 @@ export async function getAvailableDevicesSummary() {
 export async function assignDeviceToOrder(
   devEUI: string,
   orderId: number,
-  reason: string = "Assigned to order",
+  //reason: string = "Assigned to order",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -2043,16 +2043,16 @@ export async function assignDeviceToOrder(
       });
 
       // Log the change
-      await tx.inventoryLog.create({
-        data: {
-          itemType: "sensor",
-          itemName: device.DeviceType || "Unknown",
-          change: -1, // Out of inventory
-          reason: reason,
-          user: "System",
-          details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
-        },
-      });
+      // await tx.inventoryLog.create({
+      //   data: {
+      //     itemType: "sensor",
+      //     itemName: device.DeviceType || "Unknown",
+      //     change: -1, // Out of inventory
+      //     reason: reason,
+      //     user: "System",
+      //     details: `DevEUI: ${devEUI} assigned to order ${orderId}`,
+      //   },
+      // });
 
       return updatedDevice;
     });
@@ -2974,5 +2974,43 @@ export async function checkSensorProductionCapability(
   } catch (error) {
     console.error("Error checking sensor production capability:", error);
     throw new Error("Failed to check sensor production capability");
+  }
+}
+
+export async function updateSensorFrequency(
+  devEUI: string,
+  newFrequency: string,
+) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Find the device
+      const device = await tx.productionList.findUnique({
+        where: { DevEUI: devEUI },
+      });
+
+      if (!device) {
+        throw new Error(`Device with DevEUI ${devEUI} not found`);
+      }
+
+      // 2. Update the frequency
+      const updatedDevice = await tx.productionList.update({
+        where: { DevEUI: devEUI },
+        data: {
+          FrequencyRegion: newFrequency,
+        },
+      });
+
+      // 3. Log the change
+      // Note: You might want to add a log entry here if you have a logging system
+
+      return updatedDevice;
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error updating sensor frequency:", error);
+    throw new Error(
+      "Failed to update sensor frequency: " + (error as Error).message,
+    );
   }
 }

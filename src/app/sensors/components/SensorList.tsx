@@ -41,7 +41,7 @@ type FrontendSensor = {
   sensorName: string;
   familyId: number;
   productId: number;
-  frequency?: string | null;
+  pricePerItem?: number | null;
   photograph?: string | null;
   payloadDecoder?: string | null;
   decoder?: JsonValue;
@@ -77,7 +77,7 @@ export default function SensorList() {
         sensorName: sensor.sensorName,
         familyId: sensor.familyId,
         productId: sensor.productId,
-        frequency: sensor.frequency,
+        frequency: sensor.pricePerItem,
         photograph: sensor.photograph,
         payloadDecoder: sensor.payloadDecoder,
         decoder: sensor.decoder,
@@ -94,7 +94,7 @@ export default function SensorList() {
         sensorName: params.sensorName,
         familyId: params.familyId,
         productId: params.productId,
-        frequency: params.frequency || null,
+        pricePerItem: params.pricePerItem || null,
         photograph: params.photograph || null,
         payloadDecoder: params.payloadDecoder || null,
         decoder: params.decoder !== undefined ? params.decoder : null,
@@ -126,7 +126,7 @@ export default function SensorList() {
         sensorName: params.sensorName,
         familyId: params.familyId,
         productId: params.productId,
-        frequency: params.frequency || null,
+        pricePerItem: params.pricePerItem || null,
         photograph: params.photograph || null,
         payloadDecoder: params.payloadDecoder || null,
         decoder: params.decoder !== undefined ? params.decoder : null,
@@ -573,10 +573,12 @@ export default function SensorList() {
 
               <TextField
                 fullWidth
-                name="frequency"
-                label="Frekvenca"
-                defaultValue={editingSensor?.frequency}
-                placeholder="npr. 868 MHz"
+                name="pricePerItem"
+                label="Cena na enoto"
+                defaultValue={editingSensor?.pricePerItem}
+                placeholder="npr. 12.99"
+                type="number"
+                inputProps={{ step: 0.01 }}
               />
 
               <TextField

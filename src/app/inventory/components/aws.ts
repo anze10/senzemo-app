@@ -61,3 +61,49 @@ export const uploadPDFToB2 = async (
 export const uploadToB2 = async (file: File, invoiceNumber: string) => {
   return uploadPDFToB2(file, invoiceNumber, "invoices");
 };
+
+// Get sensor image URL from Backblaze bucket
+export async function getSensorImageUrl(sensorName: string): Promise<string> {
+  console.log("🔍 getSensorImageUrl called with sensorName:", sensorName);
+
+  if (!sensorName) {
+    console.log("❌ No sensor name provided");
+    return "";
+  }
+
+  // Convert sensor name to lowercase and append .JPG (uppercase extension)
+  const imageName = sensorName.toLowerCase() + ".JPG";
+  const bucketName = "SENZEMO"; // Correct bucket name from working URL
+
+  console.log("📁 Image name:", imageName);
+  console.log("🪣 Bucket name:", bucketName);
+
+  // Construct the public URL for Backblaze B2
+  // Format from working URL: https://f003.backblazeb2.com/file/SENZEMO/images/smc30.JPG
+  const baseUrl =
+    process.env.NEXT_PUBLIC_B2_DOWNLOAD_URL ||
+    `https://f003.backblazeb2.com/file/${bucketName}`;
+
+  const fullUrl = `${baseUrl}/images/${imageName}`;
+
+  console.log("🌐 Base URL:", baseUrl);
+  console.log("🔗 Full image URL:", fullUrl);
+  console.log(
+    "🏗️ Environment variable NEXT_PUBLIC_B2_DOWNLOAD_URL:",
+    process.env.NEXT_PUBLIC_B2_DOWNLOAD_URL,
+  );
+
+  return fullUrl;
+}
+
+// Check if sensor image exists (client-side helper)
+export const checkSensorImageExists = async (
+  imageUrl: string,
+): Promise<boolean> => {
+  try {
+    const response = await fetch(imageUrl, { method: "HEAD" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+};

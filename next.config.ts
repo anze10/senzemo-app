@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
       {
         hostname: "lh3.googleusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: "f003.backblazeb2.com",
+        pathname: "/file/SENZEMO/**",
+      },
     ],
   },
 };

@@ -12,7 +12,7 @@ export async function UpdateorAddSenor(params: Senzor) {
     payloadDecoder: params.payloadDecoder,
     description: params.description,
     zpl: params.zpl,
-    frequency: params.frequency,
+    pricePerItem: params.pricePerItem,
     ...(params.decoder !== null && { decoder: params.decoder }),
   };
 
@@ -35,7 +35,7 @@ export async function InsertSensor(params: Omit<Senzor, "id">) {
     payloadDecoder: params.payloadDecoder,
     description: params.description,
     zpl: params.zpl,
-    frequency: params.frequency,
+    pricePerItem: params.pricePerItem,
     ...(params.decoder !== null && { decoder: params.decoder }),
   };
 

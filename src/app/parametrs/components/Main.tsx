@@ -331,7 +331,9 @@ export default function Parameters() {
                     if (error instanceof Error) {
                       alert(`Error: ${error.message}`);
                     } else {
-                      alert("An unknown error occurred while creating the order.");
+                      alert(
+                        "An unknown error occurred while creating the order.",
+                      );
                     }
                   }
                 }}
