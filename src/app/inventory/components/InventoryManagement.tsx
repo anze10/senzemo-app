@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMediaQuery, useTheme } from "@mui/material";
@@ -178,6 +178,192 @@ type ProductionGroupByFrequency = {
   expanded: boolean;
 };
 
+// Dialog state management types
+type DialogType = 'none' | 'edit' | 'delete' | 'adjustment' | 'deviceAction' | 'frequencyEdit';
+
+interface DialogState {
+  type: DialogType;
+  item: InventoryItem | ProductionDevice | null;
+  data: {
+    adjustmentType?: 'increase' | 'decrease';
+    adjustmentQuantity?: number;
+    adjustmentReason?: string;
+    deviceActionReason?: string;
+    selectedOrderId?: number | null;
+    showOrderSelection?: boolean;
+    newFrequency?: string;
+  };
+}
+
+type DialogAction =
+  | { type: 'OPEN_EDIT'; item: InventoryItem }
+  | { type: 'OPEN_DELETE'; item: InventoryItem }
+  | { type: 'OPEN_ADJUSTMENT'; item: InventoryItem; adjustmentType: 'increase' | 'decrease' }
+  | { type: 'OPEN_DEVICE_ACTION'; item: ProductionDevice }
+  | { type: 'OPEN_FREQUENCY_EDIT'; item: ProductionDevice }
+  | { type: 'UPDATE_EDIT_ITEM'; item: InventoryItem }
+  | { type: 'UPDATE_ADJUSTMENT_DATA'; data: Partial<DialogState['data']> }
+  | { type: 'UPDATE_DEVICE_ACTION_DATA'; data: Partial<DialogState['data']> }
+  | { type: 'UPDATE_FREQUENCY_DATA'; data: Partial<DialogState['data']> }
+  | { type: 'CLOSE' };
+
+const initialDialogState: DialogState = {
+  type: 'none',
+  item: null,
+  data: {}
+};
+
+function dialogReducer(state: DialogState, action: DialogAction): DialogState {
+  switch (action.type) {
+    case 'OPEN_EDIT':
+      return {
+        type: 'edit',
+        item: action.item,
+        data: {}
+      };
+    case 'OPEN_DELETE':
+      return {
+        type: 'delete',
+        item: action.item,
+        data: {}
+      };
+    case 'OPEN_ADJUSTMENT':
+      return {
+        type: 'adjustment',
+        item: action.item,
+        data: {
+          adjustmentType: action.adjustmentType,
+          adjustmentQuantity: 1,
+          adjustmentReason: ''
+        }
+      };
+    case 'OPEN_DEVICE_ACTION':
+      return {
+        type: 'deviceAction',
+        item: action.item,
+        data: {
+          deviceActionReason: '',
+          selectedOrderId: null,
+          showOrderSelection: false
+        }
+      };
+    case 'OPEN_FREQUENCY_EDIT':
+      return {
+        type: 'frequencyEdit',
+        item: action.item,
+        data: {
+          newFrequency: (action.item as ProductionDevice).frequency || ''
+        }
+      };
+    case 'UPDATE_EDIT_ITEM':
+      return {
+        ...state,
+        item: action.item
+      };
+    case 'UPDATE_ADJUSTMENT_DATA':
+    case 'UPDATE_DEVICE_ACTION_DATA':
+    case 'UPDATE_FREQUENCY_DATA':
+      return {
+        ...state,
+        data: { ...state.data, ...action.data }
+      };
+    case 'CLOSE':
+      return initialDialogState;
+    default:
+      return state;
+  }
+}
+
+// Search state management types
+interface SearchState {
+  componentSearchQuery: string;
+  deviceSearchQuery: string;
+}
+
+type SearchAction =
+  | { type: 'SET_COMPONENT_SEARCH'; query: string }
+  | { type: 'SET_DEVICE_SEARCH'; query: string }
+  | { type: 'CLEAR_COMPONENT_SEARCH' }
+  | { type: 'CLEAR_DEVICE_SEARCH' }
+  | { type: 'CLEAR_ALL_SEARCHES' };
+
+const initialSearchState: SearchState = {
+  componentSearchQuery: '',
+  deviceSearchQuery: ''
+};
+
+function searchReducer(state: SearchState, action: SearchAction): SearchState {
+  switch (action.type) {
+    case 'SET_COMPONENT_SEARCH':
+      return { ...state, componentSearchQuery: action.query };
+    case 'SET_DEVICE_SEARCH':
+      return { ...state, deviceSearchQuery: action.query };
+    case 'CLEAR_COMPONENT_SEARCH':
+      return { ...state, componentSearchQuery: '' };
+    case 'CLEAR_DEVICE_SEARCH':
+      return { ...state, deviceSearchQuery: '' };
+    case 'CLEAR_ALL_SEARCHES':
+      return initialSearchState;
+    default:
+      return state;
+  }
+}
+
+// Invoice state management types
+interface InvoiceState {
+  file: File | null;
+  number: string;
+  uploading: boolean;
+  isDragging: boolean;
+  history: Array<{
+    invoiceNumber: string;
+    filename: string | null;
+    uploadDate: Date;
+    amount: number | null;
+    downloadUrl: string | null;
+  }>;
+  loadingHistory: boolean;
+}
+
+type InvoiceAction =
+  | { type: 'SET_FILE'; file: File | null }
+  | { type: 'SET_NUMBER'; number: string }
+  | { type: 'SET_UPLOADING'; uploading: boolean }
+  | { type: 'SET_DRAGGING'; isDragging: boolean }
+  | { type: 'SET_HISTORY'; history: InvoiceState['history'] }
+  | { type: 'SET_LOADING_HISTORY'; loading: boolean }
+  | { type: 'CLEAR_INVOICE' };
+
+const initialInvoiceState: InvoiceState = {
+  file: null,
+  number: '',
+  uploading: false,
+  isDragging: false,
+  history: [],
+  loadingHistory: false
+};
+
+function invoiceReducer(state: InvoiceState, action: InvoiceAction): InvoiceState {
+  switch (action.type) {
+    case 'SET_FILE':
+      return { ...state, file: action.file };
+    case 'SET_NUMBER':
+      return { ...state, number: action.number };
+    case 'SET_UPLOADING':
+      return { ...state, uploading: action.uploading };
+    case 'SET_DRAGGING':
+      return { ...state, isDragging: action.isDragging };
+    case 'SET_HISTORY':
+      return { ...state, history: action.history };
+    case 'SET_LOADING_HISTORY':
+      return { ...state, loadingHistory: action.loading };
+    case 'CLEAR_INVOICE':
+      return { ...initialInvoiceState };
+    default:
+      return state;
+  }
+}
+
 type ProductionDevice = {
   id: number;
   devEUI: string;
@@ -349,69 +535,55 @@ export default function InventoryManagementPage() {
     ComponentStockItem[]
   >([]);
 
-  const [open, setOpen] = useState(false);
-  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  // Consolidated state management using reducers
+  const [dialogState, dispatchDialog] = useReducer(dialogReducer, initialDialogState);
+  const [searchState, dispatchSearch] = useReducer(searchReducer, initialSearchState);
+  const [invoiceState, dispatchInvoice] = useReducer(invoiceReducer, initialInvoiceState);
+
+  // Keep some individual states that don't fit well into reducers
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success" as "success" | "error" | "info" | "warning",
   });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
-  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [uploading, setUploading] = useState(false);
 
-  // Add state for invoice history
-  const [invoiceHistory, setInvoiceHistory] = useState<
-    Array<{
-      invoiceNumber: string;
-      filename: string | null;
-      uploadDate: Date;
-      amount: number | null;
-      downloadUrl: string | null;
-    }>
-  >([]);
-  const [loadingInvoiceHistory, setLoadingInvoiceHistory] = useState(false);
+  // Derived state from reducers for easier access
+  const isEditDialogOpen = dialogState.type === 'edit';
+  const isDeleteDialogOpen = dialogState.type === 'delete';
+  const isAdjustmentDialogOpen = dialogState.type === 'adjustment';
+  const isDeviceActionDialogOpen = dialogState.type === 'deviceAction';
+  const isFrequencyEditDialogOpen = dialogState.type === 'frequencyEdit';
 
-  // Add adjustment dialog state
-  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
-  const [currentAdjustItem, setCurrentAdjustItem] =
-    useState<InventoryItem | null>(null);
-  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">(
-    "increase",
-  );
-  const [adjustmentQuantity, setAdjustmentQuantity] = useState(1);
-  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const editItem = dialogState.item as InventoryItem | null;
+  const currentAdjustItem = dialogState.type === 'adjustment' ? dialogState.item as InventoryItem : null;
+  const currentDevice = dialogState.type === 'deviceAction' ? dialogState.item as ProductionDevice : null;
+  const editingFrequencyDevice = dialogState.type === 'frequencyEdit' ? dialogState.item as ProductionDevice : null;
 
-  // Add device action dialog state
-  const [deviceActionDialogOpen, setDeviceActionDialogOpen] = useState(false);
-  const [currentDevice, setCurrentDevice] = useState<ProductionDevice | null>(
-    null,
-  );
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [deviceActionReason, setDeviceActionReason] = useState("");
-  const [showOrderSelection, setShowOrderSelection] = useState(false);
+  const adjustmentType = dialogState.data.adjustmentType || 'increase';
+  const adjustmentQuantity = dialogState.data.adjustmentQuantity || 1;
+  const adjustmentReason = dialogState.data.adjustmentReason || '';
+  const deviceActionReason = dialogState.data.deviceActionReason || '';
+  const selectedOrderId = dialogState.data.selectedOrderId || null;
+  const showOrderSelection = dialogState.data.showOrderSelection || false;
+  const newFrequency = dialogState.data.newFrequency || '';
 
-  // Add frequency edit dialog state
-  const [frequencyEditDialogOpen, setFrequencyEditDialogOpen] = useState(false);
-  const [editingFrequencyDevice, setEditingFrequencyDevice] =
-    useState<ProductionDevice | null>(null);
-  const [newFrequency, setNewFrequency] = useState<string>("");
+  const componentSearchQuery = searchState.componentSearchQuery;
+  const deviceSearchQuery = searchState.deviceSearchQuery;
 
-  // Add search state for components
-  const [componentSearchQuery, setComponentSearchQuery] = useState("");
-
-  // Add search state for device EUI
-  const [deviceSearchQuery, setDeviceSearchQuery] = useState("");
+  const invoiceFile = invoiceState.file;
+  const invoiceNumber = invoiceState.number;
+  const uploading = invoiceState.uploading;
+  const isDragging = invoiceState.isDragging;
+  const invoiceHistory = invoiceState.history;
+  const loadingInvoiceHistory = invoiceState.loadingHistory;
 
   // Add query to fetch invoice files for a component
   const fetchComponentInvoiceHistory = useCallback(
     async (componentId: number) => {
       if (!componentId) return [];
 
-      setLoadingInvoiceHistory(true);
+      dispatchInvoice({ type: 'SET_LOADING_HISTORY', loading: true });
       try {
         // For now, return empty array since getComponentInvoiceFiles is not implemented
         const invoices: Array<{
@@ -422,22 +594,24 @@ export default function InventoryManagementPage() {
           downloadUrl: string | null;
         }> = [];
         // Sort by uploadDate descending to get newest first
-        return invoices.sort(
+        const sortedInvoices = invoices.sort(
           (a, b) =>
             new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime(),
         );
+        dispatchInvoice({ type: 'SET_HISTORY', history: sortedInvoices });
+        return sortedInvoices;
       } catch (error) {
         console.error("Failed to fetch invoice history:", error);
+        dispatchInvoice({ type: 'SET_HISTORY', history: [] });
         return [];
       } finally {
-        setLoadingInvoiceHistory(false);
+        dispatchInvoice({ type: 'SET_LOADING_HISTORY', loading: false });
       }
     },
-    [],
+    [dispatchInvoice],
   );
 
   const queryClient = useQueryClient();
-  const frequencyOptions: Frequency[] = ["AS923", "EU868", "US915", "2.4 GHz"];
 
   // Helper function to check if component is below threshold
 
@@ -524,13 +698,13 @@ export default function InventoryManagementPage() {
       }
       // Escape to clear search
       if (event.key === "Escape" && deviceSearchQuery && activeTab === 0) {
-        setDeviceSearchQuery("");
+        dispatchSearch({ type: 'CLEAR_DEVICE_SEARCH' });
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, deviceSearchQuery]);
+  }, [activeTab, deviceSearchQuery, dispatchSearch]);
 
   const uploadMutation = useMutation({
     mutationFn: async ({
@@ -574,6 +748,7 @@ export default function InventoryManagementPage() {
   const { data: allSensors = [] } = useQuery({
     queryKey: ["sensors"],
     queryFn: getSensors,
+    enabled: activeTab === 0 || activeTab === 1, // Fetch when on sensors tab or components tab (needed for sensor assignments)
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -581,6 +756,7 @@ export default function InventoryManagementPage() {
   const { data: allComponents = [] } = useQuery({
     queryKey: ["components-inventory"],
     queryFn: showAllComponents,
+    enabled: activeTab === 1, // Only fetch when on components tab
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -588,12 +764,14 @@ export default function InventoryManagementPage() {
   const { data: componentOptions = [] } = useQuery({
     queryKey: ["all-components"],
     queryFn: getAllComponents,
+    enabled: activeTab === 1, // Only fetch when on components tab
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
   const { data: LowComponents = [] } = useQuery({
     queryKey: [" LowComponents "],
     queryFn: getLowComponents,
+    enabled: activeTab === 1, // Only fetch when on components tab
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -601,6 +779,7 @@ export default function InventoryManagementPage() {
   const { data: logs = [] } = useQuery({
     queryKey: ["inventory-logs"],
     queryFn: showLogs,
+    enabled: activeTab === 2, // Only fetch when on logs tab
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -609,6 +788,7 @@ export default function InventoryManagementPage() {
   const { data: allOrders = [] } = useQuery({
     queryKey: ["orders"],
     queryFn: getAllOrders,
+    enabled: activeTab === 0, // Only fetch when on sensors tab (needed for device assignment)
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -653,7 +833,7 @@ export default function InventoryManagementPage() {
         return [];
       }
     },
-    enabled: activeTab === 0, // Only fetch when on sensors tab
+    enabled: activeTab === 0,
     staleTime: 15 * 60 * 1000, // 15 minutes cache
     gcTime: 60 * 60 * 1000, // 1 hour garbage collection
     refetchOnWindowFocus: false, // Don't refetch on window focus
@@ -677,8 +857,54 @@ export default function InventoryManagementPage() {
     refetchOnWindowFocus: false,
   });
 
+  // ===================== MEMOIZED COMPUTATIONS =====================
+
+  // Memoize filtered components computation for better performance
+  const filteredComponents = useMemo(() => {
+    if (!componentSearchQuery.trim()) return allComponents;
+
+    const searchLower = componentSearchQuery.toLowerCase();
+    return allComponents.filter((component) =>
+      component.name?.toLowerCase().includes(searchLower) ||
+      component.contactDetails?.supplier?.toLowerCase().includes(searchLower) ||
+      component.contactDetails?.email?.toLowerCase().includes(searchLower) ||
+      component.invoiceNumber?.toLowerCase().includes(searchLower)
+    );
+  }, [allComponents, componentSearchQuery]);
+
+  // Memoize filtered device hierarchy computation for better performance
+  const filteredDeviceHierarchy = useMemo(() => {
+    if (!deviceSearchQuery.trim()) return productionHierarchy;
+
+    const searchLower = deviceSearchQuery.toLowerCase();
+    return productionHierarchy
+      .map((sensorGroup) => ({
+        ...sensorGroup,
+        frequencies: sensorGroup.frequencies
+          .map((freqGroup) => ({
+            ...freqGroup,
+            devices: freqGroup.devices.filter((device) =>
+              device.devEUI?.toLowerCase().includes(searchLower) ||
+              device.appEUI?.toLowerCase().includes(searchLower)
+            ),
+          }))
+          .filter((freqGroup) => freqGroup.devices.length > 0),
+      }))
+      .filter((sensorGroup) => sensorGroup.frequencies.length > 0);
+  }, [productionHierarchy, deviceSearchQuery]);
+
+  // Memoize frequency options for form dropdown
+  const frequencyOptions: Frequency[] = useMemo(() => [
+    "AS923",
+    "EU868",
+    "US915",
+    "2.4 GHz"
+  ], []);
+
+  // ===================== END MEMOIZED COMPUTATIONS =====================
+
   useEffect(() => {
-    if (open && activeTab === 1) {
+    if (isEditDialogOpen && activeTab === 1) {
       const componentItem = editItem as ComponentStockItem;
       const options = allSensors
         .filter((sensor) => typeof sensor.id === "number")
@@ -696,61 +922,25 @@ export default function InventoryManagementPage() {
         });
 
       setSensorOptions(options);
-      setInvoiceNumber(componentItem.invoiceNumber || "");
+      dispatchInvoice({ type: 'SET_NUMBER', number: componentItem.invoiceNumber || '' });
     }
-  }, [open, editItem, activeTab, allSensors]);
+  }, [isEditDialogOpen, editItem, activeTab, allSensors, dispatchInvoice]);
 
-  useEffect(() => {
-    if (!open) {
-      // Initialize directly to avoid circular dependency
-      if (activeTab === 0) {
-        setEditItem({
-          id: 0,
-          senzorId: 0,
-          sensorName: "",
-          quantity: 1,
-          location: "Main Warehouse",
-          lastUpdated: new Date(),
-          frequency: "868 MHz" as Frequency,
-        } as SenzorStockItem);
-      } else {
-        setEditItem({
-          id: 0,
-          componentId: 0,
-          name: "",
-          quantity: 1,
-          location: "Main Warehouse",
-          lastUpdated: new Date(),
-          sensorAssignments: [],
-          invoiceNumber: "",
-          price: 0,
-          contactDetails: {
-            supplier: "",
-            email: "",
-            phone: "",
-          },
-        } as ComponentStockItem);
-      }
-      setInvoiceNumber("");
-    }
-  }, [activeTab, open]);
+
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 
   const handleClickOpen = () => {
-    setEditItem(initializeNewItem());
-    setOpen(true);
+    const newItem = initializeNewItem();
+    dispatchDialog({ type: 'OPEN_EDIT', item: newItem });
   };
 
   const handleClose = () => {
-    setOpen(false);
-    setEditItem(null);
+    dispatchDialog({ type: 'CLOSE' });
     setSensorOptions([]);
-    setInvoiceFile(null);
-    setInvoiceNumber("");
-    setInvoiceHistory([]); // Clear invoice history when closing dialog
+    dispatchInvoice({ type: 'CLEAR_INVOICE' });
   };
 
   const handleRequiredQuantityChange = (sensorId: number, value: number) => {
@@ -765,35 +955,35 @@ export default function InventoryManagementPage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    dispatchInvoice({ type: 'SET_DRAGGING', isDragging: true });
   };
 
   const handleDragLeave = () => {
-    setIsDragging(false);
+    dispatchInvoice({ type: 'SET_DRAGGING', isDragging: false });
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    dispatchInvoice({ type: 'SET_DRAGGING', isDragging: false });
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      setInvoiceFile(file);
+      dispatchInvoice({ type: 'SET_FILE', file });
 
       // Set filename (without extension) as invoice number
       const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
-      setInvoiceNumber(fileNameWithoutExtension);
+      dispatchInvoice({ type: 'SET_NUMBER', number: fileNameWithoutExtension });
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setInvoiceFile(file);
+      dispatchInvoice({ type: 'SET_FILE', file });
 
       // Set filename (without extension) as invoice number
       const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
-      setInvoiceNumber(fileNameWithoutExtension);
+      dispatchInvoice({ type: 'SET_NUMBER', number: fileNameWithoutExtension });
 
       // Show notification to user about automatic setting
       setSnackbar({
@@ -806,7 +996,7 @@ export default function InventoryManagementPage() {
 
   // Add handler for invoice number changes
   const handleInvoiceNumberChange = (value: string) => {
-    setInvoiceNumber(value);
+    dispatchInvoice({ type: 'SET_NUMBER', number: value });
 
     // If there's a file uploaded and user changes invoice number,
     // we should note that the filename and invoice number are now different
@@ -1056,9 +1246,9 @@ export default function InventoryManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
       // Če je dialog še odprt, ponovno nastavi editItem iz svežih podatkov
-      if (open && editItem && "componentId" in editItem) {
+      if (isEditDialogOpen && editItem && "componentId" in editItem) {
         const freshComponent = allComponents.find((c) => c.id === editItem.id);
-        setEditItem(freshComponent ?? editItem);
+        dispatchDialog({ type: 'OPEN_EDIT', item: freshComponent ?? editItem });
       }
     },
     onError: (error: unknown) => {
@@ -1126,17 +1316,17 @@ export default function InventoryManagementPage() {
       // Upload file if provided
       let fileKey: string | null = null;
       if (invoiceFile) {
-        setUploading(true);
+        dispatchInvoice({ type: 'SET_UPLOADING', uploading: true });
         try {
           fileKey = await uploadMutation.mutateAsync({
             file: invoiceFile,
             componentName: updatedItem.name,
           });
         } catch (error) {
-          setUploading(false);
+          dispatchInvoice({ type: 'SET_UPLOADING', uploading: false });
           throw new Error(`File upload failed: ${(error as Error).message}`);
         }
-        setUploading(false);
+        dispatchInvoice({ type: 'SET_UPLOADING', uploading: false });
       }
 
       if (editItem.id) {
@@ -1176,7 +1366,7 @@ export default function InventoryManagementPage() {
           updatedItem.price,
           updatedItem.contactDetails.phone,
           updatedItem.sensorAssignments,
-          fileKey || undefined, // Pass file key to backend
+          fileKey || undefined,
         );
 
         queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
@@ -1212,7 +1402,7 @@ export default function InventoryManagementPage() {
         message: "Item deleted successfully!",
         severity: "success",
       });
-      setDeleteDialogOpen(false);
+      dispatchDialog({ type: 'CLOSE' });
       handleClose();
     } catch (error) {
       setSnackbar({
@@ -1251,11 +1441,7 @@ export default function InventoryManagementPage() {
     item: InventoryItem,
     type: "increase" | "decrease",
   ) => {
-    setCurrentAdjustItem(item);
-    setAdjustmentType(type);
-    setAdjustmentReason("");
-    setAdjustmentQuantity(1);
-    setAdjustmentDialogOpen(true);
+    dispatchDialog({ type: 'OPEN_ADJUSTMENT', item, adjustmentType: type });
   };
 
   const confirmAdjustment = async () => {
@@ -1272,17 +1458,17 @@ export default function InventoryManagementPage() {
         adjustmentType === "increase" &&
         "componentId" in currentAdjustItem
       ) {
-        setUploading(true);
+        dispatchInvoice({ type: 'SET_UPLOADING', uploading: true });
         try {
           fileKey = await uploadMutation.mutateAsync({
             file: invoiceFile,
             componentName: (currentAdjustItem as ComponentStockItem).name,
           });
         } catch (error) {
-          setUploading(false);
+          dispatchInvoice({ type: 'SET_UPLOADING', uploading: false });
           throw new Error(`File upload failed: ${(error as Error).message}`);
         }
-        setUploading(false);
+        dispatchInvoice({ type: 'SET_UPLOADING', uploading: false });
       }
 
       if ("senzorId" in currentAdjustItem) {
@@ -1306,10 +1492,9 @@ export default function InventoryManagementPage() {
         });
       }
 
-      setAdjustmentDialogOpen(false);
+      dispatchDialog({ type: 'CLOSE' });
       // Clear file state after successful adjustment
-      setInvoiceFile(null);
-      setInvoiceNumber("");
+      dispatchInvoice({ type: 'CLEAR_INVOICE' });
     } catch (error) {
       console.error("Adjustment failed:", error);
       setSnackbar({
@@ -1332,27 +1517,26 @@ export default function InventoryManagementPage() {
           (c: ComponentStockItem) => c.id === item.id,
         );
 
-        setEditItem(freshComponent ?? item);
+        dispatchDialog({ type: 'OPEN_EDIT', item: freshComponent ?? item });
 
         // Fetch invoice history for this component
         try {
           const history = await fetchComponentInvoiceHistory(item.componentId);
-          setInvoiceHistory(history);
+          dispatchInvoice({ type: 'SET_HISTORY', history });
         } catch (error) {
           console.error("Failed to fetch invoice history:", error);
-          setInvoiceHistory([]);
+          dispatchInvoice({ type: 'SET_HISTORY', history: [] });
         }
       } catch (error) {
         console.error("Failed to fetch fresh component data:", error);
         // Fallback to existing data
-        setEditItem(item);
-        setInvoiceHistory([]);
+        dispatchDialog({ type: 'OPEN_EDIT', item });
+        dispatchInvoice({ type: 'SET_HISTORY', history: [] });
       }
     } else {
-      setEditItem(item);
-      setInvoiceHistory([]); // Clear invoice history for sensors
+      dispatchDialog({ type: 'OPEN_EDIT', item });
+      dispatchInvoice({ type: 'SET_HISTORY', history: [] }); // Clear invoice history for sensors
     }
-    setOpen(true);
   };
 
   // Funkcije za upravljanje hierarhičnega prikaza
@@ -1488,11 +1672,7 @@ export default function InventoryManagementPage() {
   };
 
   const openDeviceActionDialog = (device: ProductionDevice) => {
-    setCurrentDevice(device);
-    setDeviceActionReason("");
-    setSelectedOrderId(null);
-    setShowOrderSelection(false);
-    setDeviceActionDialogOpen(true);
+    dispatchDialog({ type: 'OPEN_DEVICE_ACTION', item: device });
   };
 
   const confirmDeviceAction = async (
@@ -1515,15 +1695,11 @@ export default function InventoryManagementPage() {
       );
     }
 
-    setDeviceActionDialogOpen(false);
-    setShowOrderSelection(false);
-    setSelectedOrderId(null);
+    dispatchDialog({ type: 'CLOSE' });
   };
 
   const openFrequencyEditDialog = (device: ProductionDevice) => {
-    setEditingFrequencyDevice(device);
-    setNewFrequency(device.frequency || "");
-    setFrequencyEditDialogOpen(true);
+    dispatchDialog({ type: 'OPEN_FREQUENCY_EDIT', item: device });
   };
 
   const handleUpdateFrequency = async () => {
@@ -1541,9 +1717,7 @@ export default function InventoryManagementPage() {
         severity: "success",
       });
 
-      setFrequencyEditDialogOpen(false);
-      setEditingFrequencyDevice(null);
-      setNewFrequency("");
+      dispatchDialog({ type: 'CLOSE' });
     } catch (error) {
       setSnackbar({
         open: true,
@@ -1940,8 +2114,8 @@ export default function InventoryManagementPage() {
                       placement="top"
                     >
                       <TextField
-                        value={deviceSearchQuery}
-                        onChange={(e) => setDeviceSearchQuery(e.target.value)}
+                        value={searchState.deviceSearchQuery}
+                        onChange={(e) => dispatchSearch({ type: 'SET_DEVICE_SEARCH', query: e.target.value })}
                         placeholder="Search by Device EUI or App EUI..."
                         fullWidth
                         size="small"
@@ -1951,10 +2125,10 @@ export default function InventoryManagementPage() {
                               sx={{ mr: 1, color: "text.secondary" }}
                             />
                           ),
-                          endAdornment: deviceSearchQuery && (
+                          endAdornment: searchState.deviceSearchQuery && (
                             <IconButton
                               size="small"
-                              onClick={() => setDeviceSearchQuery("")}
+                              onClick={() => dispatchSearch({ type: 'SET_DEVICE_SEARCH', query: '' })}
                               sx={{ p: 0.5 }}
                             >
                               <DeleteIcon fontSize="small" />
@@ -2002,35 +2176,8 @@ export default function InventoryManagementPage() {
                   </Box>
 
                   {(() => {
-                    // Filter devices based on search query
-                    const filteredHierarchy = deviceSearchQuery.trim()
-                      ? productionHierarchy
-                        .map((sensorGroup) => ({
-                          ...sensorGroup,
-                          frequencies: sensorGroup.frequencies
-                            .map((freqGroup) => ({
-                              ...freqGroup,
-                              devices: freqGroup.devices.filter((device) => {
-                                const searchLower =
-                                  deviceSearchQuery.toLowerCase();
-                                return (
-                                  device.devEUI
-                                    ?.toLowerCase()
-                                    .includes(searchLower) ||
-                                  device.appEUI
-                                    ?.toLowerCase()
-                                    .includes(searchLower)
-                                );
-                              }),
-                            }))
-                            .filter(
-                              (freqGroup) => freqGroup.devices.length > 0,
-                            ),
-                        }))
-                        .filter(
-                          (sensorGroup) => sensorGroup.frequencies.length > 0,
-                        )
-                      : productionHierarchy;
+                    // Use memoized filtered hierarchy
+                    const filteredHierarchy = filteredDeviceHierarchy;
 
                     // Show appropriate empty state
                     if (productionHierarchy.length === 0) {
@@ -2072,11 +2219,11 @@ export default function InventoryManagementPage() {
                             variant="body2"
                             sx={{ mt: 1 }}
                           >
-                            No devices match &ldquo;{deviceSearchQuery}&rdquo;
+                            No devices match &ldquo;{searchState.deviceSearchQuery}&rdquo;
                           </Typography>
                           <Button
                             variant="outlined"
-                            onClick={() => setDeviceSearchQuery("")}
+                            onClick={() => dispatchSearch({ type: 'SET_DEVICE_SEARCH', query: '' })}
                             sx={{ mt: 2 }}
                             size="small"
                           >
@@ -2095,33 +2242,8 @@ export default function InventoryManagementPage() {
                         }}
                       >
                         {(() => {
-                          // Filter devices based on search query
-                          const filteredHierarchy = deviceSearchQuery.trim()
-                            ? productionHierarchy
-                              .map((sensorGroup) => ({
-                                ...sensorGroup,
-                                frequencies: sensorGroup.frequencies
-                                  .map((freqGroup) => ({
-                                    ...freqGroup,
-                                    devices: freqGroup.devices.filter(
-                                      (device) =>
-                                        device.devEUI
-                                          ?.toLowerCase()
-                                          .includes(
-                                            deviceSearchQuery.toLowerCase(),
-                                          ),
-                                    ),
-                                  }))
-                                  .filter(
-                                    (freqGroup) =>
-                                      freqGroup.devices.length > 0,
-                                  ),
-                              }))
-                              .filter(
-                                (sensorGroup) =>
-                                  sensorGroup.frequencies.length > 0,
-                              )
-                            : productionHierarchy;
+                          // Use memoized filtered hierarchy
+                          const filteredHierarchy = filteredDeviceHierarchy;
 
                           return filteredHierarchy.map((sensorGroup) => (
                             <Card
@@ -2637,22 +2759,6 @@ export default function InventoryManagementPage() {
             <>
               {/* Filter components based on search query */}
               {(() => {
-                const filteredComponents = allComponents.filter((component) => {
-                  if (!componentSearchQuery.trim()) return true;
-
-                  const searchLower = componentSearchQuery.toLowerCase();
-                  return (
-                    component.name?.toLowerCase().includes(searchLower) ||
-                    component.contactDetails?.supplier
-                      ?.toLowerCase()
-                      .includes(searchLower) ||
-                    component.contactDetails?.email
-                      ?.toLowerCase()
-                      .includes(searchLower) ||
-                    component.invoiceNumber?.toLowerCase().includes(searchLower)
-                  );
-                });
-
                 return (
                   <>
                     {/* Search Bar */}
@@ -2661,9 +2767,9 @@ export default function InventoryManagementPage() {
                         fullWidth
                         variant="outlined"
                         placeholder="Search components by name, supplier, email, or invoice..."
-                        value={componentSearchQuery}
+                        value={searchState.componentSearchQuery}
                         onChange={(e) =>
-                          setComponentSearchQuery(e.target.value)
+                          dispatchSearch({ type: 'SET_COMPONENT_SEARCH', query: e.target.value })
                         }
                         sx={{
                           maxWidth: { xs: "100%", md: "400px" },
@@ -2679,7 +2785,7 @@ export default function InventoryManagementPage() {
                           ),
                         }}
                       />
-                      {componentSearchQuery && (
+                      {searchState.componentSearchQuery && (
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -3715,7 +3821,7 @@ export default function InventoryManagementPage() {
         </motion.div>
 
         <Dialog
-          open={open}
+          open={isEditDialogOpen}
           onClose={handleClose}
           maxWidth="md"
           fullWidth
@@ -3785,11 +3891,14 @@ export default function InventoryManagementPage() {
                           (s) => s.id === sensorId,
                         );
                         if (selectedSensor) {
-                          setEditItem({
-                            ...editItem,
-                            senzorId: selectedSensor.id,
-                            sensorName: selectedSensor.sensorName,
-                          } as SenzorStockItem);
+                          dispatchDialog({
+                            type: 'UPDATE_EDIT_ITEM',
+                            item: {
+                              ...editItem,
+                              senzorId: selectedSensor.id,
+                              sensorName: selectedSensor.sensorName,
+                            } as SenzorStockItem
+                          });
                         }
                       }}
                       label="Sensor"
@@ -3817,10 +3926,13 @@ export default function InventoryManagementPage() {
                       }
                       onChange={(e) => {
                         if (!editItem) return;
-                        setEditItem({
-                          ...editItem,
-                          frequency: e.target.value as Frequency,
-                        } as SenzorStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            frequency: e.target.value as Frequency,
+                          } as SenzorStockItem
+                        });
                       }}
                       label="Frequency"
                       fullWidth
@@ -3847,9 +3959,12 @@ export default function InventoryManagementPage() {
                       }
                       onChange={(e) =>
                         editItem &&
-                        setEditItem({
-                          ...editItem,
-                          dev_eui: e.target.value,
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            dev_eui: e.target.value,
+                          }
                         })
                       }
                       placeholder="Main Warehouse"
@@ -3867,11 +3982,14 @@ export default function InventoryManagementPage() {
                           (c) => c.id === componentId,
                         );
                         if (selectedComponent) {
-                          setEditItem({
-                            ...editItem,
-                            componentId: selectedComponent.id,
-                            name: selectedComponent.name,
-                          } as ComponentStockItem);
+                          dispatchDialog({
+                            type: 'UPDATE_EDIT_ITEM',
+                            item: {
+                              ...editItem,
+                              componentId: selectedComponent.id,
+                              name: selectedComponent.name,
+                            } as ComponentStockItem
+                          });
                         }
                       }}
                       label="Component"
@@ -3906,13 +4024,16 @@ export default function InventoryManagementPage() {
                       }
                       onChange={(e) => {
                         if (!editItem) return;
-                        setEditItem({
-                          ...editItem,
-                          contactDetails: {
-                            ...(editItem as ComponentStockItem).contactDetails,
-                            supplier: e.target.value,
-                          },
-                        } as ComponentStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            contactDetails: {
+                              ...(editItem as ComponentStockItem).contactDetails,
+                              supplier: e.target.value,
+                            },
+                          } as ComponentStockItem
+                        });
                       }}
                       className="mt-4 mb-4"
                       required
@@ -3933,13 +4054,16 @@ export default function InventoryManagementPage() {
                       }
                       onChange={(e) => {
                         if (!editItem) return;
-                        setEditItem({
-                          ...editItem,
-                          contactDetails: {
-                            ...(editItem as ComponentStockItem).contactDetails,
-                            email: e.target.value,
-                          },
-                        } as ComponentStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            contactDetails: {
+                              ...(editItem as ComponentStockItem).contactDetails,
+                              email: e.target.value,
+                            },
+                          } as ComponentStockItem
+                        });
                       }}
                       className="mb-2"
                     />
@@ -3956,14 +4080,18 @@ export default function InventoryManagementPage() {
                       }
                       onChange={(e) => {
                         if (!editItem) return;
-                        setEditItem({
-                          ...editItem,
-                          contactDetails: {
-                            ...(editItem as ComponentStockItem).contactDetails,
-                            phone: e.target.value,
-                          },
-                        } as ComponentStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            contactDetails: {
+                              ...(editItem as ComponentStockItem).contactDetails,
+                              phone: e.target.value,
+                            },
+                          } as ComponentStockItem
+                        });
                       }}
+                      className="mb-2"
                     />
 
                     <TextField
@@ -3985,10 +4113,13 @@ export default function InventoryManagementPage() {
                             ? 0
                             : parseFloat(e.target.value);
                         console.log(`Setting price to: ${newPrice}`);
-                        setEditItem({
-                          ...editItem,
-                          price: newPrice,
-                        } as ComponentStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            price: newPrice,
+                          } as ComponentStockItem
+                        });
                       }}
                       className="mb-4"
                       inputProps={{ min: 0, step: 0.01 }}
@@ -4006,9 +4137,12 @@ export default function InventoryManagementPage() {
                   value={editItem?.quantity ?? 0}
                   onChange={(e) =>
                     editItem &&
-                    setEditItem({
-                      ...editItem,
-                      quantity: Math.max(0, parseInt(e.target.value) || 0),
+                    dispatchDialog({
+                      type: 'UPDATE_EDIT_ITEM',
+                      item: {
+                        ...editItem,
+                        quantity: Math.max(0, parseInt(e.target.value) || 0),
+                      }
                     })
                   }
                   className="mt-4 mb-4"
@@ -4032,13 +4166,16 @@ export default function InventoryManagementPage() {
                       onChange={(e) => {
                         if (!editItem) return;
                         const inputValue = e.target.value;
-                        setEditItem({
-                          ...editItem,
-                          lowStockThreshold:
-                            inputValue === ""
-                              ? undefined
-                              : Math.max(1, parseInt(inputValue) || 1),
-                        } as ComponentStockItem);
+                        dispatchDialog({
+                          type: 'UPDATE_EDIT_ITEM',
+                          item: {
+                            ...editItem,
+                            lowStockThreshold:
+                              inputValue === ""
+                                ? undefined
+                                : Math.max(1, parseInt(inputValue) || 1),
+                          } as ComponentStockItem
+                        });
                       }}
                       className="mb-3"
                       inputProps={{ min: 0 }}
@@ -4054,10 +4191,13 @@ export default function InventoryManagementPage() {
                           }
                           onChange={(e) => {
                             if (!editItem) return;
-                            setEditItem({
-                              ...editItem,
-                              isCritical: e.target.checked,
-                            } as ComponentStockItem);
+                            dispatchDialog({
+                              type: 'UPDATE_EDIT_ITEM',
+                              item: {
+                                ...editItem,
+                                isCritical: e.target.checked,
+                              } as ComponentStockItem
+                            });
                           }}
                           color="error"
                         />
@@ -4452,8 +4592,8 @@ export default function InventoryManagementPage() {
           </DialogActions>
         </Dialog>
         <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
+          open={isDeleteDialogOpen}
+          onClose={() => dispatchDialog({ type: 'CLOSE' })}
           fullScreen={isMobile}
           PaperProps={{
             sx: {
@@ -4484,7 +4624,7 @@ export default function InventoryManagementPage() {
             }}
           >
             <Button
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => dispatchDialog({ type: 'CLOSE' })}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
@@ -4503,8 +4643,8 @@ export default function InventoryManagementPage() {
         </Dialog>
 
         <Dialog
-          open={adjustmentDialogOpen}
-          onClose={() => setAdjustmentDialogOpen(false)}
+          open={isAdjustmentDialogOpen}
+          onClose={() => dispatchDialog({ type: 'CLOSE' })}
           fullScreen={isMobile}
           maxWidth="sm"
           fullWidth
@@ -4572,9 +4712,10 @@ export default function InventoryManagementPage() {
               variant="outlined"
               value={adjustmentQuantity}
               onChange={(e) =>
-                setAdjustmentQuantity(
-                  Math.max(1, parseInt(e.target.value) || 1),
-                )
+                dispatchDialog({
+                  type: 'UPDATE_ADJUSTMENT_DATA',
+                  data: { adjustmentQuantity: Math.max(1, parseInt(e.target.value) || 1) }
+                })
               }
               inputProps={{ min: 1 }}
               sx={{ mb: 3 }}
@@ -4590,7 +4731,10 @@ export default function InventoryManagementPage() {
               multiline
               rows={3}
               value={adjustmentReason}
-              onChange={(e) => setAdjustmentReason(e.target.value)}
+              onChange={(e) => dispatchDialog({
+                type: 'UPDATE_ADJUSTMENT_DATA',
+                data: { adjustmentReason: e.target.value }
+              })}
               required
               sx={{ mb: 3 }}
             />
@@ -4605,7 +4749,10 @@ export default function InventoryManagementPage() {
                 multiline
                 rows={3}
                 value={adjustmentReason}
-                onChange={(e) => setAdjustmentReason(e.target.value)}
+                onChange={(e) => dispatchDialog({
+                  type: 'UPDATE_ADJUSTMENT_DATA',
+                  data: { adjustmentReason: e.target.value }
+                })}
                 required
                 sx={{ mb: 3 }}
               />
@@ -4708,7 +4855,7 @@ export default function InventoryManagementPage() {
             }}
           >
             <Button
-              onClick={() => setAdjustmentDialogOpen(false)}
+              onClick={() => dispatchDialog({ type: 'CLOSE' })}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
@@ -4733,8 +4880,8 @@ export default function InventoryManagementPage() {
 
         {/* Device Action Dialog */}
         <Dialog
-          open={deviceActionDialogOpen}
-          onClose={() => setDeviceActionDialogOpen(false)}
+          open={isDeviceActionDialogOpen}
+          onClose={() => dispatchDialog({ type: 'CLOSE' })}
           fullScreen={isMobile}
           maxWidth="sm"
           fullWidth
@@ -4766,7 +4913,10 @@ export default function InventoryManagementPage() {
                   startIcon={<ShoppingCartIcon />}
                   onClick={() => {
                     // Show order selection
-                    setShowOrderSelection(true);
+                    dispatchDialog({
+                      type: 'UPDATE_DEVICE_ACTION_DATA',
+                      data: { showOrderSelection: true }
+                    });
                   }}
                   disabled={!currentDevice?.isAvailable}
                   fullWidth
@@ -4827,7 +4977,10 @@ export default function InventoryManagementPage() {
                   </Typography>
                   <Select
                     value={selectedOrderId || ""}
-                    onChange={(e) => setSelectedOrderId(Number(e.target.value))}
+                    onChange={(e) => dispatchDialog({
+                      type: 'UPDATE_DEVICE_ACTION_DATA',
+                      data: { selectedOrderId: Number(e.target.value) }
+                    })}
                     fullWidth
                     size="small"
                     displayEmpty
@@ -4856,8 +5009,10 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       size="small"
                       onClick={() => {
-                        setShowOrderSelection(false);
-                        setSelectedOrderId(null);
+                        dispatchDialog({
+                          type: 'UPDATE_DEVICE_ACTION_DATA',
+                          data: { showOrderSelection: false, selectedOrderId: null }
+                        });
                       }}
                     >
                       Cancel
@@ -4881,7 +5036,10 @@ export default function InventoryManagementPage() {
                 </Typography>
                 <TextField
                   value={deviceActionReason}
-                  onChange={(e) => setDeviceActionReason(e.target.value)}
+                  onChange={(e) => dispatchDialog({
+                    type: 'UPDATE_DEVICE_ACTION_DATA',
+                    data: { deviceActionReason: e.target.value }
+                  })}
                   placeholder="Enter reason for this action..."
                   multiline
                   rows={2}
@@ -4900,9 +5058,7 @@ export default function InventoryManagementPage() {
           >
             <Button
               onClick={() => {
-                setDeviceActionDialogOpen(false);
-                setShowOrderSelection(false);
-                setSelectedOrderId(null);
+                dispatchDialog({ type: 'CLOSE' });
               }}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
@@ -4925,8 +5081,8 @@ export default function InventoryManagementPage() {
 
         {/* Frequency Edit Dialog */}
         <Dialog
-          open={frequencyEditDialogOpen}
-          onClose={() => setFrequencyEditDialogOpen(false)}
+          open={isFrequencyEditDialogOpen}
+          onClose={() => dispatchDialog({ type: 'CLOSE' })}
           fullScreen={isMobile}
           maxWidth="sm"
           fullWidth
@@ -4957,7 +5113,10 @@ export default function InventoryManagementPage() {
               </Typography>
               <Select
                 value={newFrequency}
-                onChange={(e) => setNewFrequency(e.target.value)}
+                onChange={(e) => dispatchDialog({
+                  type: 'UPDATE_FREQUENCY_DATA',
+                  data: { newFrequency: e.target.value }
+                })}
                 fullWidth
                 size="small"
                 displayEmpty
@@ -4982,9 +5141,7 @@ export default function InventoryManagementPage() {
           >
             <Button
               onClick={() => {
-                setFrequencyEditDialogOpen(false);
-                setEditingFrequencyDevice(null);
-                setNewFrequency("");
+                dispatchDialog({ type: 'CLOSE' });
               }}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
