@@ -3014,3 +3014,71 @@ export async function updateSensorFrequency(
     );
   }
 }
+
+// Get all sensors grouped by orders with customer information
+export async function getAllSensorsWithCustomers() {
+  try {
+    const ordersWithDevices = await prisma.order.findMany({
+      include: {
+        productionLists: {
+          select: {
+            id: true,
+            DevEUI: true,
+            DeviceType: true,
+            FrequencyRegion: true,
+          },
+        },
+      },
+      orderBy: { id: "desc" },
+    });
+
+    const unassignedDevices = await prisma.productionList.findMany({
+      where: {
+        orderId: null,
+        DevEUI: { not: null },
+      },
+      select: {
+        id: true,
+        DevEUI: true,
+        DeviceType: true,
+        FrequencyRegion: true,
+      },
+    });
+
+    return {
+      ordersWithDevices: ordersWithDevices.map((order) => ({
+        orderId: order.id,
+        customerName: order.customerName,
+        assemblier: order.assemblier,
+        orderName: order.orderName,
+        status: order.status,
+        orderDate: order.orderDate.toISOString(),
+        devices: order.productionLists.map((device) => ({
+          id: device.id,
+          devEUI: device.DevEUI,
+          deviceType: device.DeviceType,
+          frequency: device.FrequencyRegion,
+        })),
+        deviceCount: order.productionLists.length,
+      })),
+      unassignedDevices: {
+        orderId: null,
+        customerName: "Unassigned",
+        assemblier: null,
+        orderName: "Available Inventory",
+        status: "available",
+        orderDate: null,
+        devices: unassignedDevices.map((device) => ({
+          id: device.id,
+          devEUI: device.DevEUI,
+          deviceType: device.DeviceType,
+          frequency: device.FrequencyRegion,
+        })),
+        deviceCount: unassignedDevices.length,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching sensors with customers:", error);
+    throw new Error("Failed to fetch sensors with customers");
+  }
+}

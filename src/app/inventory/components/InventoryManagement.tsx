@@ -54,8 +54,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SearchIcon from "@mui/icons-material/Search";
+import GroupIcon from "@mui/icons-material/Group";
+import DescriptionIcon from "@mui/icons-material/Description";
 import EmailReportManager from "./EmailReportManager";
 import { getSensorImageUrl, uploadPDFToB2 } from "./aws";
+import { createFolderAndSpreadsheetWithData } from "~/server/GAPI_ACTION/create_folder";
 import {
   addComponentToInventory,
   addSensorToInventory,
@@ -66,6 +69,7 @@ import {
   deleteSensorFromInventory,
   getAllComponents,
   getAllOrders,
+  getAllSensorsWithCustomers,
   // getAllOrders,
   getInvoiceFileDownloadUrl,
   getLowComponents,
@@ -854,6 +858,15 @@ export default function InventoryManagementPage() {
     queryFn: getProductionCapacitySummary,
     enabled: activeTab === 0 || activeTab === 1, // Fetch when on sensors or components tab
     staleTime: 10 * 60 * 1000, // 10 minutes cache
+    refetchOnWindowFocus: false,
+  });
+
+  // Query for sensors with customers - for the "All Sensors" tab
+  const { data: sensorsWithCustomers } = useQuery({
+    queryKey: ["sensors-with-customers"],
+    queryFn: getAllSensorsWithCustomers,
+    enabled: activeTab === 4, // Fetch when on "All Sensors" tab
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,
   });
 
@@ -1885,6 +1898,11 @@ export default function InventoryManagementPage() {
               icon={<EmailIcon />}
               iconPosition="start"
             />
+            <Tab
+              label={isMobile ? "All Sensors" : "All Sensors with Customers"}
+              icon={<GroupIcon />}
+              iconPosition="start"
+            />
           </Tabs>
 
           {activeTab === 2 ? (
@@ -2090,6 +2108,257 @@ export default function InventoryManagementPage() {
           ) : activeTab === 3 ? (
             // Email Reports tab
             <EmailReportManager />
+          ) : activeTab === 4 ? (
+            // All Sensors with Customers tab
+            <>
+              {/* Quick Navigation to Orders */}
+              <Box sx={{ mb: 3, display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<ShoppingCartIcon />}
+                  onClick={() => {
+                    // Navigate to orders page
+                    window.location.href = "/orders";
+                  }}
+                  sx={{ mr: 2 }}
+                >
+                  Go to Orders
+                </Button>
+              </Box>
+
+              {/* Sensors grouped by orders */}
+              {sensorsWithCustomers ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {/* Show orders with assigned devices first */}
+                  {sensorsWithCustomers.ordersWithDevices.map((order) => (
+                    <Card
+                      key={order.orderId}
+                      elevation={3}
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                      }}
+                    >
+                      {/* Order Header */}
+                      <Box
+                        sx={{
+                          p: { xs: 2, md: 3 },
+                          bgcolor: "primary.light",
+                          color: "white",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 2,
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {order.orderName || `Order #${order.orderId}`}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            Customer: {order.customerName}
+                          </Typography>
+                          {order.assemblier && (
+                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                              Assembler: {order.assemblier}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Chip
+                            label={`${order.deviceCount} device${order.deviceCount !== 1 ? 's' : ''}`}
+                            color="secondary"
+                            variant="filled"
+                            sx={{ mb: 1 }}
+                          />
+                          <Typography variant="caption" sx={{ display: "block" }}>
+                            Status: {order.status}
+                          </Typography>
+                          <Typography variant="caption" sx={{ display: "block" }}>
+                            Date: {new Date(order.orderDate).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Devices in this order */}
+                      <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                        {order.devices.length > 0 ? (
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            {order.devices.map((device) => (
+                              <Box
+                                key={device.id}
+                                sx={{
+                                  p: 2,
+                                  bgcolor: "grey.50",
+                                  borderRadius: 1,
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                  gap: 1,
+                                }}
+                              >
+                                <Box>
+                                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {device.deviceType}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    DevEUI: {device.devEUI}
+                                  </Typography>
+                                </Box>
+                                <Chip
+                                  label={device.frequency}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                              </Box>
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography color="text.secondary" sx={{ textAlign: "center", py: 2 }}>
+                            No devices assigned to this order yet
+                          </Typography>
+                        )}
+
+                        {/* Create Drive Documents Button */}
+                        <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            startIcon={<DescriptionIcon />}
+                            onClick={async () => {
+                              try {
+                                await createFolderAndSpreadsheetWithData(
+                                  order.customerName,
+                                  order.orderId.toString(),
+                                  order.devices
+                                );
+                                // You can add a success notification here
+                                console.log('Drive documents created successfully for order:', order.orderId);
+                              } catch (error) {
+                                console.error('Error creating drive documents:', error);
+                                // You can add an error notification here
+                              }
+                            }}
+                          >
+                            Create Drive Documents
+                          </Button>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {/* Show unassigned devices */}
+                  {sensorsWithCustomers.unassignedDevices.deviceCount > 0 && (
+                    <Card
+                      elevation={3}
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "warning.main",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          p: { xs: 2, md: 3 },
+                          bgcolor: "warning.light",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 2,
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Available Inventory
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Devices not assigned to any order
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={`${sensorsWithCustomers.unassignedDevices.deviceCount} device${sensorsWithCustomers.unassignedDevices.deviceCount !== 1 ? 's' : ''}`}
+                          color="warning"
+                          variant="filled"
+                        />
+                      </Box>
+
+                      <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          {sensorsWithCustomers.unassignedDevices.devices.map((device) => (
+                            <Box
+                              key={device.id}
+                              sx={{
+                                p: 2,
+                                bgcolor: "grey.50",
+                                borderRadius: 1,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: 1,
+                              }}
+                            >
+                              <Box>
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                  {device.deviceType}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  DevEUI: {device.devEUI}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={device.frequency}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                            </Box>
+                          ))}
+                        </Box>
+
+                        {/* Create Inventory Documents Button */}
+                        <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<DescriptionIcon />}
+                            onClick={async () => {
+                              try {
+                                await createFolderAndSpreadsheetWithData(
+                                  null,
+                                  null,
+                                  sensorsWithCustomers.unassignedDevices.devices
+                                );
+                                console.log('Inventory drive documents created successfully');
+                              } catch (error) {
+                                console.error('Error creating inventory drive documents:', error);
+                              }
+                            }}
+                          >
+                            Create Inventory Documents
+                          </Button>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  )}
+                </Box>
+              ) : (
+                <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
+                  <Typography color="text.secondary" variant="h6">
+                    No sensor data available
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                    Loading sensor and order information...
+                  </Typography>
+                </Card>
+              )}
+            </>
           ) : activeTab === 0 ? (
             // Sensors tab
             <>

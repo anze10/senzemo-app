@@ -4,6 +4,7 @@ import { type Auth, google } from "googleapis";
 import * as stream from "stream";
 import { GetAccessToken } from "src/server/DATABASE_ACTION/GoogleTokenInteractions";
 import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 // Funkcija za ustvarjanje mape
 async function createFolder(
@@ -501,6 +502,155 @@ export async function createFolderAndSpreadsheet(
   } catch (err) {
     console.error(err);
     throw err;
+  }
+}
+
+// New function to create documents AND insert sensor data
+export async function createFolderAndSpreadsheetWithData(
+  customer_name: string | null,
+  order_number: string | null,
+  devices: Array<{
+    id: number;
+    devEUI: string | null;
+    deviceType: string | null;
+    frequency: string | null;
+  }>,
+) {
+  try {
+    // First create the folder and documents
+    const { folderId, spreadsheetId, fileId } =
+      await createFolderAndSpreadsheet(customer_name, order_number);
+
+    // Get detailed sensor data from database for each device
+    for (const device of devices) {
+      if (device.devEUI && device.deviceType) {
+        // Fetch detailed sensor data from database
+        const sensorData = await prisma.productionList.findUnique({
+          where: { DevEUI: device.devEUI },
+          include: {
+            order: {
+              select: {
+                customerName: true,
+                orderName: true,
+              },
+            },
+          },
+        });
+
+        if (!sensorData) {
+          console.warn(`Sensor data not found for DevEUI: ${device.devEUI}`);
+          continue;
+        }
+
+        // Use actual data from ProductionList table
+        const deviceId = sensorData.id.toString();
+        const devEUI = sensorData.DevEUI || "";
+        const appEUI = sensorData.AppEUI || generateJoinEUI(devEUI);
+        const appKey = sensorData.AppKey || generateAppKey(devEUI);
+        const deviceType = sensorData.DeviceType || "";
+        const frequencyRegion = sensorData.FrequencyRegion || "";
+        const subBands = sensorData.SubBands || "";
+        const hwVersion = sensorData.HWVersion || "1.0";
+        const fwVersion = sensorData.FWVersion || "1.0";
+        const customFWVersion = sensorData.CustomFWVersion || "";
+        const sendPeriod = sensorData.SendPeriod || "900";
+        const ack = sensorData.ACK || "false";
+        const movementThreshold = sensorData.MovementThreshold || "10";
+
+        // Map frequency to TTN format for CSV
+        const frequencyPlan = mapFrequencyToTTNFormat(frequencyRegion);
+
+        // CSV row format: id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id
+        const csvRow = [
+          deviceId,
+          devEUI,
+          appEUI, // join_eui is the same as AppEUI
+          deviceType,
+          frequencyPlan,
+          "1.0.3", // lorawan_version
+          "1.0.3-a", // lorawan_phy_version
+          appKey,
+          "senzemo", // brand_id
+          deviceType,
+          hwVersion,
+          fwVersion,
+          frequencyPlan,
+        ];
+
+        // Spreadsheet row format: Device Type, DevEUI, AppEUI, AppKey, Frequency Region, Sub Bands, HW Version, FW Version, Custom FW Version, Send Period, ACK, Movement Threshold
+        const spreadsheetRow = [
+          deviceType,
+          devEUI,
+          appEUI,
+          appKey,
+          frequencyRegion,
+          subBands,
+          hwVersion,
+          fwVersion,
+          customFWVersion,
+          sendPeriod,
+          ack,
+          movementThreshold,
+        ];
+
+        // Insert into both files
+        await insert(fileId, csvRow, spreadsheetId, spreadsheetRow);
+      }
+    }
+
+    return { folderId, spreadsheetId, fileId };
+  } catch (err) {
+    console.error("Error creating documents with data:", err);
+    throw err;
+  }
+}
+
+// Helper functions to generate or map sensor data
+function generateJoinEUI(devEUI: string): string {
+  // Generate a consistent JoinEUI based on DevEUI
+  // You might want to store this in the database instead
+  if (!devEUI) return "70B3D57ED0000000";
+
+  // Create a hash-based JoinEUI using the DevEUI
+  const hash = devEUI.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const hashedSuffix = Math.abs(hash)
+    .toString(16)
+    .padStart(8, "0")
+    .toUpperCase();
+  return `70B3D57E${hashedSuffix}`;
+}
+
+function generateAppKey(devEUI: string): string {
+  // Generate a consistent AppKey based on DevEUI
+  // You might want to store this in the database instead
+  const hash = devEUI.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+  return Math.abs(hash).toString(16).padStart(32, "0").toUpperCase();
+}
+
+function mapFrequencyToTTNFormat(frequency: string | null): string {
+  if (!frequency) return "EU_863_870";
+
+  switch (frequency) {
+    case "EU868":
+      return "EU_863_870";
+    case "US915":
+      return "US_902_928";
+    case "AS923":
+      return "AS_923";
+    case "EU433":
+      return "EU_433";
+    case "ISM2400":
+    case "2.4 GHz":
+      return "ISM_2400";
+    default:
+      return "EU_863_870";
   }
 }
 
