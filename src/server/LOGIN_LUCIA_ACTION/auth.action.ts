@@ -4,7 +4,10 @@
 
 // import { prisma } from "src/server/prisma"
 // import { Argon2id } from 'oslo/password'
-import { lucia } from "src/server/LOGIN_LUCIA_ACTION/lucia";
+import {
+  deleteSessionTokenCookie,
+  lucia,
+} from "src/server/LOGIN_LUCIA_ACTION/lucia";
 import { cookies } from "next/headers";
 //import { signInSchema } from "./SignInForm"
 //import { redirect } from "next/navigation"
@@ -57,6 +60,8 @@ export async function logOut() {
     sessionCookie.value,
     sessionCookie.attributes,
   );
+  deleteSessionTokenCookie();
+  (await cookies()).set("user", "", { path: "/", expires: new Date(0) });
   return { success: true }; // Plain object
 }
 
