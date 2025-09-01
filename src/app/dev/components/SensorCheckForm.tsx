@@ -88,6 +88,7 @@ export function SensorCheckForm() {
   const portRef = useRef<SerialPort | null>(null);
   const selectedPrinter = usePrinterStore((state) => state.selectedPrinter);
   const sensor_parsers = useSensorStore((state) => state.current_decoder);
+  const [AddToInv, setAddToInv] = useState<boolean>(false);
   const [showUnimportantParameters, setShowUnimportantParameters] =
     useState<boolean>(false);
 
@@ -735,6 +736,25 @@ export function SensorCheckForm() {
                     </Typography>
                   </Box>
                 </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setAddToInv(!AddToInv);
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Checkbox
+                      checked={AddToInv}
+                      onChange={(e) =>
+                        setAddToInv(e.target.checked)
+                      }
+                      size="small"
+                    />
+                    <Typography sx={{ textAlign: "center", color: "black" }}>
+                      Don&apos;t Add to Inventory
+                    </Typography>
+                  </Box>
+                </MenuItem>
+
 
                 <MenuItem
                   onClick={() => {
@@ -881,195 +901,295 @@ export function SensorCheckForm() {
           </Box>
 
           <Divider sx={{ my: 3 }} />
-
-          <Box
-            sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
-          >
-            {" "}
-            <Button
-              variant="contained"
-              color="success"
-              onClick={async () => {
-                console.log("Accept button clicked");
-                console.log("Current sensor index:", current_sensor_index);
-                console.log(
-                  "Current sensor accepted state:",
-                  isCurrentSensorAccepted,
-                );
-
-                try {
-                  if (!current_sensor) {
-                    console.log("No current sensor available");
-                    return;
-                  }
-
-                  // Prevent accepting already accepted sensors
-                  if (isCurrentSensorAccepted) {
-                    console.log("Sensor already accepted, skipping processing");
-                    return;
-                  }
-
-                  console.log("Processing accept for current sensor");
-                  const data = current_sensor.data as ParsedSensorData;
-
-                  // IMPORTANT: Set a loading state indicator
-                  const acceptButton = document.querySelector(
-                    'button[color="success"]',
-                  );
-                  if (acceptButton) {
-                    acceptButton.textContent = "Processing...";
-                    acceptButton.setAttribute("disabled", "true");
-                  }
-
-                  // Set sensor status to accepted
-                  set_sensor_status(current_sensor_index, true);
-                  set_sensor_data(current_sensor_index, data);
+          {!AddToInv ? (
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
+            >
+              {" "}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={async () => {
+                  console.log("Accept button clicked");
+                  console.log("Current sensor index:", current_sensor_index);
                   console.log(
-                    "Sensor marked as accepted for index:",
-                    current_sensor_index,
+                    "Current sensor accepted state:",
+                    isCurrentSensorAccepted,
                   );
 
-                  // Insert current sensor data into database
-                  console.log("Inserting current sensor data into database...");
-                  await insertIntoDatabaseMutation.mutateAsync();
+                  try {
+                    if (!current_sensor) {
+                      console.log("No current sensor available");
+                      return;
+                    }
 
-                  // Odštej komponente iz zaloge po uspešni vstavitvi v bazo
-                  // Preverimo, ali je avtomatsko odštevanje omogočeno
-                  if (autoDeductComponents) {
-                    // Najprej poišči sensorId na podlagi family_id in product_id
-                    const familyId = current_sensor.data.family_id as number;
-                    const productId = current_sensor.data.product_id as number;
+                    // Prevent accepting already accepted sensors
+                    if (isCurrentSensorAccepted) {
+                      console.log("Sensor already accepted, skipping processing");
+                      return;
+                    }
 
-                    if (familyId && productId && GetSensorName.data) {
-                      const foundSensor = GetSensorName.data.find(
-                        (sensor: {
-                          id: number;
-                          familyId: number;
-                          productId: number;
-                          sensorName: string;
-                        }) =>
-                          sensor.familyId === familyId &&
-                          sensor.productId === productId,
-                      );
+                    console.log("Processing accept for current sensor");
+                    const data = current_sensor.data as ParsedSensorData;
 
-                      if (foundSensor) {
-                        try {
-                          console.log(
-                            `Removing components from stock for sensor ID: ${foundSensor.id} (${foundSensor.sensorName})`,
+                    // IMPORTANT: Set a loading state indicator
+                    const acceptButton = document.querySelector(
+                      'button[color="success"]',
+                    );
+                    if (acceptButton) {
+                      acceptButton.textContent = "Processing...";
+                      acceptButton.setAttribute("disabled", "true");
+                    }
+
+                    // Set sensor status to accepted
+                    set_sensor_status(current_sensor_index, true);
+                    set_sensor_data(current_sensor_index, data);
+                    console.log(
+                      "Sensor marked as accepted for index:",
+                      current_sensor_index,
+                    );
+
+                    // Insert current sensor data into database
+                    console.log("Inserting current sensor data into database...");
+                    await insertIntoDatabaseMutation.mutateAsync();
+
+                    // Odštej komponente iz zaloge po uspešni vstavitvi v bazo
+                    // Preverimo, ali je avtomatsko odštevanje omogočeno
+                    if (autoDeductComponents) {
+                      // Najprej poišči sensorId na podlagi family_id in product_id
+                      const familyId = current_sensor.data.family_id as number;
+                      const productId = current_sensor.data.product_id as number;
+
+                      if (familyId && productId && GetSensorName.data) {
+                        const foundSensor = GetSensorName.data.find(
+                          (sensor: {
+                            id: number;
+                            familyId: number;
+                            productId: number;
+                            sensorName: string;
+                          }) =>
+                            sensor.familyId === familyId &&
+                            sensor.productId === productId,
+                        );
+
+                        if (foundSensor) {
+                          try {
+                            console.log(
+                              `Removing components from stock for sensor ID: ${foundSensor.id} (${foundSensor.sensorName})`,
+                            );
+                            await removeComponentsFromStockForSensor(
+                              foundSensor.id,
+                            );
+                            console.log(
+                              "Components successfully removed from stock",
+                            );
+                          } catch (componentError) {
+                            console.error(
+                              "Error removing components from stock:",
+                              componentError,
+                            );
+                            // Ne prekini procesa, samo logiraj napako
+                            // Uporabnik lahko nadaljuje z delom, čeprav komponente niso bile odštete
+                          }
+                        } else {
+                          console.warn(
+                            `Sensor not found for familyId: ${familyId}, productId: ${productId}`,
                           );
-                          await removeComponentsFromStockForSensor(
-                            foundSensor.id,
-                          );
-                          console.log(
-                            "Components successfully removed from stock",
-                          );
-                        } catch (componentError) {
-                          console.error(
-                            "Error removing components from stock:",
-                            componentError,
-                          );
-                          // Ne prekini procesa, samo logiraj napako
-                          // Uporabnik lahko nadaljuje z delom, čeprav komponente niso bile odštete
                         }
                       } else {
                         console.warn(
-                          `Sensor not found for familyId: ${familyId}, productId: ${productId}`,
+                          "Missing familyId, productId, or sensor data for component removal",
                         );
                       }
                     } else {
-                      console.warn(
-                        "Missing familyId, productId, or sensor data for component removal",
+                      console.log(
+                        "Auto-deduct components is disabled, skipping component removal",
                       );
                     }
-                  } else {
+
+                    try {
+                      await PrintSticker(
+                        data.dev_eui as string,
+                        data.family_id as number,
+                        data.product_id as number,
+                        selectedPrinter,
+                      );
+                    } catch (printError) {
+                      console.error("Error printing sticker:", printError);
+                      // Continue execution even if printing fails
+                    }
+
+                    // Reset operation flags to ensure clean state before reading
+                    resetOperationFlags();
+
+                    // Delay to ensure USB connection is stable
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+
+                    // Try to get data from the next sensor with robust retry mechanism
                     console.log(
-                      "Auto-deduct components is disabled, skipping component removal",
+                      "Reading new sensor data with retry mechanism...",
                     );
+                    const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
+                    if (!uint_array || !sensors) {
+                      console.warn("Failed to get new sensor data after retries");
+                      // Ensure UI updates even if we couldn't get new sensor data
+                      if (acceptButton) {
+                        acceptButton.textContent = "Accept";
+                        acceptButton.removeAttribute("disabled");
+                      }
+                      return;
+                    }
+
+                    const decoder = RightDecoder(uint_array, sensors);
+                    if (!decoder) {
+                      console.warn("Failed to decode new sensor data");
+                      // Ensure UI updates
+                      if (acceptButton) {
+                        acceptButton.textContent = "Accept";
+                        acceptButton.removeAttribute("disabled");
+                      }
+                      return;
+                    }
+
+                    console.log(
+                      "Adding new sensor (this will reset accepted state)",
+                    );
+                    add_new_sensor(decoder, uint_array);
+                    console.log(
+                      "New sensor added, current_sensor_index is now:",
+                      current_sensor_index + 1,
+                    );
+                    console.log(
+                      "Button should now show 'Accept' for the new sensor",
+                    );
+
+                    // Force a UI update to ensure the button shows "Accept" for the new sensor
+                    if (acceptButton) {
+                      acceptButton.textContent = "Accept";
+                      acceptButton.removeAttribute("disabled");
+                    }
+                  } catch (error) {
+                    console.error("Error in accept button:", error);
+
+                    // Reset flags on error to prevent getting stuck
+                    resetOperationFlags();
+
+                    // Ensure the UI is updated even after an error
+                    const acceptButton = document.querySelector(
+                      'button[color="success"]',
+                    );
+                    if (acceptButton) {
+                      acceptButton.textContent = "Accept";
+                      acceptButton.removeAttribute("disabled");
+                    }
                   }
+                }}
+                sx={{ flex: 1 }}
+                disabled={isCurrentSensorAccepted}
+              >
+                {isCurrentSensorAccepted ? "Accepted" : "Accept"}
+              </Button>
+            </Box>
+          ) : (
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
+            >
+              <Button
+
+                variant="contained"
+                color="info"
+                onClick={async () => {
+                  console.log("Don't add to inventory button clicked");
+                  console.log("Current sensor index:", current_sensor_index);
 
                   try {
-                    await PrintSticker(
-                      data.dev_eui as string,
-                      data.family_id as number,
-                      data.product_id as number,
-                      selectedPrinter,
+                    if (!current_sensor) {
+                      console.log("No current sensor available");
+                      return;
+                    }
+
+                    // Prevent processing already accepted sensors
+                    if (isCurrentSensorAccepted) {
+                      console.log("Sensor already accepted, skipping processing");
+                      return;
+                    }
+
+                    console.log("Processing don't add to inventory for current sensor");
+                    const data = current_sensor.data as ParsedSensorData;
+
+                    // Set sensor status to accepted (but won't add to database)
+                    set_sensor_status(current_sensor_index, true);
+                    set_sensor_data(current_sensor_index, data);
+                    console.log(
+                      "Sensor marked as accepted (store only) for index:",
+                      current_sensor_index,
                     );
-                  } catch (printError) {
-                    console.error("Error printing sticker:", printError);
-                    // Continue execution even if printing fails
-                  }
 
-                  // Reset operation flags to ensure clean state before reading
-                  resetOperationFlags();
+                    // Skip database insertion - only store in state
+                    console.log("Skipping database insertion - storing in store only");
 
-                  // Delay to ensure USB connection is stable
-                  await new Promise((resolve) => setTimeout(resolve, 500));
-
-                  // Try to get data from the next sensor with robust retry mechanism
-                  console.log(
-                    "Reading new sensor data with retry mechanism...",
-                  );
-                  const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
-
-                  if (!uint_array || !sensors) {
-                    console.warn("Failed to get new sensor data after retries");
-                    // Ensure UI updates even if we couldn't get new sensor data
-                    if (acceptButton) {
-                      acceptButton.textContent = "Accept";
-                      acceptButton.removeAttribute("disabled");
+                    // Print sticker if needed
+                    try {
+                      await PrintSticker(
+                        data.dev_eui as string,
+                        data.family_id as number,
+                        data.product_id as number,
+                        selectedPrinter,
+                      );
+                    } catch (printError) {
+                      console.error("Error printing sticker:", printError);
+                      // Continue execution even if printing fails
                     }
-                    return;
-                  }
 
-                  const decoder = RightDecoder(uint_array, sensors);
-                  if (!decoder) {
-                    console.warn("Failed to decode new sensor data");
-                    // Ensure UI updates
-                    if (acceptButton) {
-                      acceptButton.textContent = "Accept";
-                      acceptButton.removeAttribute("disabled");
+                    // Reset operation flags to ensure clean state before reading
+                    resetOperationFlags();
+
+                    // Delay to ensure USB connection is stable
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+
+                    // Try to get data from the next sensor with robust retry mechanism
+                    console.log(
+                      "Reading new sensor data with retry mechanism...",
+                    );
+                    const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
+                    if (!uint_array || !sensors) {
+                      console.warn("Failed to get new sensor data after retries");
+                      return;
                     }
-                    return;
+
+                    const decoder = RightDecoder(uint_array, sensors);
+                    if (!decoder) {
+                      console.warn("Failed to decode new sensor data");
+                      return;
+                    }
+
+                    console.log(
+                      "Adding new sensor (this will reset accepted state)",
+                    );
+                    add_new_sensor(decoder, uint_array);
+                    console.log(
+                      "New sensor added, current_sensor_index is now:",
+                      current_sensor_index + 1,
+                    );
+
+                  } catch (error) {
+                    console.error("Error in don't add to inventory button:", error);
+
+                    // Reset flags on error to prevent getting stuck
+                    resetOperationFlags();
                   }
+                }}
+                sx={{ flex: 1 }}
+                disabled={isCurrentSensorAccepted}
+              >
+                {isCurrentSensorAccepted ? "Stored" : "Accept without inventory"}
+              </Button>
+            </Box>
+          )}
 
-                  console.log(
-                    "Adding new sensor (this will reset accepted state)",
-                  );
-                  add_new_sensor(decoder, uint_array);
-                  console.log(
-                    "New sensor added, current_sensor_index is now:",
-                    current_sensor_index + 1,
-                  );
-                  console.log(
-                    "Button should now show 'Accept' for the new sensor",
-                  );
-
-                  // Force a UI update to ensure the button shows "Accept" for the new sensor
-                  if (acceptButton) {
-                    acceptButton.textContent = "Accept";
-                    acceptButton.removeAttribute("disabled");
-                  }
-                } catch (error) {
-                  console.error("Error in accept button:", error);
-
-                  // Reset flags on error to prevent getting stuck
-                  resetOperationFlags();
-
-                  // Ensure the UI is updated even after an error
-                  const acceptButton = document.querySelector(
-                    'button[color="success"]',
-                  );
-                  if (acceptButton) {
-                    acceptButton.textContent = "Accept";
-                    acceptButton.removeAttribute("disabled");
-                  }
-                }
-              }}
-              sx={{ flex: 1 }}
-              disabled={isCurrentSensorAccepted}
-            >
-              {isCurrentSensorAccepted ? "Accepted" : "Accept"}
-            </Button>
+          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
             <Button
               variant="contained"
               color="warning"
@@ -1156,24 +1276,24 @@ export function SensorCheckForm() {
               Reject
             </Button>
           </Box>
-        </form>
 
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-          <Button
-            variant="contained"
-            color="error"
-            href="/konec"
-            onClick={async () => {
-              //await createFolderAndSpreadsheet();
-              useSensorStore.setState({ end_time: Date.now() });
-              set_current_sensor_index(0);
-            }}
-            sx={{ flex: 1, maxWidth: "200px" }}
-          >
-            Finish
-          </Button>
-        </Box>
-      </Paper>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+            <Button
+              variant="contained"
+              color="error"
+              href="/konec"
+              onClick={async () => {
+                //await createFolderAndSpreadsheet();
+                useSensorStore.setState({ end_time: Date.now() });
+                set_current_sensor_index(0);
+              }}
+              sx={{ flex: 1, maxWidth: "200px" }}
+            >
+              Finish
+            </Button>
+          </Box>
+        </form>
+      </Paper >
     </>
   );
 }
@@ -1268,11 +1388,11 @@ export function DynamicFormComponent({
                   typeof value === "number"
                     ? value
                     : (enum_values.find(
-                        (item) =>
-                          (typeof value === "string" &&
-                            item.mapped === value) ||
-                          (typeof value === "number" && item.value === value),
-                      )?.value ?? "")
+                      (item) =>
+                        (typeof value === "string" &&
+                          item.mapped === value) ||
+                        (typeof value === "number" && item.value === value),
+                    )?.value ?? "")
                 }
                 onChange={handleChange}
               >
