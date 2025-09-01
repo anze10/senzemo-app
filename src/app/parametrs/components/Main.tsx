@@ -7,7 +7,7 @@ import {
   Container,
   FormControl,
   FormControlLabel,
-  Grid2,
+  Grid,
   Input,
   InputLabel,
   MenuItem,
@@ -248,9 +248,9 @@ export default function Parameters() {
                   </>
                 )}
 
-                <Grid2 container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
+                <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
                   {decoder?.map((parser) => (
-                    <Grid2
+                    <Grid
                       size={{ xs: 12, sm: 6, md: 4 }}
                       key={parser.output.name}
                     >
@@ -273,9 +273,9 @@ export default function Parameters() {
                         enum_values={parser.output.enum_values}
                         onValueChange={handleValueChange}
                       />
-                    </Grid2>
+                    </Grid>
                   ))}
-                </Grid2>
+                </Grid>
               </Box>
             </Box>
 

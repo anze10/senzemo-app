@@ -15,7 +15,6 @@ import {
   CardContent,
   Chip,
   Divider,
-  Grid,
   List,
   ListItem,
   ListItemText,
@@ -62,30 +61,24 @@ function SensorReport({ sensorData }: SensorReportProps) {
 
         {/* Statistics */}
         <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: "#f8f9fa" }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ textAlign: "center" }}>
-                <Typography variant="h6">Skupaj senzorjev</Typography>
-                <Typography variant="h3">{totalSensors}</Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ textAlign: "center" }}>
-                <Typography variant="h6">Uspešno</Typography>
-                <Typography variant="h3" color="success.main">
-                  {successfulSensors}
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ textAlign: "center" }}>
-                <Typography variant="h6">Neuspešno</Typography>
-                <Typography variant="h3" color="red">
-                  {unsuccessfulSensors}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+            <Box sx={{ flex: 1, textAlign: "center" }}>
+              <Typography variant="h6">Skupaj senzorjev</Typography>
+              <Typography variant="h3">{totalSensors}</Typography>
+            </Box>
+            <Box sx={{ flex: 1, textAlign: "center" }}>
+              <Typography variant="h6">Uspešno</Typography>
+              <Typography variant="h3" color="success.main">
+                {successfulSensors}
+              </Typography>
+            </Box>
+            <Box sx={{ flex: 1, textAlign: "center" }}>
+              <Typography variant="h6">Neuspešno</Typography>
+              <Typography variant="h3" color="red">
+                {unsuccessfulSensors}
+              </Typography>
+            </Box>
+          </Box>
         </Paper>
 
         <Divider sx={{ my: 2 }} />

@@ -26,7 +26,6 @@ import {
   Container,
   Divider,
   FormControl,
-  Grid2,
   IconButton,
   InputLabel,
   Menu,
@@ -35,6 +34,7 @@ import {
   Toolbar,
   Tooltip,
 } from "@mui/material";
+import { Grid } from '@mui/material'
 import { PrintSticker } from "./printer/printer_server_side";
 import {
   Box,
@@ -884,9 +884,9 @@ export function SensorCheckForm() {
             </Button>
 
             <Collapse in={showUnimportantParameters}>
-              <Grid2 container spacing={2} sx={{ mt: 1 }}>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
                 {Object.entries(unimportant_sensor_data).map(([key, value]) => (
-                  <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={key}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={key}>
                     <DynamicFormComponent
                       my_key={key}
                       my_type={value.my_type}
@@ -894,9 +894,9 @@ export function SensorCheckForm() {
                       enum_values={value.enum_values}
                       onValueChange={handleDynamicChange}
                     />
-                  </Grid2>
+                  </Grid>
                 ))}
-              </Grid2>
+              </Grid>
             </Collapse>
           </Box>
 
@@ -1394,7 +1394,10 @@ export function DynamicFormComponent({
                         (typeof value === "number" && item.value === value),
                     )?.value ?? "")
                 }
-                onChange={handleChange}
+                onChange={(e) => {
+                  const selectedValue = e.target.value as number;
+                  onValueChange(my_key, selectedValue);
+                }}
               >
                 {enum_values.map((item) => (
                   <MenuItem key={item.value} value={item.value}>

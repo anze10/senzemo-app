@@ -41,6 +41,7 @@ type FormOrder = {
   priority: string;
 };
 import { AnimatePresence, motion } from "framer-motion";
+import Grid from '@mui/material/Grid';
 import {
   Alert,
   Box,
@@ -51,7 +52,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -879,7 +879,7 @@ export default function OrderManagement() {
             sx={{ mt: 2 }}
           >
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Order Name"
@@ -890,7 +890,7 @@ export default function OrderManagement() {
                   required
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Full Name"
@@ -903,7 +903,7 @@ export default function OrderManagement() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel>Priority</InputLabel>
                   <Select
@@ -923,13 +923,13 @@ export default function OrderManagement() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Typography variant="h6" gutterBottom>
                   Shipping Address
                 </Typography>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Address"
@@ -942,7 +942,7 @@ export default function OrderManagement() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel>Region</InputLabel>
                   <Select
@@ -964,8 +964,8 @@ export default function OrderManagement() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} container spacing={2}>
-                <Grid item xs={6}>
+              <Grid size={{ xs: 12 }} container spacing={2}>
+                <Grid size={{ xs: 6 }}>
                   <TextField
                     fullWidth
                     label="Eircode"
@@ -976,7 +976,7 @@ export default function OrderManagement() {
                     required
                   />
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                   <TextField
                     fullWidth
                     label="City"
@@ -987,14 +987,14 @@ export default function OrderManagement() {
                     required
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Button variant="outlined" fullWidth>
                     Search for address
                   </Button>
                 </Grid>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Typography variant="h6" gutterBottom>
                   Order Items
                 </Typography>
@@ -1007,7 +1007,7 @@ export default function OrderManagement() {
                     alignItems="center"
                     sx={{ mb: 2 }}
                   >
-                    <Grid item xs={5}>
+                    <Grid size={{ xs: 5 }}>
                       <FormControl fullWidth>
                         <InputLabel>Sensor</InputLabel>
                         <Select
@@ -1032,7 +1032,7 @@ export default function OrderManagement() {
                     </Grid>
 
                     {/* Combined Quantity and Price fields */}
-                    <Grid item xs={3}>
+                    <Grid size={{ xs: 3 }}>
                       <TextField
                         fullWidth
                         label="Quantity"
@@ -1050,7 +1050,7 @@ export default function OrderManagement() {
                       />
                     </Grid>
 
-                    <Grid item xs={2}>
+                    <Grid size={{ xs: 2 }}>
                       <Button
                         variant="outlined"
                         size="small"
@@ -1070,7 +1070,7 @@ export default function OrderManagement() {
                       </Button>
                     </Grid>
 
-                    <Grid item xs={2}>
+                    <Grid size={{ xs: 2 }}>
                       <Button
                         variant="outlined"
                         color="error"
@@ -1085,7 +1085,7 @@ export default function OrderManagement() {
                     {/* Stock Status Indicator */}
                     {itemStockStatus[index] &&
                       !itemStockStatus[index].loading && (
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                           <Box
                             sx={{
                               p: 1,
@@ -1128,7 +1128,7 @@ export default function OrderManagement() {
                 </Button>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel>Frequency</InputLabel>
                   <Select
@@ -1148,7 +1148,7 @@ export default function OrderManagement() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Shipping Cost ($)"
@@ -1165,7 +1165,7 @@ export default function OrderManagement() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   type="date"
@@ -1179,7 +1179,7 @@ export default function OrderManagement() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Order Description"
@@ -1192,7 +1192,7 @@ export default function OrderManagement() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Button
                   type="submit"
                   variant="contained"
