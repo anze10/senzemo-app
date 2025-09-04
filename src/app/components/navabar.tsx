@@ -28,7 +28,7 @@ const tabs = [
     { id: "home", label: "Domov", path: "/dashboard" },
     { id: "orders", label: "Naročila", path: "/orders" },
     { id: "inventory", label: "Zaloga", path: "/inventory" },
-    { id: "do order", label: "Opravi naročilo", path: "/parameters" },
+    { id: "do order", label: "Opravi naročilo", path: "/parametrs" },
 ]
 
 export default function Navbar() {
