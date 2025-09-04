@@ -1826,11 +1826,11 @@ export default function InventoryManagementPage() {
                     mb: isMobile ? 0 : 1,
                   }}
                 >
-                  Inventory Management
+                  Upravljanje zaloge
                 </Typography>
                 {!isMobile && (
                   <Typography variant="body2" color="text.secondary">
-                    Manage your device and component inventory
+                    Upravljajte zalogo naprav in komponent
                   </Typography>
                 )}
               </Box>
@@ -2220,7 +2220,7 @@ export default function InventoryManagementPage() {
                           </Box>
                         ) : (
                           <Typography color="text.secondary" sx={{ textAlign: "center", py: 2 }}>
-                            No devices assigned to this order yet
+                            Temu naročilu še ni dodeljenih naprav
                           </Typography>
                         )}
 
@@ -2245,7 +2245,7 @@ export default function InventoryManagementPage() {
                               }
                             }}
                           >
-                            Create Drive Documents
+                            Ustvari Drive dokumente
                           </Button>
                         </Box>
                       </CardContent>
@@ -2275,10 +2275,10 @@ export default function InventoryManagementPage() {
                       >
                         <Box>
                           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            Available Inventory
+                            Razpoložljiva zaloga
                           </Typography>
                           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                            Devices not assigned to any order
+                            Naprave, ki niso dodeljene nobenemu naročilu
                           </Typography>
                         </Box>
                         <Chip
@@ -2341,7 +2341,7 @@ export default function InventoryManagementPage() {
                               }
                             }}
                           >
-                            Create Inventory Documents
+                            Ustvari dokumente zaloge
                           </Button>
                         </Box>
                       </CardContent>
@@ -2351,10 +2351,10 @@ export default function InventoryManagementPage() {
               ) : (
                 <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                   <Typography color="text.secondary" variant="h6">
-                    No sensor data available
+                    Podatki o senzorjih niso na voljo
                   </Typography>
                   <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
-                    Loading sensor and order information...
+                    Nalaganje informacij o senzorjih in naročilih...
                   </Typography>
                 </Card>
               )}
@@ -2373,7 +2373,7 @@ export default function InventoryManagementPage() {
                       color: "primary.main",
                     }}
                   >
-                    Device Inventory - Hierarchical View
+                    Zaloga naprav - Hierarhični pregled
                   </Typography>
 
                   {/* Device Search Field */}
@@ -2385,7 +2385,7 @@ export default function InventoryManagementPage() {
                       <TextField
                         value={searchState.deviceSearchQuery}
                         onChange={(e) => dispatchSearch({ type: 'SET_DEVICE_SEARCH', query: e.target.value })}
-                        placeholder="Search by Device EUI or App EUI..."
+                        placeholder="Išči po Device EUI ali App EUI..."
                         fullWidth
                         size="small"
                         InputProps={{
@@ -2437,7 +2437,7 @@ export default function InventoryManagementPage() {
                             }).length;
 
                           return totalFilteredDevices > 0
-                            ? ` - ${totalFilteredDevices} device${totalFilteredDevices !== 1 ? "s" : ""} found`
+                            ? ` - najdenih ${totalFilteredDevices} naprav${totalFilteredDevices !== 1 ? "" : "a"}`
                             : "";
                         })()}
                       </Typography>
@@ -2453,15 +2453,15 @@ export default function InventoryManagementPage() {
                       return (
                         <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                           <Typography color="text.secondary" variant="h6">
-                            No devices in inventory
+                            Ni naprav v zalogi
                           </Typography>
                           <Typography
                             color="text.secondary"
                             variant="body2"
                             sx={{ mt: 1 }}
                           >
-                            Add devices to see them organized by type and
-                            frequency
+                            Dodajte naprave, da jih boste videli organizirane po tipu in
+                            frekvenci
                           </Typography>
                         </Card>
                       );
@@ -2481,14 +2481,14 @@ export default function InventoryManagementPage() {
                             }}
                           />
                           <Typography color="text.secondary" variant="h6">
-                            No devices found
+                            Ni najdenih naprav
                           </Typography>
                           <Typography
                             color="text.secondary"
                             variant="body2"
                             sx={{ mt: 1 }}
                           >
-                            No devices match &ldquo;{searchState.deviceSearchQuery}&rdquo;
+                            Nobena naprava se ne ujema z &ldquo;{searchState.deviceSearchQuery}&rdquo;
                           </Typography>
                           <Button
                             variant="outlined"
@@ -2496,7 +2496,7 @@ export default function InventoryManagementPage() {
                             sx={{ mt: 2 }}
                             size="small"
                           >
-                            Clear Search
+                            Počisti iskanje
                           </Button>
                         </Card>
                       );
@@ -3019,7 +3019,7 @@ export default function InventoryManagementPage() {
                   size={isMobile ? "large" : "medium"}
                   sx={{ minWidth: { xs: "200px", md: "auto" } }}
                 >
-                  Add Device
+                  Dodaj napravo
                 </Button>
               </Box>
             </>
@@ -3035,7 +3035,7 @@ export default function InventoryManagementPage() {
                       <TextField
                         fullWidth
                         variant="outlined"
-                        placeholder="Search components by name, supplier, email, or invoice..."
+                        placeholder="Išči komponente po imenu, dobavitelju, e-pošti ali računu..."
                         value={searchState.componentSearchQuery}
                         onChange={(e) =>
                           dispatchSearch({ type: 'SET_COMPONENT_SEARCH', query: e.target.value })
@@ -3060,8 +3060,8 @@ export default function InventoryManagementPage() {
                           color="text.secondary"
                           sx={{ mt: 1, display: "block" }}
                         >
-                          Found {filteredComponents.length} component
-                          {filteredComponents.length !== 1 ? "s" : ""}
+                          Najdenih {filteredComponents.length} komponent
+                          {filteredComponents.length !== 1 ? "" : "a"}
                         </Typography>
                       )}
                     </Box>
@@ -3199,7 +3199,7 @@ export default function InventoryManagementPage() {
                                         variant="body2"
                                         color="text.secondary"
                                       >
-                                        Quantity
+                                        Količina
                                       </Typography>
                                       <Box
                                         sx={{
@@ -3592,8 +3592,8 @@ export default function InventoryManagementPage() {
                             >
                               <Typography color="text.secondary" variant="h6">
                                 {componentSearchQuery
-                                  ? "No components match your search"
-                                  : "No components in inventory"}
+                                  ? "Nobena komponenta se ne ujema z vašim iskanjem"
+                                  : "Ni komponent v zalogi"}
                               </Typography>
                               <Typography
                                 color="text.secondary"
@@ -3601,8 +3601,8 @@ export default function InventoryManagementPage() {
                                 sx={{ mt: 1 }}
                               >
                                 {componentSearchQuery
-                                  ? "Try adjusting your search terms"
-                                  : "Add your first component to get started"}
+                                  ? "Poskusite prilagoditi iskalne terme"
+                                  : "Dodajte svojo prvo komponento za začetek"}
                               </Typography>
                             </Card>
                           )}
@@ -3884,7 +3884,7 @@ export default function InventoryManagementPage() {
                         size={isMobile ? "large" : "medium"}
                         sx={{ minWidth: { xs: "200px", md: "auto" } }}
                       >
-                        Add {activeTab === 0 ? "Device" : "Component"}
+                        Dodaj {activeTab === 0 ? "napravo" : "komponento"}
                       </Button>
                     </Box>
                   </>
@@ -3913,7 +3913,7 @@ export default function InventoryManagementPage() {
                       color: "primary.main",
                     }}
                   >
-                    Production Capacity Summary
+                    Povzetek proizvodnih zmogljivosti
                   </Typography>
                 </Box>
 
@@ -3928,7 +3928,7 @@ export default function InventoryManagementPage() {
                         color: "text.primary",
                       }}
                     >
-                      Breakdown by sensor type:
+                      Razčlenitev po tipih senzorjev:
                     </Typography>
                     <Box
                       sx={{
@@ -4663,7 +4663,7 @@ export default function InventoryManagementPage() {
                         </Box>
                       ) : (
                         <Typography variant="body2" color="textSecondary">
-                          No previous invoices found for this component
+                          Za to komponento ni najdenih prejšnjih računov
                         </Typography>
                       )}
                     </Box>
