@@ -140,7 +140,7 @@ export default function SalesOverview() {
     setSales(sales.filter((sale) => sale.id !== id));
     setSnackbar({
       open: true,
-      message: "Sale deleted successfully!",
+      message: "Prodaja uspešno izbrisana!",
       severity: "success",
     });
   };
@@ -287,14 +287,14 @@ export default function SalesOverview() {
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
-                <TableCell>Customer</TableCell>
-                <TableCell>Sensor ID</TableCell>
-                <TableCell>Quantity</TableCell>
-                <TableCell>Price per Unit</TableCell>
-                <TableCell>Total</TableCell>
-                <TableCell>Date</TableCell>
+                <TableCell>Kupec</TableCell>
+                <TableCell>ID senzorja</TableCell>
+                <TableCell>Količina</TableCell>
+                <TableCell>Cena na enoto</TableCell>
+                <TableCell>Skupaj</TableCell>
+                <TableCell>Datum</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Dejanja</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -428,7 +428,7 @@ export default function SalesOverview() {
                 gap: 1,
               }}
             >
-              <Button onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleClose}>Prekliči</Button>
               <Button
                 type="submit"
                 variant="contained"

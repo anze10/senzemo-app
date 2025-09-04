@@ -89,7 +89,7 @@ const EmailReportManager: React.FC = () => {
     if (!settings.userEmail) {
       setMessage({
         type: "error",
-        text: "User email not found. Please ensure you're logged in.",
+        text: "Uporabniški e-poštni naslov ni najden. Preverite, ali ste prijavljeni.",
       });
       return;
     }
@@ -114,17 +114,17 @@ const EmailReportManager: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
-        setMessage({ type: "success", text: "Test email sent successfully!" });
+        setMessage({ type: "success", text: "Testno e-poštno sporočilo je bilo uspešno poslano!" });
       } else {
         setMessage({
           type: "error",
-          text: result.error || "Failed to send test email",
+          text: result.error || "Pošiljanje testnega e-poštnega sporočila ni uspelo",
         });
       }
     } catch {
       setMessage({
         type: "error",
-        text: "Network error while sending test email",
+        text: "Napaka omrežja pri pošiljanju testnega e-poštnega sporočila",
       });
     } finally {
       setTestSending(false);
@@ -142,13 +142,13 @@ const EmailReportManager: React.FC = () => {
       );
       setMessage({
         type: "success",
-        text: "Email settings saved successfully!",
+        text: "Nastavitve e-pošte so bile uspešno shranjene!",
       });
       // Refresh the settings from backend
       queryClient.invalidateQueries({ queryKey: ["emailSettings"] });
     } catch (error) {
       console.error("Error saving settings:", error);
-      setMessage({ type: "error", text: "Failed to save settings" });
+      setMessage({ type: "error", text: "Shranjevanje nastavitev ni uspelo" });
     } finally {
       setLoading(false);
     }
@@ -159,13 +159,13 @@ const EmailReportManager: React.FC = () => {
       await generateInventoryReport();
       setSnackbar({
         open: true,
-        message: "Inventory report generated successfully!",
+        message: "Poročilo o zalogi je bilo uspešno ustvarjeno!",
         severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to generate report: " + (error as Error).message,
+        message: "Ustvarjanje poročila ni uspelo: " + (error as Error).message,
         severity: "error",
       });
     } finally {
@@ -179,13 +179,13 @@ const EmailReportManager: React.FC = () => {
       await previewInventoryReport();
       setSnackbar({
         open: true,
-        message: "Report preview opened in new tab",
+        message: "Predogled poročila je odprt v novem zavihku",
         severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to preview report: " + (error as Error).message,
+        message: "Predogled poročila ni uspel: " + (error as Error).message,
         severity: "error",
       });
     } finally {
@@ -199,13 +199,13 @@ const EmailReportManager: React.FC = () => {
       const summary = await getInventorySummary();
       setSnackbar({
         open: true,
-        message: `Summary: ${summary.totalSensors} sensors, ${summary.totalComponents} components, ${summary.lowStockCount} low stock items`,
+        message: `Povzetek: ${summary.totalSensors} senzorjev, ${summary.totalComponents} komponent, ${summary.lowStockCount} artiklov z nizko zalogo`,
         severity: "info",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to get summary: " + (error as Error).message,
+        message: "Pridobivanje povzetka ni uspelo: " + (error as Error).message,
         severity: "error",
       });
     } finally {
@@ -261,10 +261,10 @@ const EmailReportManager: React.FC = () => {
                 sx={{ minHeight: 44 }}
               >
                 {reportGenerating
-                  ? "Generating..."
+                  ? "Ustvarjanje..."
                   : isMobile
-                    ? "Generate PDF"
-                    : "Generate Report"}
+                    ? "Ustvari PDF"
+                    : "Ustvari poročilo"}
               </Button>
 
               <Button
@@ -283,7 +283,7 @@ const EmailReportManager: React.FC = () => {
                 fullWidth={isMobile}
                 sx={{ minHeight: 44 }}
               >
-                {reportPreviewLoading ? "Loading..." : "Preview"}
+                {reportPreviewLoading ? "Nalaganje..." : "Predogled"}
               </Button>
 
               <Button
@@ -302,7 +302,7 @@ const EmailReportManager: React.FC = () => {
                 fullWidth={isMobile}
                 sx={{ minHeight: 44 }}
               >
-                {summaryLoading ? "Loading..." : "Summary"}
+                {summaryLoading ? "Nalaganje..." : "Povzetek"}
               </Button>
             </Box>
 
@@ -312,7 +312,7 @@ const EmailReportManager: React.FC = () => {
                 color="textSecondary"
                 sx={{ textAlign: "center" }}
               >
-                Professional inventory reports
+                Profesionalna poročila o zalogi
               </Typography>
             )}
           </Box>
@@ -321,10 +321,10 @@ const EmailReportManager: React.FC = () => {
               title={
                 <Box display="flex" alignItems="center" gap={1}>
                   <EmailIcon color="primary" />
-                  <Typography variant="h6">Monthly Email Reports</Typography>
+                  <Typography variant="h6">Mesečna e-poštna poročila</Typography>
                 </Box>
               }
-              subheader="Configure and manage automated monthly inventory reports"
+              subheader="Nastavite in upravljajte samodejna mesečna poročila o zalogi"
             />
 
             <CardContent>
@@ -357,10 +357,10 @@ const EmailReportManager: React.FC = () => {
                   label={
                     <Box>
                       <Typography variant="body1">
-                        Enable Monthly Reports
+                        Omogoči mesečna poročila
                       </Typography>
                       <Typography variant="caption" color="textSecondary">
-                        Automatically send inventory reports every month
+                        Samodejno pošiljaj poročila o zalogi vsak mesec
                       </Typography>
                     </Box>
                   }
@@ -373,7 +373,7 @@ const EmailReportManager: React.FC = () => {
                   <Box mb={3}>
                     <Typography variant="h6" gutterBottom>
                       <ScheduleIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                      Schedule Settings
+                      Nastavitve urnika
                     </Typography>
 
                     <Box
@@ -383,7 +383,7 @@ const EmailReportManager: React.FC = () => {
                       flexWrap="wrap"
                     >
                       <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>Day of Month</InputLabel>
+                        <InputLabel>Dan v mesecu</InputLabel>
                         <Select
                           value={settings.dayOfMonth}
                           onChange={(e) =>
@@ -392,7 +392,7 @@ const EmailReportManager: React.FC = () => {
                               dayOfMonth: e.target.value as number,
                             }))
                           }
-                          label="Day of Month"
+                          label="Dan v mesecu"
                         >
                           {Array.from({ length: 28 }, (_, i) => (
                             <MenuItem key={i + 1} value={i + 1}>
@@ -404,22 +404,14 @@ const EmailReportManager: React.FC = () => {
                                   : i === 2
                                     ? "rd"
                                     : "th"}{" "}
-                              day
+                              dan
                             </MenuItem>
                           ))}
                         </Select>
                       </FormControl>
 
                       <Typography variant="body2" color="textSecondary">
-                        Reports will be sent on the {settings.dayOfMonth}
-                        {settings.dayOfMonth === 1
-                          ? "st"
-                          : settings.dayOfMonth === 2
-                            ? "nd"
-                            : settings.dayOfMonth === 3
-                              ? "rd"
-                              : "th"}{" "}
-                        of each month
+                        Poročila bodo poslana {settings.dayOfMonth}. dan v vsakem mesecu
                       </Typography>
                     </Box>
                   </Box>
@@ -428,13 +420,13 @@ const EmailReportManager: React.FC = () => {
                   <Box mb={3}>
                     <Typography variant="h6" gutterBottom>
                       <SettingsIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                      Email Configuration
+                      Nastavitve e-pošte
                     </Typography>
 
                     <Box display="flex" flexDirection="column" gap={2}>
                       <TextField
                         fullWidth
-                        label="Email Subject"
+                        label="Zadeva e-pošte"
                         value={settings.subject}
                         onChange={(e) =>
                           setSettings((prev) => ({
@@ -442,7 +434,7 @@ const EmailReportManager: React.FC = () => {
                             subject: e.target.value,
                           }))
                         }
-                        helperText="Use {date} placeholder for automatic date insertion"
+                        helperText="Uporabite {date} za samodejni vnos datuma"
                         size="small"
                       />
                     </Box>
@@ -452,7 +444,7 @@ const EmailReportManager: React.FC = () => {
                   <Box mb={3}>
                     <Typography variant="h6" gutterBottom>
                       <EmailIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                      Email Recipient
+                      Prejemnik e-pošte
                     </Typography>
 
                     {settings.userEmail ? (
@@ -462,15 +454,13 @@ const EmailReportManager: React.FC = () => {
                             {settings.userEmail}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
-                            Reports will be sent to your registered email
-                            address
+                            Poročila bodo poslana na vaš registriran e-poštni naslov
                           </Typography>
                         </Box>
                       </Alert>
                     ) : (
                       <Alert severity="warning" sx={{ mb: 2 }}>
-                        Email address not found. Please ensure you&apos;re
-                        logged in properly.
+                        E-poštni naslov ni najden. Preverite, ali ste pravilno prijavljeni.
                       </Alert>
                     )}
                   </Box>
@@ -493,7 +483,7 @@ const EmailReportManager: React.FC = () => {
                       }
                       variant="outlined"
                     >
-                      {testSending ? "Sending..." : "Send Test Email"}
+                      {testSending ? "Pošiljanje..." : "Pošlji testno e-pošto"}
                     </Button>
 
                     <Button
@@ -508,7 +498,7 @@ const EmailReportManager: React.FC = () => {
                       disabled={loading}
                       variant="contained"
                     >
-                      {loading ? "Saving..." : "Save Settings"}
+                      {loading ? "Shranjevanje..." : "Shrani nastavitve"}
                     </Button>
                   </Box>
                 </>

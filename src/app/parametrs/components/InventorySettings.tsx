@@ -47,7 +47,7 @@ export function InventorySettings() {
   return (
     <Paper elevation={3} sx={{ p: 3, maxWidth: 600, mx: "auto" }}>
       <Typography variant="h5" gutterBottom>
-        Inventory Settings
+        Nastavitve zaloge
       </Typography>
 
       <Divider sx={{ my: 2 }} />

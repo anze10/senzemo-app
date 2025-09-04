@@ -735,7 +735,7 @@ export default function InventoryManagementPage() {
     onSuccess: (filePath) => {
       setSnackbar({
         open: true,
-        message: `Invoice uploaded successfully to: ${filePath}`,
+        message: `Račun je bil uspešno naložen v: ${filePath}`,
         severity: "success",
       });
     },
@@ -1104,7 +1104,7 @@ export default function InventoryManagementPage() {
     onError: (error: unknown) => {
       setSnackbar({
         open: true,
-        message: (error as Error)?.message || "Failed to add sensor",
+        message: (error as Error)?.message || "Dodajanje senzorja ni uspelo",
         severity: "error",
       });
     },
@@ -1222,7 +1222,7 @@ export default function InventoryManagementPage() {
 
       setSnackbar({
         open: true,
-        message: `Item ${editItem.id ? "updated" : "added"} successfully!`,
+        message: `Artikel ${editItem.id ? "posodobljen" : "dodan"} uspešno!`,
         severity: "success",
       });
       handleClose();
@@ -1230,7 +1230,7 @@ export default function InventoryManagementPage() {
       console.error("Error saving item:", error);
       setSnackbar({
         open: true,
-        message: "Failed to save item: " + (error as Error).message,
+        message: "Shranjevanje artikla ni uspelo: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1268,7 +1268,7 @@ export default function InventoryManagementPage() {
       setSnackbar({
         open: true,
         message:
-          (error as Error)?.message || "Failed to adjust component stock",
+          (error as Error)?.message || "Prilagoditev zaloge komponente ni uspela",
         severity: "error",
       });
     },
@@ -1365,7 +1365,7 @@ export default function InventoryManagementPage() {
 
         setSnackbar({
           open: true,
-          message: "Component updated successfully!",
+          message: "Komponenta uspešno posodobljena!",
           severity: "success",
         });
       } else {
@@ -1386,7 +1386,7 @@ export default function InventoryManagementPage() {
 
         setSnackbar({
           open: true,
-          message: "Component added successfully!",
+          message: "Komponenta uspešno dodana!",
           severity: "success",
         });
       }
@@ -1412,7 +1412,7 @@ export default function InventoryManagementPage() {
       }
       setSnackbar({
         open: true,
-        message: "Item deleted successfully!",
+        message: "Artikel uspešno izbrisan!",
         severity: "success",
       });
       dispatchDialog({ type: 'CLOSE' });
@@ -1420,7 +1420,7 @@ export default function InventoryManagementPage() {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to delete item: " + (error as Error).message,
+        message: "Brisanje artikla ni uspelo: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1444,7 +1444,7 @@ export default function InventoryManagementPage() {
     onError: (error: unknown) => {
       setSnackbar({
         open: true,
-        message: (error as Error)?.message || "Failed to adjust sensor stock",
+        message: (error as Error)?.message || "Prilagoditev zaloge senzorja ni uspela",
         severity: "error",
       });
     },
@@ -1603,7 +1603,7 @@ export default function InventoryManagementPage() {
 
       setSnackbar({
         open: true,
-        message: "Download started successfully!",
+        message: "Prenos uspešno začet!",
         severity: "success",
       });
     } catch (error) {
@@ -1625,13 +1625,13 @@ export default function InventoryManagementPage() {
       queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
       setSnackbar({
         open: true,
-        message: `Device ${device.devEUI} removed successfully!`,
+        message: `Naprava ${device.devEUI} uspešno odstranjena!`,
         severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to remove device: " + (error as Error).message,
+        message: "Odstranitev naprave ni uspela: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1649,13 +1649,13 @@ export default function InventoryManagementPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
-        message: `Device ${device.devEUI} assigned to order successfully!`,
+        message: `Naprava ${device.devEUI} uspešno dodeljena naročilu!`,
         severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to assign device: " + (error as Error).message,
+        message: "Dodelitev naprave ni uspela: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1672,13 +1672,13 @@ export default function InventoryManagementPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
-        message: `Device ${device.devEUI} released from order successfully!`,
+        message: `Naprava ${device.devEUI} uspešno sproščena iz naročila!`,
         severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to release device: " + (error as Error).message,
+        message: "Sprostitev naprave ni uspela: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1726,7 +1726,7 @@ export default function InventoryManagementPage() {
 
       setSnackbar({
         open: true,
-        message: `Frequency updated successfully for device ${editingFrequencyDevice.devEUI}!`,
+        message: `Frekvenca uspešno posodobljena za napravo ${editingFrequencyDevice.devEUI}!`,
         severity: "success",
       });
 
@@ -1734,7 +1734,7 @@ export default function InventoryManagementPage() {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to update frequency: " + (error as Error).message,
+        message: "Posodabljanje frekvence ni uspelo: " + (error as Error).message,
         severity: "error",
       });
     }
@@ -1886,20 +1886,20 @@ export default function InventoryManagementPage() {
             variant={isMobile ? "fullWidth" : "standard"}
             scrollButtons={isMobile ? "auto" : false}
           >
-            <Tab label="Devices" />
-            <Tab label="Components" />
+            <Tab label="Naprave" />
+            <Tab label="Komponente" />
             <Tab
-              label={isMobile ? "Logs" : "Activity Logs"}
+              label={isMobile ? "Dnevniki" : "Dnevniki aktivnosti"}
               icon={<HistoryIcon />}
               iconPosition="start"
             />
             <Tab
-              label={isMobile ? "Reports" : "Email Reports"}
+              label={isMobile ? "Poročila" : "E-poštna poročila"}
               icon={<EmailIcon />}
               iconPosition="start"
             />
             <Tab
-              label={isMobile ? "All Sensors" : "All Sensors with Customers"}
+              label={isMobile ? "Vsi senzorji" : "Vsi senzorji z uporabniki"}
               icon={<GroupIcon />}
               iconPosition="start"
             />
@@ -1984,7 +1984,7 @@ export default function InventoryManagementPage() {
                                     variant="caption"
                                     color="text.secondary"
                                   >
-                                    Timestamp
+                                    Časovni žig
                                   </Typography>
                                   <Typography variant="body2" fontWeight={500}>
                                     {log.timestamp.toLocaleString()}
@@ -1996,7 +1996,7 @@ export default function InventoryManagementPage() {
                                     variant="caption"
                                     color="text.secondary"
                                   >
-                                    Reason
+                                    Razlog
                                   </Typography>
                                   <Typography variant="body2">
                                     {log.reason}
@@ -2009,7 +2009,7 @@ export default function InventoryManagementPage() {
                                       variant="caption"
                                       color="text.secondary"
                                     >
-                                      User
+                                      Uporabnik
                                     </Typography>
                                     <Typography variant="body2">
                                       {log.user}
@@ -2023,7 +2023,7 @@ export default function InventoryManagementPage() {
                                       variant="caption"
                                       color="text.secondary"
                                     >
-                                      Invoice Number
+                                      Številka računa
                                     </Typography>
                                     <Typography
                                       variant="body2"
@@ -2042,14 +2042,14 @@ export default function InventoryManagementPage() {
                   ) : (
                     <Card elevation={2} sx={{ p: 6, textAlign: "center" }}>
                       <Typography color="text.secondary" variant="h6">
-                        No logs available
+                        Ni razpoložljivih dnevnikov
                       </Typography>
                       <Typography
                         color="text.secondary"
                         variant="body2"
                         sx={{ mt: 1 }}
                       >
-                        Activity logs will appear here when you make changes
+                        Dnevniki aktivnosti se bodo prikazali tukaj, ko boste naredili spremembe
                       </Typography>
                     </Card>
                   )}
@@ -2061,13 +2061,13 @@ export default function InventoryManagementPage() {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell>Timestamp</TableCell>
-                          <TableCell>Item</TableCell>
-                          <TableCell>Type</TableCell>
-                          <TableCell>Change</TableCell>
-                          <TableCell>Reason</TableCell>
-                          <TableCell>User</TableCell>
-                          <TableCell>Invoice</TableCell>
+                          <TableCell>Časovni žig</TableCell>
+                          <TableCell>Artikel</TableCell>
+                          <TableCell>Tip</TableCell>
+                          <TableCell>Sprememba</TableCell>
+                          <TableCell>Razlog</TableCell>
+                          <TableCell>Uporabnik</TableCell>
+                          <TableCell>Račun</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -2095,7 +2095,7 @@ export default function InventoryManagementPage() {
                         {logs.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={7} align="center">
-                              No logs available
+                              Ni razpoložljivih dnevnikov
                             </TableCell>
                           </TableRow>
                         )}
@@ -2123,7 +2123,7 @@ export default function InventoryManagementPage() {
                   }}
                   sx={{ mr: 2 }}
                 >
-                  Go to Orders
+                  Pojdi na naročila
                 </Button>
               </Box>
 
@@ -2159,11 +2159,11 @@ export default function InventoryManagementPage() {
                             {order.orderName || `Order #${order.orderId}`}
                           </Typography>
                           <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                            Customer: {order.customerName}
+                            Kupec: {order.customerName}
                           </Typography>
                           {order.assemblier && (
                             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                              Assembler: {order.assemblier}
+                              Sestavljavec: {order.assemblier}
                             </Typography>
                           )}
                         </Box>
@@ -3615,15 +3615,15 @@ export default function InventoryManagementPage() {
                           <Table>
                             <TableHead>
                               <TableRow>
-                                <TableCell>Name</TableCell>
-                                <TableCell>Quantity</TableCell>
-                                <TableCell>Price per Item</TableCell>
-                                <TableCell>Supplier</TableCell>
-                                <TableCell>Supplier Contact</TableCell>
-                                <TableCell>Sensor Requirements</TableCell>
-                                <TableCell>Invoice File</TableCell>
-                                <TableCell>Last Updated</TableCell>
-                                <TableCell>Actions</TableCell>
+                                <TableCell>Ime</TableCell>
+                                <TableCell>Količina</TableCell>
+                                <TableCell>Cena na enoto</TableCell>
+                                <TableCell>Dobavitelj</TableCell>
+                                <TableCell>Kontakt dobavitelja</TableCell>
+                                <TableCell>Zahteve senzorja</TableCell>
+                                <TableCell>Datoteka računa</TableCell>
+                                <TableCell>Zadnja posodobitev</TableCell>
+                                <TableCell>Dejanja</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -4767,7 +4767,7 @@ export default function InventoryManagementPage() {
                         <strong>Selected file:</strong> {invoiceFile.name}
                       </Typography>
                       <Typography variant="body2" color="primary">
-                        <strong>Will be saved as:</strong> {invoiceNumber}.
+                        <strong>Bo shranjeno kot:</strong> {invoiceNumber}.
                         {invoiceFile.name.split(".").pop()}
                       </Typography>
                     </Box>
@@ -4834,14 +4834,14 @@ export default function InventoryManagementPage() {
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
-              Delete Item
+              Izbriši artikel
             </Button>
             <Button
               onClick={handleClose}
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
-              Cancel
+              Prekliči
             </Button>
             <Button
               onClick={
@@ -4878,7 +4878,7 @@ export default function InventoryManagementPage() {
               fontSize: { xs: "1.25rem", md: "1.5rem" },
             }}
           >
-            Are you sure you want to delete this item?
+            Ali ste prepričani, da želite izbrisati ta artikel?
           </DialogTitle>
           <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
             <Typography color="error" variant="body1">
@@ -4897,7 +4897,7 @@ export default function InventoryManagementPage() {
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
-              Cancel
+              Prekliči
             </Button>
             <Button
               color="error"
@@ -5128,7 +5128,7 @@ export default function InventoryManagementPage() {
               fullWidth={isMobile}
               size={isMobile ? "large" : "medium"}
             >
-              Cancel
+              Prekliči
             </Button>
             <Button
               onClick={confirmAdjustment}

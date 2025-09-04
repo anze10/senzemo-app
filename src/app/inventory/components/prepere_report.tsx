@@ -308,10 +308,10 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
 
           {/* Table Header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Sensor Name</Text>
-            <Text style={styles.tableCellCenter}>Qty</Text>
-            <Text style={styles.tableCell}>Frequency</Text>
-            <Text style={styles.tableCell}>Batch</Text>
+            <Text style={[styles.tableCell, { flex: 2 }]}>Ime senzorja</Text>
+            <Text style={styles.tableCellCenter}>Kol</Text>
+            <Text style={styles.tableCell}>Frekvenca</Text>
+            <Text style={styles.tableCell}>Serija</Text>
           </View>
 
           {/* Table Rows */}
@@ -350,11 +350,11 @@ const InventoryReport: React.FC<InventoryReportProps> = ({
 
           {/* Table Header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Component Name</Text>
-            <Text style={styles.tableCellCenter}>Qty</Text>
-            <Text style={styles.tableCell}>Location</Text>
-            <Text style={styles.tableCell}>Supplier</Text>
-            <Text style={styles.tableCell}>Updated</Text>
+            <Text style={[styles.tableCell, { flex: 2 }]}>Ime komponente</Text>
+            <Text style={styles.tableCellCenter}>Kol</Text>
+            <Text style={styles.tableCell}>Lokacija</Text>
+            <Text style={styles.tableCell}>Dobavitelj</Text>
+            <Text style={styles.tableCell}>Posodobljeno</Text>
           </View>
 
           {/* Table Rows */}

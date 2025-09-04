@@ -135,7 +135,7 @@ export default function OrderManagement() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
-        message: "Order saved successfully!",
+        message: "Naročilo uspešno shranjeno!",
         severity: "success",
       });
     },
@@ -154,7 +154,7 @@ export default function OrderManagement() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSnackbar({
         open: true,
-        message: "Order deleted successfully!",
+        message: "Naročilo uspešno izbrisano!",
         severity: "success",
       });
     },
@@ -667,7 +667,7 @@ export default function OrderManagement() {
           height: "50vh",
         }}
       >
-        <Typography variant="h6">Loading orders...</Typography>
+        <Typography variant="h6">Nalaganje naročil...</Typography>
       </Container>
     );
   }
@@ -728,17 +728,17 @@ export default function OrderManagement() {
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: 10 }}>Priority</TableCell>
+                <TableCell sx={{ width: 10 }}>Prioriteta</TableCell>
                 <TableCell>ID</TableCell>
-                <TableCell>Order Name</TableCell>
-                <TableCell>Customer</TableCell>
-                <TableCell>Shipping Address</TableCell>
-                <TableCell>Items</TableCell>
-                <TableCell>Frequency</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Shipping Cost</TableCell>
+                <TableCell>Ime naročila</TableCell>
+                <TableCell>Kupec</TableCell>
+                <TableCell>Naslov pošiljanja</TableCell>
+                <TableCell>Artikel</TableCell>
+                <TableCell>Frekvenca</TableCell>
+                <TableCell>Datum</TableCell>
+                <TableCell>Strošek pošiljanja</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Dejanja</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -953,13 +953,13 @@ export default function OrderManagement() {
                     }
                     required
                   >
-                    <MenuItem value="Slovenia">Slovenia</MenuItem>
-                    <MenuItem value="Croatia">Croatia</MenuItem>
-                    <MenuItem value="Austria">Austria</MenuItem>
-                    <MenuItem value="Italy">Italy</MenuItem>
-                    <MenuItem value="Germany">Germany</MenuItem>
-                    <MenuItem value="France">France</MenuItem>
-                    <MenuItem value="Other EU">Other EU</MenuItem>
+                    <MenuItem value="Slovenia">Slovenija</MenuItem>
+                    <MenuItem value="Croatia">Hrvaška</MenuItem>
+                    <MenuItem value="Austria">Avstrija</MenuItem>
+                    <MenuItem value="Italy">Italija</MenuItem>
+                    <MenuItem value="Germany">Nemčija</MenuItem>
+                    <MenuItem value="France">Francija</MenuItem>
+                    <MenuItem value="Other EU">Drugo EU</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -1363,7 +1363,7 @@ export default function OrderManagement() {
 
               <Box sx={{ my: 2, borderTop: "1px solid #ddd", pt: 2 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="body2">Shipping Cost:</Typography>
+                  <Typography variant="body2">Strošek pošiljanja:</Typography>
                   <Typography variant="body2">
                     ${selectedOrder.shippingCost.toFixed(2)}
                   </Typography>

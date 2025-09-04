@@ -25,10 +25,10 @@ import { Close as CloseIcon, Logout, Menu as MenuIcon } from "@mui/icons-materia
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action"
 
 const tabs = [
-    { id: "home", label: "Home", path: "/dashboard" },
-    { id: "orders", label: "Orders", path: "/orders" },
-    { id: "inventory", label: "Inventory", path: "/inventory" },
-    { id: "do order", label: "Do Order", path: "/parameters" },
+    { id: "home", label: "Domov", path: "/dashboard" },
+    { id: "orders", label: "Naročila", path: "/orders" },
+    { id: "inventory", label: "Zaloga", path: "/inventory" },
+    { id: "do order", label: "Opravi naročilo", path: "/parameters" },
 ]
 
 export default function Navbar() {
@@ -64,9 +64,9 @@ export default function Navbar() {
                 <Toolbar sx={{ justifyContent: 'space-between', height: 64 }}>
                     {/* Logo/Brand and Navigation combined on left */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Typography variant="h6" component="h1" sx={{ fontWeight: 600 }}>
-                            MyApp
-                        </Typography>
+                        {/* <Typography variant="h6" component="h1" sx={{ fontWeight: 600 }}>
+                            Senzemo Platform
+                        </Typography> */}
 
                         {/* Desktop Navigation */}
                         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
@@ -112,7 +112,7 @@ export default function Navbar() {
                                 borderRadius: 2
                             }}
                         >
-                            Logout
+                            Odjava
                         </Button>
                     </Box>
 
@@ -174,7 +174,7 @@ export default function Navbar() {
                                 }}
                             />
                             <Typography variant="body2" color="text.secondary">
-                                Your Profile
+                                Tvoj Račun
                             </Typography>
                         </Stack>
 
@@ -189,7 +189,7 @@ export default function Navbar() {
                                 borderRadius: 2
                             }}
                         >
-                            Logout
+                            Odjava
                         </Button>
                     </Stack>
                 </Box>

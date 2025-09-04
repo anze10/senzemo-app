@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Page Not Found",
-  description: "The page you're looking for doesn't exist.",
+  title: "Stran ni najdena",
+  description: "Stran, ki jo iščete, ne obstaja.",
 };
 
 export default function NotFound() {
@@ -12,16 +12,16 @@ export default function NotFound() {
       <div className="text-center">
         <h1 className="text-9xl font-bold text-gray-200">404</h1>
         <h2 className="mt-4 text-2xl font-semibold text-gray-800">
-          Page Not Found
+          Stran ni najdena
         </h2>
         <p className="mt-2 text-gray-600">
-          The page you&apos;re looking for doesn&apos;t exist.
+          Stran, ki jo iščete, ne obstaja.
         </p>
         <Link
           href="/"
           className="mt-6 inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
-          Go Home
+          Nazaj domov
         </Link>
       </div>
     </div>

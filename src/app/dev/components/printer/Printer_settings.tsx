@@ -108,7 +108,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
       <CardContent>
         <div className="grid w-full items-center gap-4">
           <div className="flex flex-col space-y-1.5">
-            <Typography variant="body1">Printer</Typography>
+            <Typography variant="body1">Tiskalnik</Typography>
             {/* <Button
               variant="outlined"
               onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -146,7 +146,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
               }}
             >
               <option value="" disabled>
-                Select printer...
+                Izberite Tiskalnik.....
               </option>
               {printers.map((printer) => (
                 <option key={printer.name} value={printer.name}>
@@ -156,7 +156,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             </TextField>
           </div>
           <div className="flex flex-col space-y-1.5">
-            <Typography variant="body1">Printer Server URI</Typography>
+            <Typography variant="body1">URI tiskalnega strežnika</Typography>
             <TextField
               id="server-uri"
               value={url_server}
@@ -177,7 +177,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
           />
           {manualUrlConnection && (
             <div className="flex flex-col space-y-1.5">
-              <Typography variant="body1">URL Connection</Typography>
+              <Typography variant="body1">URL Povezava</Typography>
               <TextField
                 id="url-connection"
                 value={url_connection}
@@ -193,7 +193,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             onClick={handlePrintClick}
             disabled={isPending}
           >
-            {isPending ? "Sending Print Job..." : "Test Print"}
+            {isPending ? "Pošiljanje tiskalnega posla..." : "Testni tisk"}
           </Button>
           <Button
             variant="contained"
@@ -201,7 +201,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
             startIcon={<Printer />}
             onClick={onClose}
           >
-            Save Settings
+            Shrani Nastavitve
           </Button>
         </div>
       </CardContent>

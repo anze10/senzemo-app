@@ -663,7 +663,7 @@ export function SensorCheckForm() {
                   },
                 }}
               >
-                Open Serial Port
+                Povezava z bralnikom
               </Button>
             </Box>
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
@@ -684,17 +684,17 @@ export function SensorCheckForm() {
                   variant="caption"
                   sx={{ color: "white", fontWeight: "bold" }}
                 >
-                  {autoDeductComponents ? "Auto-deduct ON" : "Auto-deduct OFF"}
+                  {autoDeductComponents ? "Samodejno odštevanje VKLOPLJENO" : "Samodejno odštevanje IZKLOPLJENO"}
                 </Typography>
               </Box>
 
-              <Tooltip title="Open settings">
+              <Tooltip title="Odpri nastavitve">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar alt="User Avatar" src={session.data?.user?.picture} />
                 </IconButton>
               </Tooltip>
               <Typography sx={{ ml: 1, color: "black" }}>
-                {session?.data?.user?.name ?? "User"}
+                {session?.data?.user?.name ?? "Uporabnik"}
               </Typography>
 
               <Menu
@@ -714,7 +714,7 @@ export function SensorCheckForm() {
                   }}
                 >
                   <Typography sx={{ textAlign: "center", color: "black" }}>
-                    Account
+                    Račun
                   </Typography>
                 </MenuItem>
 
@@ -732,7 +732,7 @@ export function SensorCheckForm() {
                       size="small"
                     />
                     <Typography sx={{ textAlign: "center", color: "black" }}>
-                      Auto-deduct Components
+                      Samodejno odštevanje komponent
                     </Typography>
                   </Box>
                 </MenuItem>
@@ -750,7 +750,7 @@ export function SensorCheckForm() {
                       size="small"
                     />
                     <Typography sx={{ textAlign: "center", color: "black" }}>
-                      Don&apos;t Add to Inventory
+                      Ne dodaj v inventar
                     </Typography>
                   </Box>
                 </MenuItem>
@@ -763,7 +763,7 @@ export function SensorCheckForm() {
                   }}
                 >
                   <Typography sx={{ textAlign: "center", color: "black" }}>
-                    Printer Settings
+                    Nastavitve tiskalnika
                   </Typography>
                 </MenuItem>
 
@@ -797,7 +797,7 @@ export function SensorCheckForm() {
                   }}
                 >
                   <Typography sx={{ textAlign: "center", color: "black" }}>
-                    Logout
+                    Odjava
                   </Typography>
                 </MenuItem>
               </Menu>
@@ -823,7 +823,7 @@ export function SensorCheckForm() {
             }}
           >
             <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-              Key Parameters
+              Ključni parametri
             </Typography>
             <Box
               sx={{
@@ -880,7 +880,7 @@ export function SensorCheckForm() {
                 setShowUnimportantParameters(!showUnimportantParameters)
               }
             >
-              {showUnimportantParameters ? "Hide Details" : "Show Details"}
+              {showUnimportantParameters ? "Skrij podrobnosti" : "Prikaži podrobnosti"}
             </Button>
 
             <Collapse in={showUnimportantParameters}>
@@ -1088,7 +1088,7 @@ export function SensorCheckForm() {
                 sx={{ flex: 1 }}
                 disabled={isCurrentSensorAccepted}
               >
-                {isCurrentSensorAccepted ? "Accepted" : "Accept"}
+                {isCurrentSensorAccepted ? "Sprejeto" : "Sprejmi"}
               </Button>
             </Box>
           ) : (
@@ -1184,7 +1184,7 @@ export function SensorCheckForm() {
                 sx={{ flex: 1 }}
                 disabled={isCurrentSensorAccepted}
               >
-                {isCurrentSensorAccepted ? "Stored" : "Accept without inventory"}
+                {isCurrentSensorAccepted ? "Shranjeno" : "Sprejmi brez inventarja"}
               </Button>
             </Box>
           )}
@@ -1263,7 +1263,7 @@ export function SensorCheckForm() {
               }}
               sx={{ flex: 1 }}
             >
-              Reprogram
+              Reprogramiraj
             </Button>
             <Button
               variant="outlined"
@@ -1273,7 +1273,7 @@ export function SensorCheckForm() {
               }
               sx={{ flex: 1 }}
             >
-              Reject
+              Zavrni
             </Button>
           </Box>
 
@@ -1289,7 +1289,7 @@ export function SensorCheckForm() {
               }}
               sx={{ flex: 1, maxWidth: "200px" }}
             >
-              Finish
+              Končaj
             </Button>
           </Box>
         </form>
@@ -1409,7 +1409,7 @@ export function DynamicFormComponent({
           );
         })()
       ) : (
-        <Typography color="error">Invalid type: {my_type}</Typography>
+        <Typography color="error">Neveljaven tip: {my_type}</Typography>
       )}
     </FormControl>
   );
