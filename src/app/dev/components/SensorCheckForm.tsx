@@ -105,6 +105,7 @@ export function SensorCheckForm() {
     setAutoDeductComponents(enabled);
   };
   const orderId = useSensorStore((state) => state.OrderID);
+  const target_sensor_data = useSensorStore((state) => state.target_sensor_data);
   const current_sensor_index = useSensorStore(
     (state) => state.current_sensor_index,
   );
@@ -514,7 +515,17 @@ export function SensorCheckForm() {
         "Final dataforDB being sent to database:",
         JSON.stringify(dataforDB, null, 2),
       );
-      return insertIntoDB(dataforDB, orderId);
+
+      // Get addToStock flag from target_sensor_data
+      const addToStock = target_sensor_data?.addToStock ?? false;
+
+      // Determine orderId based on addToStock state
+      // If addToStock is true (meaning we DO want to add to stock inventory), use null for orderId
+      // If addToStock is false (meaning we DON'T want to add to stock inventory), use the orderId from store
+      const finalOrderId = addToStock ? null : orderId;
+      console.log("Using orderId:", finalOrderId, "(addToStock:", addToStock, ")");
+
+      return insertIntoDB(dataforDB, finalOrderId);
     },
     onMutate: async () => {
       console.log("DATABASE MUTATION STARTING - onMutate");
@@ -949,7 +960,13 @@ export function SensorCheckForm() {
 
                     // Insert current sensor data into database
                     console.log("Inserting current sensor data into database...");
-                    await insertIntoDatabaseMutation.mutateAsync();
+                    try {
+                      await insertIntoDatabaseMutation.mutateAsync();
+                    } catch (dbError) {
+                      console.error("Database insertion failed:", dbError);
+                      setIsProcessingAccept(false);
+                      return;
+                    }
 
                     // Odštej komponente iz zaloge po uspešni vstavitvi v bazo
                     // Preverimo, ali je avtomatsko odštevanje omogočeno
@@ -1017,47 +1034,50 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    // Reset operation flags to ensure clean state before reading
-                    resetOperationFlags();
-
-                    // Delay to ensure USB connection is stable
-                    await new Promise((resolve) => setTimeout(resolve, 500));
-
-                    // Try to get data from the next sensor with robust retry mechanism
-                    console.log(
-                      "Reading new sensor data with retry mechanism...",
-                    );
-                    const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
-
-                    if (!uint_array || !sensors) {
-                      console.warn("Failed to get new sensor data after retries");
-                      // Reset processing state even if we couldn't get new sensor data
-                      setIsProcessingAccept(false);
-                      return;
-                    }
-
-                    const decoder = RightDecoder(uint_array, sensors);
-                    if (!decoder) {
-                      console.warn("Failed to decode new sensor data");
-                      // Reset processing state
-                      setIsProcessingAccept(false);
-                      return;
-                    }
-
-                    console.log(
-                      "Adding new sensor (this will reset accepted state)",
-                    );
-                    add_new_sensor(decoder, uint_array);
-                    console.log(
-                      "New sensor added, current_sensor_index is now:",
-                      current_sensor_index + 1,
-                    );
-                    console.log(
-                      "Button should now show 'Accept' for the new sensor",
-                    );
-
-                    // Reset processing state after successful operation
+                    // Reset processing state here - sensor has been successfully processed
+                    // User can now work with current sensor while next sensor loads in background
                     setIsProcessingAccept(false);
+
+                    // Background task: try to get next sensor data
+                    // This runs asynchronously without blocking the UI
+                    setTimeout(async () => {
+                      try {
+                        // Reset operation flags to ensure clean state before reading
+                        resetOperationFlags();
+
+                        // Delay to ensure USB connection is stable
+                        await new Promise((resolve) => setTimeout(resolve, 500));
+
+                        // Try to get data from the next sensor with robust retry mechanism
+                        console.log(
+                          "Reading new sensor data with retry mechanism...",
+                        );
+                        const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
+                        if (!uint_array || !sensors) {
+                          console.warn("Failed to get new sensor data after retries");
+                          return;
+                        }
+
+                        const decoder = RightDecoder(uint_array, sensors);
+                        if (!decoder) {
+                          console.warn("Failed to decode new sensor data");
+                          return;
+                        }
+
+                        console.log(
+                          "Adding new sensor (this will reset accepted state)",
+                        );
+                        add_new_sensor(decoder, uint_array);
+                        console.log(
+                          "New sensor added, current_sensor_index is now:",
+                          current_sensor_index + 1,
+                        );
+                      } catch (backgroundError) {
+                        console.error("Background sensor reading error:", backgroundError);
+                        // Don't affect UI state - this is a background operation
+                      }
+                    }, 100); // Small delay to allow UI to update first
                   } catch (error) {
                     console.error("Error in accept button:", error);
 
@@ -1133,44 +1153,50 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    // Reset operation flags to ensure clean state before reading
-                    resetOperationFlags();
-
-                    // Delay to ensure USB connection is stable
-                    await new Promise((resolve) => setTimeout(resolve, 500));
-
-                    // Try to get data from the next sensor with robust retry mechanism
-                    console.log(
-                      "Reading new sensor data with retry mechanism...",
-                    );
-                    const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
-
-                    if (!uint_array || !sensors) {
-                      console.warn("Failed to get new sensor data after retries");
-                      // Reset processing state even if we couldn't get new sensor data
-                      setIsProcessingAccept(false);
-                      return;
-                    }
-
-                    const decoder = RightDecoder(uint_array, sensors);
-                    if (!decoder) {
-                      console.warn("Failed to decode new sensor data");
-                      // Reset processing state
-                      setIsProcessingAccept(false);
-                      return;
-                    }
-
-                    console.log(
-                      "Adding new sensor (this will reset accepted state)",
-                    );
-                    add_new_sensor(decoder, uint_array);
-                    console.log(
-                      "New sensor added, current_sensor_index is now:",
-                      current_sensor_index + 1,
-                    );
-
-                    // Reset processing state after successful operation
+                    // Reset processing state here - sensor has been successfully processed
+                    // User can now work with current sensor while next sensor loads in background
                     setIsProcessingAccept(false);
+
+                    // Background task: try to get next sensor data
+                    // This runs asynchronously without blocking the UI
+                    setTimeout(async () => {
+                      try {
+                        // Reset operation flags to ensure clean state before reading
+                        resetOperationFlags();
+
+                        // Delay to ensure USB connection is stable
+                        await new Promise((resolve) => setTimeout(resolve, 500));
+
+                        // Try to get data from the next sensor with robust retry mechanism
+                        console.log(
+                          "Reading new sensor data with retry mechanism...",
+                        );
+                        const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
+
+                        if (!uint_array || !sensors) {
+                          console.warn("Failed to get new sensor data after retries");
+                          return;
+                        }
+
+                        const decoder = RightDecoder(uint_array, sensors);
+                        if (!decoder) {
+                          console.warn("Failed to decode new sensor data");
+                          return;
+                        }
+
+                        console.log(
+                          "Adding new sensor (this will reset accepted state)",
+                        );
+                        add_new_sensor(decoder, uint_array);
+                        console.log(
+                          "New sensor added, current_sensor_index is now:",
+                          current_sensor_index + 1,
+                        );
+                      } catch (backgroundError) {
+                        console.error("Background sensor reading error:", backgroundError);
+                        // Don't affect UI state - this is a background operation
+                      }
+                    }, 100); // Small delay to allow UI to update first
                   } catch (error) {
                     console.error("Error in don't add to inventory button:", error);
 
