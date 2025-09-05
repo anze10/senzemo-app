@@ -92,6 +92,9 @@ export function SensorCheckForm() {
   const [showUnimportantParameters, setShowUnimportantParameters] =
     useState<boolean>(false);
 
+  // State for button loading/processing
+  const [isProcessingAccept, setIsProcessingAccept] = useState<boolean>(false);
+
   // State za avtomatsko odštevanje komponent
   const [autoDeductComponents, setAutoDeductComponentsState] =
     useState<boolean>(() => getAutoDeductComponents());
@@ -923,23 +926,18 @@ export function SensorCheckForm() {
                       return;
                     }
 
-                    // Prevent accepting already accepted sensors
-                    if (isCurrentSensorAccepted) {
-                      console.log("Sensor already accepted, skipping processing");
+                    // Prevent accepting already accepted sensors or if already processing
+                    if (isCurrentSensorAccepted || isProcessingAccept) {
+                      console.log("Sensor already accepted or processing, skipping");
                       return;
                     }
 
                     console.log("Processing accept for current sensor");
-                    const data = current_sensor.data as ParsedSensorData;
 
-                    // IMPORTANT: Set a loading state indicator
-                    const acceptButton = document.querySelector(
-                      'button[color="success"]',
-                    );
-                    if (acceptButton) {
-                      acceptButton.textContent = "Processing...";
-                      acceptButton.setAttribute("disabled", "true");
-                    }
+                    // Set processing state immediately
+                    setIsProcessingAccept(true);
+
+                    const data = current_sensor.data as ParsedSensorData;
 
                     // Set sensor status to accepted
                     set_sensor_status(current_sensor_index, true);
@@ -1033,22 +1031,16 @@ export function SensorCheckForm() {
 
                     if (!uint_array || !sensors) {
                       console.warn("Failed to get new sensor data after retries");
-                      // Ensure UI updates even if we couldn't get new sensor data
-                      if (acceptButton) {
-                        acceptButton.textContent = "Accept";
-                        acceptButton.removeAttribute("disabled");
-                      }
+                      // Reset processing state even if we couldn't get new sensor data
+                      setIsProcessingAccept(false);
                       return;
                     }
 
                     const decoder = RightDecoder(uint_array, sensors);
                     if (!decoder) {
                       console.warn("Failed to decode new sensor data");
-                      // Ensure UI updates
-                      if (acceptButton) {
-                        acceptButton.textContent = "Accept";
-                        acceptButton.removeAttribute("disabled");
-                      }
+                      // Reset processing state
+                      setIsProcessingAccept(false);
                       return;
                     }
 
@@ -1064,31 +1056,26 @@ export function SensorCheckForm() {
                       "Button should now show 'Accept' for the new sensor",
                     );
 
-                    // Force a UI update to ensure the button shows "Accept" for the new sensor
-                    if (acceptButton) {
-                      acceptButton.textContent = "Accept";
-                      acceptButton.removeAttribute("disabled");
-                    }
+                    // Reset processing state after successful operation
+                    setIsProcessingAccept(false);
                   } catch (error) {
                     console.error("Error in accept button:", error);
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
 
-                    // Ensure the UI is updated even after an error
-                    const acceptButton = document.querySelector(
-                      'button[color="success"]',
-                    );
-                    if (acceptButton) {
-                      acceptButton.textContent = "Accept";
-                      acceptButton.removeAttribute("disabled");
-                    }
+                    // Always reset processing state on error
+                    setIsProcessingAccept(false);
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted}
+                disabled={isCurrentSensorAccepted || isProcessingAccept}
               >
-                {isCurrentSensorAccepted ? "Sprejeto" : "Sprejmi"}
+                {isProcessingAccept
+                  ? "Processing..."
+                  : isCurrentSensorAccepted
+                    ? "Sprejeto"
+                    : "Sprejmi"}
               </Button>
             </Box>
           ) : (
@@ -1109,13 +1096,17 @@ export function SensorCheckForm() {
                       return;
                     }
 
-                    // Prevent processing already accepted sensors
-                    if (isCurrentSensorAccepted) {
-                      console.log("Sensor already accepted, skipping processing");
+                    // Prevent processing already accepted sensors or if already processing
+                    if (isCurrentSensorAccepted || isProcessingAccept) {
+                      console.log("Sensor already accepted or processing, skipping");
                       return;
                     }
 
                     console.log("Processing don't add to inventory for current sensor");
+
+                    // Set processing state immediately
+                    setIsProcessingAccept(true);
+
                     const data = current_sensor.data as ParsedSensorData;
 
                     // Set sensor status to accepted (but won't add to database)
@@ -1156,12 +1147,16 @@ export function SensorCheckForm() {
 
                     if (!uint_array || !sensors) {
                       console.warn("Failed to get new sensor data after retries");
+                      // Reset processing state even if we couldn't get new sensor data
+                      setIsProcessingAccept(false);
                       return;
                     }
 
                     const decoder = RightDecoder(uint_array, sensors);
                     if (!decoder) {
                       console.warn("Failed to decode new sensor data");
+                      // Reset processing state
+                      setIsProcessingAccept(false);
                       return;
                     }
 
@@ -1174,17 +1169,26 @@ export function SensorCheckForm() {
                       current_sensor_index + 1,
                     );
 
+                    // Reset processing state after successful operation
+                    setIsProcessingAccept(false);
                   } catch (error) {
                     console.error("Error in don't add to inventory button:", error);
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
+
+                    // Always reset processing state on error
+                    setIsProcessingAccept(false);
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted}
+                disabled={isCurrentSensorAccepted || isProcessingAccept}
               >
-                {isCurrentSensorAccepted ? "Shranjeno" : "Sprejmi brez inventarja"}
+                {isProcessingAccept
+                  ? "Processing..."
+                  : isCurrentSensorAccepted
+                    ? "Shranjeno"
+                    : "Sprejmi brez inventarja"}
               </Button>
             </Box>
           )}
