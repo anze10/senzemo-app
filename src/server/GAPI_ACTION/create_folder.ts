@@ -543,10 +543,17 @@ export async function createFolderAndSpreadsheetWithData(
         }
 
         // Use actual data from ProductionList table
-        const deviceId = sensorData.id.toString();
-        const devEUI = sensorData.DevEUI || "";
-        const appEUI = sensorData.AppEUI || generateJoinEUI(devEUI);
-        const appKey = sensorData.AppKey || generateAppKey(devEUI);
+        const devEUI = validateAndFormatEUI(sensorData.DevEUI, "dev");
+        // Create a TTN-compatible device ID instead of using database ID
+        // TTN device IDs should be lowercase alphanumeric with hyphens, similar to model_id format
+        const deviceId = `device-${devEUI.toLowerCase()}`;
+        const appEUI = validateAndFormatEUI(
+          sensorData.AppEUI || generateJoinEUI(devEUI),
+          "join",
+        );
+        const appKey = validateAndFormatAppKey(
+          sensorData.AppKey || generateAppKey(devEUI),
+        );
         const deviceType = sensorData.DeviceType || "";
         const frequencyRegion = sensorData.FrequencyRegion || "";
         const subBands = sensorData.SubBands || "";
@@ -560,20 +567,31 @@ export async function createFolderAndSpreadsheetWithData(
         // Map frequency to TTN format for CSV
         const frequencyPlan = mapFrequencyToTTNFormat(frequencyRegion);
 
+        // Sanitize fields to match TTN import requirements
+        // TTN requires model_id and brand_id to follow regex: ^[a-z0-9](?:[-]?[a-z0-9]){2,}$
+        const sanitizedModelId = sanitizeModelId(deviceType);
+        const sanitizedBrandId = sanitizeBrandId("senzemo");
+
+        // Build device name in format: {model_id}-{dev_eui}
+        const deviceName = `${sanitizedModelId}-${devEUI}`;
+
+        // Use empty firmware version to avoid TTN device repository lookup issues
+        const ttnFirmwareVersion = ""; // Empty to prevent "firmware_version_not_found" errors
+
         // CSV row format: id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id
         const csvRow = [
           deviceId,
           devEUI,
           appEUI, // join_eui is the same as AppEUI
-          deviceType,
+          deviceName, // Use format: {model_id}-{dev_eui}
           frequencyPlan,
           "1.0.3", // lorawan_version
           "1.0.3-a", // lorawan_phy_version
           appKey,
-          "senzemo", // brand_id
-          deviceType,
+          sanitizedBrandId, // Use sanitized brand_id
+          sanitizedModelId, // Use sanitized model_id instead of deviceType
           hwVersion,
-          fwVersion,
+          ttnFirmwareVersion, // Empty firmware version to avoid repository lookup
           frequencyPlan,
         ];
 
@@ -651,6 +669,105 @@ function mapFrequencyToTTNFormat(frequency: string | null): string {
       return "ISM_2400";
     default:
       return "EU_863_870";
+  }
+}
+
+function sanitizeModelId(deviceType: string | null): string {
+  if (!deviceType) return "senzemo-device";
+
+  // Convert to lowercase and replace spaces and invalid characters with hyphens
+  let modelId = deviceType
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-") // Replace any non-alphanumeric character (except hyphen) with hyphen
+    .replace(/-+/g, "-") // Replace multiple consecutive hyphens with single hyphen
+    .replace(/^-+|-+$/g, ""); // Remove leading and trailing hyphens
+
+  // Ensure it starts with alphanumeric character
+  if (modelId.length === 0 || !/^[a-z0-9]/.test(modelId)) {
+    modelId = "senzemo-" + modelId;
+  }
+
+  // Ensure minimum length of 3 characters
+  if (modelId.length < 3) {
+    modelId = modelId + "-dev";
+  }
+
+  // Ensure it doesn't end with hyphen
+  if (modelId.endsWith("-")) {
+    modelId = modelId.slice(0, -1);
+  }
+
+  return modelId;
+}
+
+function sanitizeBrandId(brandName: string): string {
+  // TTN brand_id also follows similar rules
+  let brandId = brandName
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (brandId.length === 0 || !/^[a-z0-9]/.test(brandId)) {
+    brandId = "senzemo";
+  }
+
+  if (brandId.length < 3) {
+    brandId = "senzemo";
+  }
+
+  if (brandId.endsWith("-")) {
+    brandId = brandId.slice(0, -1);
+  }
+
+  return brandId;
+}
+
+function validateAndFormatEUI(
+  eui: string | null,
+  type: "dev" | "join",
+): string {
+  if (!eui) {
+    // Generate a default EUI if none provided
+    if (type === "dev") {
+      return "0000000000000000";
+    } else {
+      return "70B3D57ED0000000";
+    }
+  }
+
+  // Remove any non-hex characters and convert to uppercase
+  const cleanEUI = eui.replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+
+  // Ensure it's exactly 16 characters (8 bytes)
+  if (cleanEUI.length === 16) {
+    return cleanEUI;
+  } else if (cleanEUI.length < 16) {
+    // Pad with zeros
+    return cleanEUI.padStart(16, "0");
+  } else {
+    // Truncate to 16 characters
+    return cleanEUI.substring(0, 16);
+  }
+}
+
+function validateAndFormatAppKey(appKey: string | null): string {
+  if (!appKey) {
+    return "00000000000000000000000000000000";
+  }
+
+  // Remove any non-hex characters and convert to uppercase
+  const cleanKey = appKey.replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+
+  // Ensure it's exactly 32 characters (16 bytes)
+  if (cleanKey.length === 32) {
+    return cleanKey;
+  } else if (cleanKey.length < 32) {
+    // Pad with zeros
+    return cleanKey.padStart(32, "0");
+  } else {
+    // Truncate to 32 characters
+    return cleanKey.substring(0, 32);
   }
 }
 
