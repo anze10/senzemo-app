@@ -1788,7 +1788,7 @@ export default function InventoryManagementPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mx-auto max-w-7xl"
+        // className="mx-auto max-w-7xl"
         >
           <Box
             sx={{
