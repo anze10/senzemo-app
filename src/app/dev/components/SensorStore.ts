@@ -43,6 +43,70 @@ export function areSensorsEqual(
   return false;
 }
 
+// Utility function to check if sensor data has actually changed
+export function areSensorDataEqual(
+  data1: ParsedSensorData,
+  data2: ParsedSensorData,
+): boolean {
+  // Compare all data fields to see if anything has changed
+  const keys1 = Object.keys(data1);
+  const keys2 = Object.keys(data2);
+
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  for (const key of keys1) {
+    if (data1[key] !== data2[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Utility function to validate that we have actual sensor data
+export function validateSensorData(data: ParsedSensorData): boolean {
+  // Check if this looks like valid sensor data rather than default/empty values
+
+  // If we have a dev_eui that's not empty/default, it's likely valid
+  if (
+    data.dev_eui &&
+    typeof data.dev_eui === "string" &&
+    data.dev_eui.trim() !== "" &&
+    data.dev_eui !== "0"
+  ) {
+    return true;
+  }
+
+  // Check for family_id and product_id that aren't default values
+  if (
+    data.family_id &&
+    data.product_id &&
+    typeof data.family_id === "number" &&
+    typeof data.product_id === "number" &&
+    data.family_id !== 0 &&
+    data.product_id !== 0
+  ) {
+    // Additional check: make sure we have some actual sensor readings beyond just basic info
+    const dataKeys = Object.keys(data);
+    const nonBasicKeys = dataKeys.filter(
+      (key) =>
+        !["family_id", "product_id", "hw_version", "device_hw_ver"].includes(
+          key,
+        ),
+    );
+
+    // If we have additional data beyond basic device info, it's likely valid
+    if (nonBasicKeys.length > 0) {
+      return true;
+    }
+  }
+
+  // If data appears to be all default/empty values, consider it invalid
+  return false;
+}
+
 export type RatedSensorData = {
   data: ParsedSensorData;
   okay?: boolean;
@@ -115,6 +179,16 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
 
     console.log("Adding new sensor:", parsed_data);
 
+    // Validate that we have actual sensor data and not just default/empty values
+    const hasValidSensorData = validateSensorData(parsed_data);
+
+    if (!hasValidSensorData) {
+      console.log(
+        "No valid sensor data detected - sensor may not be present on reader",
+      );
+      return; // Don't add/update anything if no valid sensor is detected
+    }
+
     set(
       produce((state: SensorState) => {
         // Check for uniqueness using the utility function
@@ -129,14 +203,22 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
 
           if (existingIndex !== -1) {
             console.log(
-              `Sensor with unique ID ${newSensorId} already exists at index ${existingIndex}, updating instead of adding new`,
+              `Sensor with unique ID ${newSensorId} already exists at index ${existingIndex}`,
             );
-            // Update existing sensor data instead of adding duplicate
+
+            // Check if the data has actually changed
             const existingSensor = state.sensors[existingIndex];
-            if (existingSensor) {
+            if (
+              existingSensor &&
+              !areSensorDataEqual(existingSensor.data, parsed_data)
+            ) {
+              console.log("Sensor data has changed, updating existing sensor");
               existingSensor.data = parsed_data;
               state.current_sensor_index = existingIndex;
               state.current_decoder = decoder;
+            } else {
+              console.log("Sensor data unchanged, not updating display");
+              // Don't change current_sensor_index if data hasn't changed
             }
             return;
           }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ParsedSensorData,
   ParsedSensorValue,
@@ -59,6 +59,41 @@ import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent";
 
+// Helper function to detect if the USB data indicates no sensor is present
+function isNoSensorData(data: Uint8Array): boolean {
+  // Common patterns that indicate no sensor on NFC reader:
+
+  // Check for all zeros (common when no sensor present)
+  if (data.every(byte => byte === 0)) {
+    return true;
+  }
+
+  // Check for all 0xFF (another common pattern)
+  if (data.every(byte => byte === 0xFF)) {
+    return true;
+  }
+
+  // Check if data is too short to be valid sensor data
+  if (data.length < 4) {
+    return true;
+  }
+
+  // Check for specific "no sensor" patterns that your NFC reader might return
+  // You may need to adjust these based on your specific hardware
+
+  // Pattern: first two bytes are 0 (invalid family/product ID)
+  if (data[0] === 0 && data[1] === 0) {
+    return true;
+  }
+
+  // If the first few bytes look like valid header but rest is empty
+  if (data.length > 4 && data.slice(2).every(byte => byte === 0)) {
+    return true;
+  }
+
+  return false;
+}
+
 // Konfiguracija za avtomatsko odštevanje komponent
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
 const getAutoDeductComponents = (): boolean => {
@@ -95,6 +130,17 @@ export function SensorCheckForm() {
   // State for button loading/processing
   const [isProcessingAccept, setIsProcessingAccept] = useState<boolean>(false);
 
+  // State for USB connection feedback
+  const [usbStatus, setUsbStatus] = useState<{
+    isConnecting: boolean;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+  }>({
+    isConnecting: false,
+    message: '',
+    type: 'info'
+  });
+
   // State za avtomatsko odštevanje komponent
   const [autoDeductComponents, setAutoDeductComponentsState] =
     useState<boolean>(() => getAutoDeductComponents());
@@ -104,6 +150,17 @@ export function SensorCheckForm() {
     setAutoDeductComponentsState(enabled);
     setAutoDeductComponents(enabled);
   };
+
+  // Auto-clear USB status messages after 5 seconds
+  useEffect(() => {
+    if (usbStatus.message && !usbStatus.isConnecting) {
+      const timer = setTimeout(() => {
+        setUsbStatus(prev => ({ ...prev, message: '' }));
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [usbStatus.message, usbStatus.isConnecting]);
   const orderId = useSensorStore((state) => state.OrderID);
   const target_sensor_data = useSensorStore((state) => state.target_sensor_data);
   const current_sensor_index = useSensorStore(
@@ -656,15 +713,73 @@ export function SensorCheckForm() {
               }}
             >
               <Button
+                disabled={usbStatus.isConnecting}
                 onClick={async () => {
-                  // Reset operation flags before reading
-                  resetOperationFlags();
+                  console.log("USB connection button clicked");
 
-                  const uint_array = await GetDataFromSensor();
-                  if (!uint_array || !sensors) return;
-                  const decoder = RightDecoder(uint_array, sensors);
-                  if (!decoder) return;
-                  add_new_sensor(decoder, uint_array);
+                  setUsbStatus({
+                    isConnecting: true,
+                    message: 'Povezovanje z bralnikom...',
+                    type: 'info'
+                  });
+
+                  try {
+                    // Reset operation flags before reading
+                    resetOperationFlags();
+
+                    const uint_array = await GetDataFromSensor();
+                    if (!uint_array || !sensors) {
+                      console.log("No data received from USB reader");
+                      setUsbStatus({
+                        isConnecting: false,
+                        message: 'Ni podatkov iz bralnika USB',
+                        type: 'error'
+                      });
+                      return;
+                    }
+
+                    console.log("Raw data from USB:", uint_array);
+
+                    // Check if the data indicates an actual sensor is present
+                    // Most NFC readers return specific patterns when no sensor is present
+                    if (isNoSensorData(uint_array)) {
+                      console.log("No sensor detected on NFC reader");
+                      setUsbStatus({
+                        isConnecting: false,
+                        message: 'Na bralniku ni prisoten noben senzor',
+                        type: 'warning'
+                      });
+                      return;
+                    }
+
+                    const decoder = RightDecoder(uint_array, sensors);
+                    if (!decoder) {
+                      console.log("No suitable decoder found for sensor data");
+                      setUsbStatus({
+                        isConnecting: false,
+                        message: 'Neznana vrsta senzorja',
+                        type: 'error'
+                      });
+                      return;
+                    }
+
+                    console.log("Adding sensor with decoder:", decoder);
+                    add_new_sensor(decoder, uint_array);
+
+                    setUsbStatus({
+                      isConnecting: false,
+                      message: 'Senzor uspešno prebran',
+                      type: 'success'
+                    });
+
+                  } catch (error) {
+                    console.error("Error reading sensor data:", error);
+                    setUsbStatus({
+                      isConnecting: false,
+                      message: 'Napaka pri branju senzorja',
+                      type: 'error'
+                    });
+                  }
                 }}
                 sx={{
                   backgroundColor: "#4CAF50",
@@ -677,8 +792,30 @@ export function SensorCheckForm() {
                   },
                 }}
               >
-                Povezava z bralnikom
+                {usbStatus.isConnecting ? 'Povezovanje...' : 'Povezava z bralnikom'}
               </Button>
+
+              {/* Status message display */}
+              {usbStatus.message && (
+                <Box
+                  sx={{
+                    ml: 2,
+                    px: 2,
+                    py: 1,
+                    backgroundColor:
+                      usbStatus.type === 'success' ? 'success.light' :
+                        usbStatus.type === 'warning' ? 'warning.light' :
+                          usbStatus.type === 'error' ? 'error.light' :
+                            'info.light',
+                    color: 'white',
+                    borderRadius: 1,
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {usbStatus.message}
+                </Box>
+              )}
             </Box>
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
               {/* Indikator za auto-deduct nastavitev */}

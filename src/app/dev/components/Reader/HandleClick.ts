@@ -2,6 +2,42 @@
 let isReadingInProgress = false;
 let isWritingInProgress = false;
 
+// Helper function to validate if received data looks like valid sensor data
+function isValidSensorResponse(data: Uint8Array): boolean {
+  // Basic validation checks
+  if (!data || data.length === 0) {
+    console.log("Validation failed: No data received");
+    return false;
+  }
+
+  // Check for minimum expected data length (adjust based on your sensors)
+  if (data.length < 4) {
+    console.log("Validation failed: Data too short", data.length);
+    return false;
+  }
+
+  // Check for common "no sensor" patterns
+  if (data.every((byte) => byte === 0)) {
+    console.log("Validation failed: All zeros (likely no sensor present)");
+    return false;
+  }
+
+  if (data.every((byte) => byte === 0xff)) {
+    console.log("Validation failed: All 0xFF (likely no sensor present)");
+    return false;
+  }
+
+  // Check if first two bytes (family_id, product_id) are valid
+  if (data[0] === 0 && data[1] === 0) {
+    console.log("Validation failed: Invalid family/product ID (0,0)");
+    return false;
+  }
+
+  // Log successful validation
+  console.log("Data validation passed - appears to be valid sensor data");
+  return true;
+}
+
 // Connection health tracking
 let lastConnectionCheck = Date.now();
 let connectionHealthy = true;
@@ -348,11 +384,29 @@ export async function readDataFromPort(
       // Clean up: always release the reader
       reader.releaseLock();
 
-      // If we got data, return it
+      // If we got data, validate it before returning
       if (result) {
-        isReadingInProgress = false;
-        console.log("Successfully read data from sensor");
-        return result;
+        console.log("Raw data received:", result);
+
+        // Log the data in a more readable format
+        console.log(
+          "Data bytes:",
+          Array.from(result)
+            .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+            .join(" "),
+        );
+
+        // Validate that this looks like actual sensor data
+        if (isValidSensorResponse(result)) {
+          isReadingInProgress = false;
+          console.log("Successfully read valid sensor data");
+          return result;
+        } else {
+          console.warn(
+            "Received data but it doesn't appear to be valid sensor data",
+          );
+          // Don't return invalid data, try again if we have attempts left
+        }
       }
 
       console.warn(`No data received in attempt ${attempts}`);
