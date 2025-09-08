@@ -57,44 +57,7 @@ import { insertIntoDB, type ProductionListWithoutId } from "./PrismaCode";
 import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth.action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
-import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent";
-
-// Helper function to detect if the USB data indicates no sensor is present
-function isNoSensorData(data: Uint8Array): boolean {
-  // Common patterns that indicate no sensor on NFC reader:
-
-  // Check for all zeros (common when no sensor present)
-  if (data.every(byte => byte === 0)) {
-    return true;
-  }
-
-  // Check for all 0xFF (another common pattern)
-  if (data.every(byte => byte === 0xFF)) {
-    return true;
-  }
-
-  // Check if data is too short to be valid sensor data
-  if (data.length < 4) {
-    return true;
-  }
-
-  // Check for specific "no sensor" patterns that your NFC reader might return
-  // You may need to adjust these based on your specific hardware
-
-  // Pattern: first two bytes are 0 (invalid family/product ID)
-  if (data[0] === 0 && data[1] === 0) {
-    return true;
-  }
-
-  // If the first few bytes look like valid header but rest is empty
-  if (data.length > 4 && data.slice(2).every(byte => byte === 0)) {
-    return true;
-  }
-
-  return false;
-}
-
-// Konfiguracija za avtomatsko odštevanje komponent
+import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent";// Konfiguracija za avtomatsko odštevanje komponent
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
 const getAutoDeductComponents = (): boolean => {
   if (typeof window !== "undefined") {
@@ -126,9 +89,6 @@ export function SensorCheckForm() {
   const [AddToInv, setAddToInv] = useState<boolean>(false);
   const [showUnimportantParameters, setShowUnimportantParameters] =
     useState<boolean>(false);
-
-  // State for button loading/processing
-  const [isProcessingAccept, setIsProcessingAccept] = useState<boolean>(false);
 
   // State for USB connection feedback
   const [usbStatus, setUsbStatus] = useState<{
@@ -257,14 +217,7 @@ export function SensorCheckForm() {
       current_sensor,
     });
 
-    // set_current_sensor_index(current_sensor_index + 1);
-    const uint_array = await GetDataFromSensor();
-    if (!uint_array || !sensors) return;
-
-    const decoder = RightDecoder(uint_array, sensors);
-    if (!decoder) return;
-
-    add_new_sensor(decoder, uint_array);
+    console.log("onSubmit completed - no automatic sensor reading");
   };
 
   const GetDataFromSensor = async (maxRetries = 3) => {
@@ -608,34 +561,20 @@ export function SensorCheckForm() {
     dataHandler: (data: ParsedSensorData) => Promise<void>,
   ): Promise<void> {
     if (!current_sensor) {
-      console.log("No current sensor", sensors);
-      const uint_array = await GetDataFromSensor();
-      if (!uint_array || !sensors) return;
-      const decoder = RightDecoder(uint_array, sensors);
-      console.log("Decoder", decoder);
-      if (!decoder) return;
-
-      add_new_sensor(decoder, uint_array);
+      console.log("No current sensor available");
       return;
     }
-    dataHandler(current_sensor.data as ParsedSensorData)
-      .then(async () => {
-        set_sensor_data(
-          current_sensor_index,
-          current_sensor.data as ParsedSensorData,
-        );
 
-        const uint_array = await GetDataFromSensor();
-        if (!uint_array || !sensors) return;
-
-        const decoder = RightDecoder(uint_array, sensors);
-        if (!decoder) return;
-
-        add_new_sensor(decoder, uint_array);
-      })
-      .catch((error) => {
-        console.error("Error in data handler:", error);
-      });
+    try {
+      await dataHandler(current_sensor.data as ParsedSensorData);
+      set_sensor_data(
+        current_sensor_index,
+        current_sensor.data as ParsedSensorData,
+      );
+      console.log("Data handler completed successfully");
+    } catch (error) {
+      console.error("Error in data handler:", error);
+    }
   }
 
   return (
@@ -715,7 +654,7 @@ export function SensorCheckForm() {
               <Button
                 disabled={usbStatus.isConnecting}
                 onClick={async () => {
-                  console.log("USB connection button clicked");
+                  console.log("USB connection button clicked - SIMPLE MODE");
 
                   setUsbStatus({
                     isConnecting: true,
@@ -724,37 +663,36 @@ export function SensorCheckForm() {
                   });
 
                   try {
-                    // Reset operation flags before reading
+                    // Preprosta logika: povežeš, prebereš, počakaš, prebereš ponovno
+
+                    // 1. Povežeš se z bralnikom
+                    console.log("1. Connecting to reader...");
                     resetOperationFlags();
 
+                    if (!portRef.current) {
+                      portRef.current = await connectToPort();
+                    }
+
+                    // 2. Prebereš podatke
+                    console.log("2. Reading data from sensor...");
                     const uint_array = await GetDataFromSensor();
+
                     if (!uint_array || !sensors) {
-                      console.log("No data received from USB reader");
                       setUsbStatus({
                         isConnecting: false,
-                        message: 'Ni podatkov iz bralnika USB',
+                        message: 'Ni podatkov iz bralnika',
                         type: 'error'
                       });
                       return;
                     }
 
-                    console.log("Raw data from USB:", uint_array);
+                    console.log("Raw data received:", uint_array);
 
-                    // Check if the data indicates an actual sensor is present
-                    // Most NFC readers return specific patterns when no sensor is present
-                    if (isNoSensorData(uint_array)) {
-                      console.log("No sensor detected on NFC reader");
-                      setUsbStatus({
-                        isConnecting: false,
-                        message: 'Na bralniku ni prisoten noben senzor',
-                        type: 'warning'
-                      });
-                      return;
-                    }
-
+                    // 3. Počakaš da se vse validira (decoder)
+                    console.log("3. Validating and finding decoder...");
                     const decoder = RightDecoder(uint_array, sensors);
+
                     if (!decoder) {
-                      console.log("No suitable decoder found for sensor data");
                       setUsbStatus({
                         isConnecting: false,
                         message: 'Neznana vrsta senzorja',
@@ -763,7 +701,8 @@ export function SensorCheckForm() {
                       return;
                     }
 
-                    console.log("Adding sensor with decoder:", decoder);
+                    // 4. Dodaš senzor
+                    console.log("4. Adding sensor to store...");
                     add_new_sensor(decoder, uint_array);
 
                     setUsbStatus({
@@ -772,8 +711,10 @@ export function SensorCheckForm() {
                       type: 'success'
                     });
 
+                    console.log("Simple read cycle completed successfully");
+
                   } catch (error) {
-                    console.error("Error reading sensor data:", error);
+                    console.error("Error in simple read cycle:", error);
                     setUsbStatus({
                       isConnecting: false,
                       message: 'Napaka pri branju senzorja',
@@ -1074,16 +1015,13 @@ export function SensorCheckForm() {
                       return;
                     }
 
-                    // Prevent accepting already accepted sensors or if already processing
-                    if (isCurrentSensorAccepted || isProcessingAccept) {
-                      console.log("Sensor already accepted or processing, skipping");
+                    // Prevent accepting already accepted sensors
+                    if (isCurrentSensorAccepted) {
+                      console.log("Sensor already accepted, skipping");
                       return;
                     }
 
                     console.log("Processing accept for current sensor");
-
-                    // Set processing state immediately
-                    setIsProcessingAccept(true);
 
                     const data = current_sensor.data as ParsedSensorData;
 
@@ -1101,7 +1039,6 @@ export function SensorCheckForm() {
                       await insertIntoDatabaseMutation.mutateAsync();
                     } catch (dbError) {
                       console.error("Database insertion failed:", dbError);
-                      setIsProcessingAccept(false);
                       return;
                     }
 
@@ -1171,68 +1108,42 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    // Reset processing state here - sensor has been successfully processed
-                    // User can now work with current sensor while next sensor loads in background
-                    setIsProcessingAccept(false);
+                    console.log("Sensor processing completed. Automatically reading next sensor...");
 
-                    // Background task: try to get next sensor data
-                    // This runs asynchronously without blocking the UI
-                    setTimeout(async () => {
-                      try {
-                        // Reset operation flags to ensure clean state before reading
-                        resetOperationFlags();
+                    // Avtomatsko preberi naslednji senzor
+                    try {
+                      await new Promise(resolve => setTimeout(resolve, 500)); // Kratka pavza
 
-                        // Delay to ensure USB connection is stable
-                        await new Promise((resolve) => setTimeout(resolve, 500));
+                      console.log("Auto-reading next sensor...");
+                      const uint_array = await GetDataFromSensor();
 
-                        // Try to get data from the next sensor with robust retry mechanism
-                        console.log(
-                          "Reading new sensor data with retry mechanism...",
-                        );
-                        const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
-
-                        if (!uint_array || !sensors) {
-                          console.warn("Failed to get new sensor data after retries");
-                          return;
-                        }
-
+                      if (uint_array && sensors) {
                         const decoder = RightDecoder(uint_array, sensors);
-                        if (!decoder) {
-                          console.warn("Failed to decode new sensor data");
-                          return;
+                        if (decoder) {
+                          console.log("Auto-adding next sensor...");
+                          add_new_sensor(decoder, uint_array);
+                        } else {
+                          console.log("No decoder found for auto-read sensor");
                         }
-
-                        console.log(
-                          "Adding new sensor (this will reset accepted state)",
-                        );
-                        add_new_sensor(decoder, uint_array);
-                        console.log(
-                          "New sensor added, current_sensor_index is now:",
-                          current_sensor_index + 1,
-                        );
-                      } catch (backgroundError) {
-                        console.error("Background sensor reading error:", backgroundError);
-                        // Don't affect UI state - this is a background operation
+                      } else {
+                        console.log("No data from auto-read");
                       }
-                    }, 100); // Small delay to allow UI to update first
+                    } catch (autoReadError) {
+                      console.log("Auto-read failed (user can manually read):", autoReadError);
+                      // Ne prikaži napake - uporabnik lahko ročno prebere naslednji senzor
+                    }
+
                   } catch (error) {
                     console.error("Error in accept button:", error);
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
-
-                    // Always reset processing state on error
-                    setIsProcessingAccept(false);
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted || isProcessingAccept}
+                disabled={isCurrentSensorAccepted}
               >
-                {isProcessingAccept
-                  ? "Processing..."
-                  : isCurrentSensorAccepted
-                    ? "Sprejeto"
-                    : "Sprejmi"}
+                {isCurrentSensorAccepted ? "Sprejeto" : "Sprejmi"}
               </Button>
             </Box>
           ) : (
@@ -1253,16 +1164,13 @@ export function SensorCheckForm() {
                       return;
                     }
 
-                    // Prevent processing already accepted sensors or if already processing
-                    if (isCurrentSensorAccepted || isProcessingAccept) {
-                      console.log("Sensor already accepted or processing, skipping");
+                    // Prevent processing already accepted sensors
+                    if (isCurrentSensorAccepted) {
+                      console.log("Sensor already accepted, skipping");
                       return;
                     }
 
                     console.log("Processing don't add to inventory for current sensor");
-
-                    // Set processing state immediately
-                    setIsProcessingAccept(true);
 
                     const data = current_sensor.data as ParsedSensorData;
 
@@ -1290,68 +1198,42 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    // Reset processing state here - sensor has been successfully processed
-                    // User can now work with current sensor while next sensor loads in background
-                    setIsProcessingAccept(false);
+                    console.log("Sensor processing completed. Automatically reading next sensor...");
 
-                    // Background task: try to get next sensor data
-                    // This runs asynchronously without blocking the UI
-                    setTimeout(async () => {
-                      try {
-                        // Reset operation flags to ensure clean state before reading
-                        resetOperationFlags();
+                    // Avtomatsko preberi naslednji senzor
+                    try {
+                      await new Promise(resolve => setTimeout(resolve, 500)); // Kratka pavza
 
-                        // Delay to ensure USB connection is stable
-                        await new Promise((resolve) => setTimeout(resolve, 500));
+                      console.log("Auto-reading next sensor...");
+                      const uint_array = await GetDataFromSensor();
 
-                        // Try to get data from the next sensor with robust retry mechanism
-                        console.log(
-                          "Reading new sensor data with retry mechanism...",
-                        );
-                        const uint_array = await GetDataFromSensor(3); // Retry up to 3 times
-
-                        if (!uint_array || !sensors) {
-                          console.warn("Failed to get new sensor data after retries");
-                          return;
-                        }
-
+                      if (uint_array && sensors) {
                         const decoder = RightDecoder(uint_array, sensors);
-                        if (!decoder) {
-                          console.warn("Failed to decode new sensor data");
-                          return;
+                        if (decoder) {
+                          console.log("Auto-adding next sensor...");
+                          add_new_sensor(decoder, uint_array);
+                        } else {
+                          console.log("No decoder found for auto-read sensor");
                         }
-
-                        console.log(
-                          "Adding new sensor (this will reset accepted state)",
-                        );
-                        add_new_sensor(decoder, uint_array);
-                        console.log(
-                          "New sensor added, current_sensor_index is now:",
-                          current_sensor_index + 1,
-                        );
-                      } catch (backgroundError) {
-                        console.error("Background sensor reading error:", backgroundError);
-                        // Don't affect UI state - this is a background operation
+                      } else {
+                        console.log("No data from auto-read");
                       }
-                    }, 100); // Small delay to allow UI to update first
+                    } catch (autoReadError) {
+                      console.log("Auto-read failed (user can manually read):", autoReadError);
+                      // Ne prikaži napake - uporabnik lahko ročno prebere naslednji senzor
+                    }
+
                   } catch (error) {
                     console.error("Error in don't add to inventory button:", error);
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
-
-                    // Always reset processing state on error
-                    setIsProcessingAccept(false);
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted || isProcessingAccept}
+                disabled={isCurrentSensorAccepted}
               >
-                {isProcessingAccept
-                  ? "Processing..."
-                  : isCurrentSensorAccepted
-                    ? "Shranjeno"
-                    : "Sprejmi brez inventarja"}
+                {isCurrentSensorAccepted ? "Shranjeno" : "Sprejmi brez inventarja"}
               </Button>
             </Box>
           )}
