@@ -277,7 +277,7 @@ export async function readDataFromPort(
       console.log("Writer released after R command");
 
       // Wait a moment for device to process command
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const uint8ArrayStream = port.readable as ReadableStream<Uint8Array>;
 
@@ -301,7 +301,7 @@ export async function readDataFromPort(
 
       console.log("Reading data with timeout protection...");
 
-      // Use a longer timeout for large sensor batches (15 seconds)
+      // Use a simple timeout for reading (15 seconds)
       const readTimeout = 15000;
       const startTime = Date.now();
 

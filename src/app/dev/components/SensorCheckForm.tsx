@@ -133,9 +133,6 @@ export function SensorCheckForm() {
     else return undefined;
   });
 
-  // Check if current sensor is accepted (use the okay field from the sensor)
-  const isCurrentSensorAccepted = current_sensor?.okay ?? false;
-
   // Remove static dataforDB object - it will be created dynamically in useMemo
   const all_sensors = useSensorStore((state) => state.sensors);
 
@@ -1004,20 +1001,10 @@ export function SensorCheckForm() {
                 onClick={async () => {
                   console.log("Accept button clicked");
                   console.log("Current sensor index:", current_sensor_index);
-                  console.log(
-                    "Current sensor accepted state:",
-                    isCurrentSensorAccepted,
-                  );
 
                   try {
                     if (!current_sensor) {
                       console.log("No current sensor available");
-                      return;
-                    }
-
-                    // Prevent accepting already accepted sensors
-                    if (isCurrentSensorAccepted) {
-                      console.log("Sensor already accepted, skipping");
                       return;
                     }
 
@@ -1108,12 +1095,10 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    console.log("Sensor processing completed. Automatically reading next sensor...");
+                    console.log("Sensor processing completed.");
 
                     // Avtomatsko preberi naslednji senzor
                     try {
-                      await new Promise(resolve => setTimeout(resolve, 500)); // Kratka pavza
-
                       console.log("Auto-reading next sensor...");
                       const uint_array = await GetDataFromSensor();
 
@@ -1141,9 +1126,8 @@ export function SensorCheckForm() {
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted}
               >
-                {isCurrentSensorAccepted ? "Sprejeto" : "Sprejmi"}
+                Sprejmi
               </Button>
             </Box>
           ) : (
@@ -1161,12 +1145,6 @@ export function SensorCheckForm() {
                   try {
                     if (!current_sensor) {
                       console.log("No current sensor available");
-                      return;
-                    }
-
-                    // Prevent processing already accepted sensors
-                    if (isCurrentSensorAccepted) {
-                      console.log("Sensor already accepted, skipping");
                       return;
                     }
 
@@ -1198,12 +1176,10 @@ export function SensorCheckForm() {
                       // Continue execution even if printing fails
                     }
 
-                    console.log("Sensor processing completed. Automatically reading next sensor...");
+                    console.log("Sensor processing completed.");
 
                     // Avtomatsko preberi naslednji senzor
                     try {
-                      await new Promise(resolve => setTimeout(resolve, 500)); // Kratka pavza
-
                       console.log("Auto-reading next sensor...");
                       const uint_array = await GetDataFromSensor();
 
@@ -1231,9 +1207,8 @@ export function SensorCheckForm() {
                   }
                 }}
                 sx={{ flex: 1 }}
-                disabled={isCurrentSensorAccepted}
               >
-                {isCurrentSensorAccepted ? "Shranjeno" : "Sprejmi brez inventarja"}
+                Sprejmi brez inventarja
               </Button>
             </Box>
           )}
