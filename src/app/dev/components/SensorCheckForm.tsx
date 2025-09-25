@@ -105,6 +105,10 @@ export function SensorCheckForm() {
   const [autoDeductComponents, setAutoDeductComponentsState] =
     useState<boolean>(() => getAutoDeductComponents());
 
+  // State for button processing
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [processingMessage, setProcessingMessage] = useState<string>('');
+
   // Funkcija za posodabljanje nastavitve
   const updateAutoDeductComponents = (enabled: boolean) => {
     setAutoDeductComponentsState(enabled);
@@ -998,19 +1002,44 @@ export function SensorCheckForm() {
               <Button
                 variant="contained"
                 color="success"
+                disabled={isProcessing}
                 onClick={async () => {
                   console.log("Accept button clicked");
                   console.log("Current sensor index:", current_sensor_index);
 
+                  if (isProcessing) {
+                    console.log("Already processing, ignoring click");
+                    return;
+                  }
+
+                  setIsProcessing(true);
+                  setProcessingMessage('Preverjam podatke...');
+
                   try {
                     if (!current_sensor) {
                       console.log("No current sensor available");
+                      setProcessingMessage('Ni trenutnega senzorja');
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage('');
+                      }, 2000);
+                      return;
+                    }
+
+                    // Validate required data
+                    const data = current_sensor.data as ParsedSensorData;
+                    if (!data.dev_eui) {
+                      console.error("DevEUI is missing");
+                      setProcessingMessage('Napaka: Manjka DevEUI');
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage('');
+                      }, 2000);
                       return;
                     }
 
                     console.log("Processing accept for current sensor");
-
-                    const data = current_sensor.data as ParsedSensorData;
+                    setProcessingMessage('Shranjujem v bazo...');
 
                     // Set sensor status to accepted
                     set_sensor_status(current_sensor_index, true);
@@ -1026,12 +1055,18 @@ export function SensorCheckForm() {
                       await insertIntoDatabaseMutation.mutateAsync();
                     } catch (dbError) {
                       console.error("Database insertion failed:", dbError);
+                      setProcessingMessage('Napaka pri shranjevanju v bazo');
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage('');
+                      }, 3000);
                       return;
                     }
 
                     // Odštej komponente iz zaloge po uspešni vstavitvi v bazo
                     // Preverimo, ali je avtomatsko odštevanje omogočeno
                     if (autoDeductComponents) {
+                      setProcessingMessage('Odštevam komponente...');
                       // Najprej poišči sensorId na podlagi family_id in product_id
                       const familyId = current_sensor.data.family_id as number;
                       const productId = current_sensor.data.product_id as number;
@@ -1064,6 +1099,7 @@ export function SensorCheckForm() {
                               "Error removing components from stock:",
                               componentError,
                             );
+                            setProcessingMessage('Opozorilo: Komponente niso bile odštete');
                             // Ne prekini procesa, samo logiraj napako
                             // Uporabnik lahko nadaljuje z delom, čeprav komponente niso bile odštete
                           }
@@ -1071,11 +1107,13 @@ export function SensorCheckForm() {
                           console.warn(
                             `Sensor not found for familyId: ${familyId}, productId: ${productId}`,
                           );
+                          setProcessingMessage('Opozorilo: Senzor ni najden v bazi');
                         }
                       } else {
                         console.warn(
                           "Missing familyId, productId, or sensor data for component removal",
                         );
+                        setProcessingMessage('Opozorilo: Manjkajo podatki za odštevanje');
                       }
                     } else {
                       console.log(
@@ -1083,6 +1121,7 @@ export function SensorCheckForm() {
                       );
                     }
 
+                    setProcessingMessage('Tiskam nalepko...');
                     try {
                       await PrintSticker(
                         data.dev_eui as string,
@@ -1092,10 +1131,12 @@ export function SensorCheckForm() {
                       );
                     } catch (printError) {
                       console.error("Error printing sticker:", printError);
+                      setProcessingMessage('Opozorilo: Napaka pri tiskanju');
                       // Continue execution even if printing fails
                     }
 
                     console.log("Sensor processing completed.");
+                    setProcessingMessage('Berem naslednji senzor...');
 
                     // Avtomatsko preberi naslednji senzor
                     try {
@@ -1107,27 +1148,38 @@ export function SensorCheckForm() {
                         if (decoder) {
                           console.log("Auto-adding next sensor...");
                           add_new_sensor(decoder, uint_array);
+                          setProcessingMessage('Senzor uspešno obdelan');
                         } else {
                           console.log("No decoder found for auto-read sensor");
+                          setProcessingMessage('Naslednji senzor ni prepoznan');
                         }
                       } else {
                         console.log("No data from auto-read");
+                        setProcessingMessage('Ni podatkov iz bralnika');
                       }
                     } catch (autoReadError) {
                       console.log("Auto-read failed (user can manually read):", autoReadError);
+                      setProcessingMessage('Senzor obdelan - ročno preberite naslednjega');
                       // Ne prikaži napake - uporabnik lahko ročno prebere naslednji senzor
                     }
 
                   } catch (error) {
                     console.error("Error in accept button:", error);
+                    setProcessingMessage('Napaka pri obdelavi senzorja');
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
+                  } finally {
+                    // Always reset processing state
+                    setTimeout(() => {
+                      setIsProcessing(false);
+                      setProcessingMessage('');
+                    }, 3000); // Show final message for 3 seconds
                   }
                 }}
                 sx={{ flex: 1 }}
               >
-                Sprejmi
+                {isProcessing ? 'Obdelujem...' : 'Sprejmi'}
               </Button>
             </Box>
           ) : (
@@ -1135,22 +1187,46 @@ export function SensorCheckForm() {
               sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
             >
               <Button
-
                 variant="contained"
                 color="info"
+                disabled={isProcessing}
                 onClick={async () => {
                   console.log("Don't add to inventory button clicked");
                   console.log("Current sensor index:", current_sensor_index);
 
+                  if (isProcessing) {
+                    console.log("Already processing, ignoring click");
+                    return;
+                  }
+
+                  setIsProcessing(true);
+                  setProcessingMessage('Preverjam podatke...');
+
                   try {
                     if (!current_sensor) {
                       console.log("No current sensor available");
+                      setProcessingMessage('Ni trenutnega senzorja');
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage('');
+                      }, 2000);
+                      return;
+                    }
+
+                    // Validate required data
+                    const data = current_sensor.data as ParsedSensorData;
+                    if (!data.dev_eui) {
+                      console.error("DevEUI is missing");
+                      setProcessingMessage('Napaka: Manjka DevEUI');
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage('');
+                      }, 2000);
                       return;
                     }
 
                     console.log("Processing don't add to inventory for current sensor");
-
-                    const data = current_sensor.data as ParsedSensorData;
+                    setProcessingMessage('Shranjevam v store...');
 
                     // Set sensor status to accepted (but won't add to database)
                     set_sensor_status(current_sensor_index, true);
@@ -1163,6 +1239,7 @@ export function SensorCheckForm() {
                     // Skip database insertion - only store in state
                     console.log("Skipping database insertion - storing in store only");
 
+                    setProcessingMessage('Tiskam nalepko...');
                     // Print sticker if needed
                     try {
                       await PrintSticker(
@@ -1173,10 +1250,12 @@ export function SensorCheckForm() {
                       );
                     } catch (printError) {
                       console.error("Error printing sticker:", printError);
+                      setProcessingMessage('Opozorilo: Napaka pri tiskanju');
                       // Continue execution even if printing fails
                     }
 
                     console.log("Sensor processing completed.");
+                    setProcessingMessage('Berem naslednji senzor...');
 
                     // Avtomatsko preberi naslednji senzor
                     try {
@@ -1188,28 +1267,57 @@ export function SensorCheckForm() {
                         if (decoder) {
                           console.log("Auto-adding next sensor...");
                           add_new_sensor(decoder, uint_array);
+                          setProcessingMessage('Senzor uspešno obdelan (brez inventarja)');
                         } else {
                           console.log("No decoder found for auto-read sensor");
+                          setProcessingMessage('Naslednji senzor ni prepoznan');
                         }
                       } else {
                         console.log("No data from auto-read");
+                        setProcessingMessage('Ni podatkov iz bralnika');
                       }
                     } catch (autoReadError) {
                       console.log("Auto-read failed (user can manually read):", autoReadError);
+                      setProcessingMessage('Senzor obdelan - ročno preberite naslednjega');
                       // Ne prikaži napake - uporabnik lahko ročno prebere naslednji senzor
                     }
 
                   } catch (error) {
                     console.error("Error in don't add to inventory button:", error);
+                    setProcessingMessage('Napaka pri obdelavi senzorja');
 
                     // Reset flags on error to prevent getting stuck
                     resetOperationFlags();
+                  } finally {
+                    // Always reset processing state
+                    setTimeout(() => {
+                      setIsProcessing(false);
+                      setProcessingMessage('');
+                    }, 3000); // Show final message for 3 seconds
                   }
                 }}
                 sx={{ flex: 1 }}
               >
-                Sprejmi brez inventarja
+                {isProcessing ? 'Obdelujem...' : 'Sprejmi brez inventarja'}
               </Button>
+            </Box>
+          )}
+
+          {/* Processing status message */}
+          {processingMessage && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                backgroundColor: isProcessing ? 'info.light' : processingMessage.includes('Napaka') || processingMessage.includes('Opozorilo') ? 'warning.light' : 'success.light',
+                color: 'white',
+                borderRadius: 1,
+                textAlign: 'center',
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+              }}
+            >
+              {processingMessage}
             </Box>
           )}
 
