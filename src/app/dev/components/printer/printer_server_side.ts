@@ -3,7 +3,7 @@ import ipp from "ipp";
 import type { PrintJobRequest } from "ipp";
 
 import request from "request";
-import { prisma } from "~/server/DATABASE_ACTION/prisma";
+//import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface Tiskalnik {
   name: string;
