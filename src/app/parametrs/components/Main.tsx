@@ -75,7 +75,7 @@ export default function Parameters() {
   const handleSelectChange = useCallback(
     (value: number) => {
       const selectedDevice = devices?.find(
-        (device) => device.product === value,
+        (device) => device.familyId === value,
       );
       setDecoder(selectedDevice?.decoder);
 
@@ -122,6 +122,8 @@ export default function Parameters() {
   const handleValueChange = (name: string, value: ParsedSensorValue) => {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
+
+  console.log(devices)
 
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
@@ -201,8 +203,8 @@ export default function Parameters() {
                     }}
                   >
                     {devices?.map((device) => (
-                      <MenuItem key={device.familyId} value={device.product}>
-                        {device.name}
+                      <MenuItem key={device.familyId} value={device.familyId}>
+                        {device.name}, {device.familyId},{device.product}
                       </MenuItem>
                     ))}
                   </Select>

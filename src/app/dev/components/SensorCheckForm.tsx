@@ -1586,7 +1586,7 @@ export function DynamicFormComponent({
           );
         })()
       ) : (
-        <Typography color="error">Neveljaven tip: {typeof my_type} {my_type} {my_key} {value}  .</Typography>
+        <Typography color="error">Neveljaven tip: {my_type} {typeof my_key} ,{typeof value},  {value}</Typography>
       )}
     </FormControl>
   );
