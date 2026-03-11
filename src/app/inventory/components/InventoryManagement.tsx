@@ -996,7 +996,7 @@ export default function InventoryManagementPage() {
 
           return {
             id: sensor.id as number,
-            name: sensor.sensorName,
+            name: sensor.sensorName as string,
             selected: !!existingAssignment,
             requiredQuantity: existingAssignment?.requiredQuantity || 1,
           };

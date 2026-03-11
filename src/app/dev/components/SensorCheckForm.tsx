@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import type {
   ParsedSensorData,
   ParsedSensorValue,
   //ParseSensorData,
 } from "./Reader/ParseSensorData";
-import type { SerialPort } from "web-serial-polyfill";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { EncodeSensorData } from "./Reader/WriteSensorData";
@@ -1588,7 +1586,7 @@ export function DynamicFormComponent({
           );
         })()
       ) : (
-        <Typography color="error">Neveljaven tip: {my_type} {typeof my_key} ,{typeof value},  {value}</Typography>
+        <Typography color="error">Neveljaven tip: {typeof my_type} {my_type} {my_key} {value}  .</Typography>
       )}
     </FormControl>
   );
