@@ -5,6 +5,7 @@ import type {
   ComponentStockItem,
   LogEntry,
 } from "~/app/inventory/components/InventoryManagement";
+import type { Prisma } from "@prisma/client";
 
 //import { getUser } from "src/server/LOGIN_LUCIA_ACTION/lucia"
 
@@ -30,42 +31,7 @@ export async function addSensorToInventory(
 ) {
   try {
     const result = await prisma.$transaction(
-      async (tx: {
-        productionList: {
-          findUnique: (arg0: { where: { DevEUI: string } }) => unknown;
-          create: (arg0: {
-            data: {
-              DevEUI: string;
-              DeviceType: any;
-              FrequencyRegion: string;
-              orderId: null;
-            };
-          }) => any;
-        };
-        senzor: {
-          findUnique: (arg0: {
-            where: { id: number };
-            select: {
-              id: boolean;
-              sensorName: boolean;
-              familyId: boolean;
-              productId: boolean;
-            };
-          }) => any;
-        };
-        inventoryLog: {
-          create: (arg0: {
-            data: {
-              itemType: string;
-              itemName: any;
-              change: number;
-              reason: string;
-              user: string;
-              details: string;
-            };
-          }) => any;
-        };
-      }) => {
+      async (tx: Prisma.TransactionClient) => {
         // 1. Check if dev_eui already exists
         const existingDevEui = await tx.productionList.findUnique({
           where: { DevEUI: dev_eui },
