@@ -114,11 +114,16 @@ const EmailReportManager: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
-        setMessage({ type: "success", text: "Testno e-poštno sporočilo je bilo uspešno poslano!" });
+        setMessage({
+          type: "success",
+          text: "Testno e-poštno sporočilo je bilo uspešno poslano!",
+        });
       } else {
         setMessage({
           type: "error",
-          text: result.error || "Pošiljanje testnega e-poštnega sporočila ni uspelo",
+          text:
+            result.error ||
+            "Pošiljanje testnega e-poštnega sporočila ni uspelo",
         });
       }
     } catch {
@@ -321,7 +326,9 @@ const EmailReportManager: React.FC = () => {
               title={
                 <Box display="flex" alignItems="center" gap={1}>
                   <EmailIcon color="primary" />
-                  <Typography variant="h6">Mesečna e-poštna poročila</Typography>
+                  <Typography variant="h6">
+                    Mesečna e-poštna poročila
+                  </Typography>
                 </Box>
               }
               subheader="Nastavite in upravljajte samodejna mesečna poročila o zalogi"
@@ -411,7 +418,8 @@ const EmailReportManager: React.FC = () => {
                       </FormControl>
 
                       <Typography variant="body2" color="textSecondary">
-                        Poročila bodo poslana {settings.dayOfMonth}. dan v vsakem mesecu
+                        Poročila bodo poslana {settings.dayOfMonth}. dan v
+                        vsakem mesecu
                       </Typography>
                     </Box>
                   </Box>
@@ -454,13 +462,15 @@ const EmailReportManager: React.FC = () => {
                             {settings.userEmail}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
-                            Poročila bodo poslana na vaš registriran e-poštni naslov
+                            Poročila bodo poslana na vaš registriran e-poštni
+                            naslov
                           </Typography>
                         </Box>
                       </Alert>
                     ) : (
                       <Alert severity="warning" sx={{ mb: 2 }}>
-                        E-poštni naslov ni najden. Preverite, ali ste pravilno prijavljeni.
+                        E-poštni naslov ni najden. Preverite, ali ste pravilno
+                        prijavljeni.
                       </Alert>
                     )}
                   </Box>

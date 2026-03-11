@@ -29,72 +29,114 @@ export async function addSensorToInventory(
   dev_eui: string,
 ) {
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Check if dev_eui already exists
-      const existingDevEui = await tx.productionList.findUnique({
-        where: { DevEUI: dev_eui },
-      });
+    const result = await prisma.$transaction(
+      async (tx: {
+        productionList: {
+          findUnique: (arg0: { where: { DevEUI: string } }) => unknown;
+          create: (arg0: {
+            data: {
+              DevEUI: string;
+              DeviceType: any;
+              FrequencyRegion: string;
+              orderId: null;
+            };
+          }) => any;
+        };
+        senzor: {
+          findUnique: (arg0: {
+            where: { id: number };
+            select: {
+              id: boolean;
+              sensorName: boolean;
+              familyId: boolean;
+              productId: boolean;
+            };
+          }) => any;
+        };
+        inventoryLog: {
+          create: (arg0: {
+            data: {
+              itemType: string;
+              itemName: any;
+              change: number;
+              reason: string;
+              user: string;
+              details: string;
+            };
+          }) => any;
+        };
+      }) => {
+        // 1. Check if dev_eui already exists
+        const existingDevEui = await tx.productionList.findUnique({
+          where: { DevEUI: dev_eui },
+        });
 
-      if (existingDevEui) {
-        throw new Error(
-          "The provided dev_eui already exists in the ProductionList table.",
-        );
-      }
-
-      // 2. Get sensor information to determine DeviceType if not provided
-      const sensorInfo = await tx.senzor.findUnique({
-        where: { id: sensorId },
-        select: { id: true, sensorName: true, familyId: true, productId: true },
-      });
-
-      if (!sensorInfo) {
-        throw new Error(`Sensor with ID ${sensorId} not found`);
-      }
-
-      // 3. Determine DeviceType - use provided deviceType or generate from sensor info
-      const finalDeviceType = sensorInfo.sensorName;
-
-      // 4. Map frequency to FrequencyRegion format
-      const mapFrequencyToRegion = (freq: string | null): string => {
-        if (!freq) return "EU868";
-        switch (freq) {
-          case "868 MHz":
-            return "EU868";
-          case "915 MHz":
-            return "US915";
-          case "433 MHz":
-            return "EU433";
-          case "2.4 GHz":
-            return "ISM2400";
-          default:
-            return "EU868";
+        if (existingDevEui) {
+          throw new Error(
+            "The provided dev_eui already exists in the ProductionList table.",
+          );
         }
-      };
 
-      // 5. Create the dev_eui in productionList (orderId = null means it's in inventory)
-      const productionDevice = await tx.productionList.create({
-        data: {
-          DevEUI: dev_eui,
-          DeviceType: finalDeviceType,
-          FrequencyRegion: mapFrequencyToRegion(frequency),
-          orderId: null, // Null means it's available in inventory
-        },
-      });
+        // 2. Get sensor information to determine DeviceType if not provided
+        const sensorInfo = await tx.senzor.findUnique({
+          where: { id: sensorId },
+          select: {
+            id: true,
+            sensorName: true,
+            familyId: true,
+            productId: true,
+          },
+        });
 
-      // 6. Log inventory addition
-      await tx.inventoryLog.create({
-        data: {
-          itemType: "sensor",
-          itemName: sensorInfo.sensorName,
-          change: quantity,
-          reason: "Proizvodnja",
-          user: "Neznan uporabnik",
-          details: `DevEUI: ${dev_eui} | DeviceType: ${finalDeviceType} | Batch: ${BN}`,
-        },
-      });
+        if (!sensorInfo) {
+          throw new Error(`Sensor with ID ${sensorId} not found`);
+        }
 
-      return productionDevice;
-    });
+        // 3. Determine DeviceType - use provided deviceType or generate from sensor info
+        const finalDeviceType = sensorInfo.sensorName;
+
+        // 4. Map frequency to FrequencyRegion format
+        const mapFrequencyToRegion = (freq: string | null): string => {
+          if (!freq) return "EU868";
+          switch (freq) {
+            case "868 MHz":
+              return "EU868";
+            case "915 MHz":
+              return "US915";
+            case "433 MHz":
+              return "EU433";
+            case "2.4 GHz":
+              return "ISM2400";
+            default:
+              return "EU868";
+          }
+        };
+
+        // 5. Create the dev_eui in productionList (orderId = null means it's in inventory)
+        const productionDevice = await tx.productionList.create({
+          data: {
+            DevEUI: dev_eui,
+            DeviceType: finalDeviceType,
+            FrequencyRegion: mapFrequencyToRegion(frequency),
+            orderId: null, // Null means it's available in inventory
+          },
+        });
+
+        // 6. Log inventory addition
+        await tx.inventoryLog.create({
+          data: {
+            itemType: "sensor",
+            itemName: sensorInfo.sensorName,
+            change: quantity,
+            reason: "Proizvodnja",
+            user: "Neznan uporabnik",
+            details: `DevEUI: ${dev_eui} | DeviceType: ${finalDeviceType} | Batch: ${BN}`,
+          },
+        });
+
+        return productionDevice;
+      },
+    );
 
     return result;
   } catch (error) {

@@ -61,7 +61,13 @@ function SensorReport({ sensorData }: SensorReportProps) {
 
         {/* Statistics */}
         <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: "#f8f9fa" }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              gap: 2,
+            }}
+          >
             <Box sx={{ flex: 1, textAlign: "center" }}>
               <Typography variant="h6">Skupaj senzorjev</Typography>
               <Typography variant="h3">{totalSensors}</Typography>

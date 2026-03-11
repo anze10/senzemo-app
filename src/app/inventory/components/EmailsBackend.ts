@@ -1,5 +1,6 @@
 "use server";
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
+import type { Mailing } from "@prisma/client";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 import type { EmailSettings } from "./EmailReportManager";
 
@@ -81,14 +82,24 @@ export async function getUsersWithEnabledEmails(): Promise<Array<{
     });
 
     return enabledUsers
-      .map((setting) => ({
-        userId: setting.userId.toString(),
-        userEmail: setting.user?.email || "",
-        userName: setting.user?.name || null,
-        dayOfMonth: setting.Date_of_monthly_report ?? 1,
-        subject: setting.subject ?? "Monthly Inventory Report - {date}",
-      }))
-      .filter((user) => user.userEmail); // Filter out users without email
+      .map(
+        (
+          setting: Mailing & {
+            user?: {
+              id?: number;
+              email?: string | null;
+              name?: string | null;
+            } | null;
+          },
+        ) => ({
+          userId: setting.userId.toString(),
+          userEmail: setting.user?.email || "",
+          userName: setting.user?.name || null,
+          dayOfMonth: setting.Date_of_monthly_report ?? 1,
+          subject: setting.subject ?? "Monthly Inventory Report - {date}",
+        }),
+      )
+      .filter((user: { userEmail: string }) => user.userEmail); // Filter out users without email
   } catch (error) {
     console.error("Error fetching users with enabled emails:", error);
     return null;
@@ -140,13 +151,23 @@ export async function getUsersForDay(dayOfMonth: number): Promise<Array<{
     });
 
     return users
-      .map((setting) => ({
-        userId: setting.userId.toString(),
-        userEmail: setting.user?.email || "",
-        userName: setting.user?.name || null,
-        subject: setting.subject ?? "Monthly Inventory Report - {date}",
-      }))
-      .filter((user) => user.userEmail);
+      .map(
+        (
+          setting: Mailing & {
+            user?: {
+              id?: number;
+              email?: string | null;
+              name?: string | null;
+            } | null;
+          },
+        ) => ({
+          userId: setting.userId.toString(),
+          userEmail: setting.user?.email || "",
+          userName: setting.user?.name || null,
+          subject: setting.subject ?? "Monthly Inventory Report - {date}",
+        }),
+      )
+      .filter((user: { userEmail: string }) => user.userEmail);
   } catch (error) {
     console.error("Error fetching users for specific day:", error);
     return null;

@@ -34,9 +34,10 @@ import {
   InsertSensor,
   UpdateorAddSenor,
 } from "./backend";
-import type { JsonValue } from "@prisma/client/runtime/library";
+import type { Prisma } from "@prisma/client";
 
 type FrontendSensor = {
+  frequency: string;
   id: number;
   sensorName: string;
   familyId: number;
@@ -44,7 +45,7 @@ type FrontendSensor = {
   pricePerItem?: number | null;
   photograph?: string | null;
   payloadDecoder?: string | null;
-  decoder?: JsonValue;
+  decoder?: Prisma.JsonValue;
   zpl?: string | null;
   description?: string | null;
 };
@@ -72,7 +73,7 @@ export default function SensorList() {
     queryKey: ["sensors"],
     queryFn: async () => {
       const data = await GetSensors();
-      return data.map((sensor) => ({
+      return data.map((sensor: FrontendSensor) => ({
         id: sensor.id,
         sensorName: sensor.sensorName,
         familyId: sensor.familyId,
@@ -176,7 +177,7 @@ export default function SensorList() {
     const formData = new FormData(event.currentTarget);
 
     // Parse JSON decoder field
-    let decoderValue: JsonValue = null;
+    let decoderValue: Prisma.JsonValue = null;
     const decoderString = formData.get("decoder") as string;
     if (decoderString?.trim()) {
       try {
@@ -303,7 +304,7 @@ export default function SensorList() {
             </TableHead>
             <TableBody>
               <AnimatePresence>
-                {sensors?.map((sensor) => (
+                {sensors?.map((sensor: FrontendSensor) => (
                   <motion.tr
                     key={sensor.id}
                     initial={{ opacity: 0, y: 20 }}

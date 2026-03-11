@@ -7,6 +7,9 @@ import {
 } from "src/app/inventory/components/backent";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
 import { prisma } from "~/server/DATABASE_ACTION/prisma";
+import type { Mailing } from "@prisma/client";
+
+type MailingWithUser = Mailing & { user: { email: string; name?: string } };
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -59,25 +62,27 @@ export async function POST() {
     const reportDate = new Date().toISOString().split("T")[0];
     const filename = `inventory-report-${reportDate}.pdf`;
 
-    // Send email to all recipients
-    mailingList.map((mail) =>
-      resend.emails.send({
-        from: "anze.repse@sensedge.co", // Use Resend's test domain
-        to: [mail.user.email],
-        subject: `Monthly Inventory Report - ${today.toDateString()}`,
-        react: InventoryEmailTemplate({
-          recipientName: mail.user.name || "Senzemo User",
-          reportDate: today.toDateString(),
-          sensorInventory: detailedSensorInventory,
-          lowStockItems: lowStockComponents,
+    // Send email to all recipients and await all send ops
+    await Promise.all(
+      mailingList.map((mail: MailingWithUser) =>
+        resend.emails.send({
+          from: "anze.repse@sensedge.co", // Use Resend's test domain
+          to: [mail.user.email],
+          subject: `Monthly Inventory Report - ${today.toDateString()}`,
+          react: InventoryEmailTemplate({
+            recipientName: mail.user.name || "Senzemo User",
+            reportDate: today.toDateString(),
+            sensorInventory: detailedSensorInventory,
+            lowStockItems: lowStockComponents,
+          }),
+          attachments: [
+            {
+              filename,
+              content: reportBuffer,
+            },
+          ],
         }),
-        attachments: [
-          {
-            filename,
-            content: reportBuffer,
-          },
-        ],
-      }),
+      ),
     );
   } catch (error) {
     console.error("Error sending monthly report:", error);

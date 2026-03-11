@@ -14,9 +14,7 @@ export default function NotFound() {
         <h2 className="mt-4 text-2xl font-semibold text-gray-800">
           Stran ni najdena
         </h2>
-        <p className="mt-2 text-gray-600">
-          Stran, ki jo iščete, ne obstaja.
-        </p>
+        <p className="mt-2 text-gray-600">Stran, ki jo iščete, ne obstaja.</p>
         <Link
           href="/"
           className="mt-6 inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"

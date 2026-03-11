@@ -6,7 +6,6 @@ import Navbar from "../components/navabar";
 export default async function Home() {
   const { user } = await getCurrentSession();
   if (user === null) {
-
     return redirect("/");
   }
   console.log("User is logged in:", user);
