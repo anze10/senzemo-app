@@ -150,13 +150,12 @@ interface SenzorStockItem {
   dev_eui?: string;
 }
 interface device {
-  id: number;
-  devEUI: string;
-  appEUI: string | null;
-  deviceType: string | null;
-  frequency: string | null;
-  hwVersion: string | null;
-  fwVersion: string | null;
+
+  id: number
+  devEUI: string | null
+  deviceType: string | null
+  frequency: string | null
+
 }
 
 export type ComponentStockItem = {
@@ -244,10 +243,10 @@ type DialogAction =
   | { type: "OPEN_EDIT"; item: InventoryItem }
   | { type: "OPEN_DELETE"; item: InventoryItem }
   | {
-      type: "OPEN_ADJUSTMENT";
-      item: InventoryItem;
-      adjustmentType: "increase" | "decrease";
-    }
+    type: "OPEN_ADJUSTMENT";
+    item: InventoryItem;
+    adjustmentType: "increase" | "decrease";
+  }
   | { type: "OPEN_DEVICE_ACTION"; item: ProductionDevice }
   | { type: "OPEN_FREQUENCY_EDIT"; item: ProductionDevice }
   | { type: "UPDATE_EDIT_ITEM"; item: InventoryItem }
@@ -1644,13 +1643,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-                ...group,
-                frequencies: group.frequencies.map((freq) =>
-                  freq.frequency === frequency
-                    ? { ...freq, expanded: !freq.expanded }
-                    : freq,
-                ),
-              }
+              ...group,
+              frequencies: group.frequencies.map((freq) =>
+                freq.frequency === frequency
+                  ? { ...freq, expanded: !freq.expanded }
+                  : freq,
+              ),
+            }
             : group,
         ) || [],
     );
@@ -1861,7 +1860,7 @@ export default function InventoryManagementPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          // className="mx-auto max-w-7xl"
+        // className="mx-auto max-w-7xl"
         >
           <Box
             sx={{
@@ -2210,86 +2209,86 @@ export default function InventoryManagementPage() {
                       orderId: Key | null | undefined;
                       orderName: unknown;
                       customerName:
+                      | string
+                      | number
+                      | bigint
+                      | boolean
+                      | ReactElement<
+                        unknown,
+                        string | JSXElementConstructor<unknown>
+                      >
+                      | Iterable<ReactNode>
+                      | Promise<
                         | string
                         | number
                         | bigint
                         | boolean
-                        | ReactElement<
-                            unknown,
-                            string | JSXElementConstructor<unknown>
-                          >
-                        | Iterable<ReactNode>
-                        | Promise<
-                            | string
-                            | number
-                            | bigint
-                            | boolean
-                            | ReactPortal
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
-                            | null
-                            | undefined
-                          >
-                        | null
-                        | undefined;
-                      assemblier:
-                        | string
-                        | number
-                        | bigint
-                        | boolean
-                        | ReactElement<
-                            unknown,
-                            string | JSXElementConstructor<unknown>
-                          >
-                        | Iterable<ReactNode>
                         | ReactPortal
-                        | Promise<
-                            | string
-                            | number
-                            | bigint
-                            | boolean
-                            | ReactPortal
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
-                            | null
-                            | undefined
-                          >
+                        | ReactElement<
+                          unknown,
+                          string | JSXElementConstructor<unknown>
+                        >
+                        | Iterable<ReactNode>
                         | null
-                        | undefined;
+                        | undefined
+                      >
+                      | null
+                      | undefined;
+                      assemblier:
+                      | string
+                      | number
+                      | bigint
+                      | boolean
+                      | ReactElement<
+                        unknown,
+                        string | JSXElementConstructor<unknown>
+                      >
+                      | Iterable<ReactNode>
+                      | ReactPortal
+                      | Promise<
+                        | string
+                        | number
+                        | bigint
+                        | boolean
+                        | ReactPortal
+                        | ReactElement<
+                          unknown,
+                          string | JSXElementConstructor<unknown>
+                        >
+                        | Iterable<ReactNode>
+                        | null
+                        | undefined
+                      >
+                      | null
+                      | undefined;
                       deviceCount: number;
                       status:
+                      | string
+                      | number
+                      | bigint
+                      | boolean
+                      | ReactElement<
+                        unknown,
+                        string | JSXElementConstructor<unknown>
+                      >
+                      | Iterable<ReactNode>
+                      | ReactPortal
+                      | Promise<
                         | string
                         | number
                         | bigint
                         | boolean
-                        | ReactElement<
-                            unknown,
-                            string | JSXElementConstructor<unknown>
-                          >
-                        | Iterable<ReactNode>
                         | ReactPortal
-                        | Promise<
-                            | string
-                            | number
-                            | bigint
-                            | boolean
-                            | ReactPortal
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
-                            | null
-                            | undefined
-                          >
+                        | ReactElement<
+                          unknown,
+                          string | JSXElementConstructor<unknown>
+                        >
+                        | Iterable<ReactNode>
                         | null
-                        | undefined;
+                        | undefined
+                      >
+                      | null
+                      | undefined;
                       orderDate: string | number | Date;
                       devices: device[];
                     }) => (
@@ -2319,7 +2318,7 @@ export default function InventoryManagementPage() {
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
                               {String(
                                 order.orderName ??
-                                  `Order #${order.orderId?.toString() ?? "N/A"}`,
+                                `Order #${order.orderId?.toString() ?? "N/A"}`,
                               )}
                             </Typography>
                             <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -3041,10 +3040,10 @@ export default function InventoryManagementPage() {
                                                                       color:
                                                                         "text.secondary",
                                                                       "&:hover":
-                                                                        {
-                                                                          color:
-                                                                            "primary.main",
-                                                                        },
+                                                                      {
+                                                                        color:
+                                                                          "primary.main",
+                                                                      },
                                                                       p: 0.25,
                                                                     }}
                                                                   >
@@ -3108,10 +3107,10 @@ export default function InventoryManagementPage() {
                                                                         color:
                                                                           "text.secondary",
                                                                         "&:hover":
-                                                                          {
-                                                                            color:
-                                                                              "primary.main",
-                                                                          },
+                                                                        {
+                                                                          color:
+                                                                            "primary.main",
+                                                                        },
                                                                         p: 0.25,
                                                                       }}
                                                                     >
@@ -3543,7 +3542,7 @@ export default function InventoryManagementPage() {
                                           fontWeight={500}
                                         >
                                           {item1.price !== undefined &&
-                                          item1.price !== null
+                                            item1.price !== null
                                             ? `€${Number(item1.price).toFixed(2)}`
                                             : "-"}
                                         </Typography>
@@ -3558,8 +3557,8 @@ export default function InventoryManagementPage() {
                                         <Typography variant="body2">
                                           {item1.lastUpdated
                                             ? new Date(
-                                                item1.lastUpdated,
-                                              ).toLocaleDateString()
+                                              item1.lastUpdated,
+                                            ).toLocaleDateString()
                                             : "-"}
                                         </Typography>
                                       </Box>
@@ -3640,7 +3639,7 @@ export default function InventoryManagementPage() {
                                             fontWeight={500}
                                           >
                                             {item1.lowStockThreshold !== null &&
-                                            item1.lowStockThreshold !==
+                                              item1.lowStockThreshold !==
                                               undefined
                                               ? `${item1.lowStockThreshold} units`
                                               : "No threshold set"}
@@ -3666,14 +3665,14 @@ export default function InventoryManagementPage() {
                                                   bgcolor: isInLowList
                                                     ? "error.light"
                                                     : alertInfo.severity ===
-                                                        "warning"
+                                                      "warning"
                                                       ? "warning.light"
                                                       : "error.light",
                                                   border: 1,
                                                   borderColor: isInLowList
                                                     ? "error.main"
                                                     : alertInfo.severity ===
-                                                        "warning"
+                                                      "warning"
                                                       ? "warning.main"
                                                       : "divider",
                                                 }}
@@ -3991,7 +3990,7 @@ export default function InventoryManagementPage() {
                                       </TableCell>
                                       <TableCell>
                                         {item1.price !== undefined &&
-                                        item1.price !== null
+                                          item1.price !== null
                                           ? `€${Number(item1.price).toFixed(2)}`
                                           : "-"}
                                       </TableCell>
@@ -4042,11 +4041,11 @@ export default function InventoryManagementPage() {
                                           item1.sensorAssignments,
                                         ) && item1.sensorAssignments.length > 0
                                           ? item1.sensorAssignments
-                                              .map(
-                                                (sa) =>
-                                                  `${sa.sensorName} (${sa.requiredQuantity})`,
-                                              )
-                                              .join(", ")
+                                            .map(
+                                              (sa) =>
+                                                `${sa.sensorName} (${sa.requiredQuantity})`,
+                                            )
+                                            .join(", ")
                                           : "-"}
                                       </TableCell>
                                       <TableCell>
@@ -4454,32 +4453,32 @@ export default function InventoryManagementPage() {
                         (sensor: {
                           id: Key | readonly string[] | null | undefined;
                           sensorName:
+                          | string
+                          | number
+                          | bigint
+                          | boolean
+                          | ReactElement<
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
+                          | Iterable<ReactNode>
+                          | ReactPortal
+                          | Promise<
                             | string
                             | number
                             | bigint
                             | boolean
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
                             | ReactPortal
-                            | Promise<
-                                | string
-                                | number
-                                | bigint
-                                | boolean
-                                | ReactPortal
-                                | ReactElement<
-                                    unknown,
-                                    string | JSXElementConstructor<unknown>
-                                  >
-                                | Iterable<ReactNode>
-                                | null
-                                | undefined
-                              >
+                            | ReactElement<
+                              unknown,
+                              string | JSXElementConstructor<unknown>
+                            >
+                            | Iterable<ReactNode>
                             | null
-                            | undefined;
+                            | undefined
+                          >
+                          | null
+                          | undefined;
                         }) => (
                           <MenuItem
                             key={String(sensor.id)}
@@ -4579,32 +4578,32 @@ export default function InventoryManagementPage() {
                         (component: {
                           id: Key | readonly string[] | null | undefined;
                           name:
+                          | string
+                          | number
+                          | bigint
+                          | boolean
+                          | ReactElement<
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
+                          | Iterable<ReactNode>
+                          | ReactPortal
+                          | Promise<
                             | string
                             | number
                             | bigint
                             | boolean
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
                             | ReactPortal
-                            | Promise<
-                                | string
-                                | number
-                                | bigint
-                                | boolean
-                                | ReactPortal
-                                | ReactElement<
-                                    unknown,
-                                    string | JSXElementConstructor<unknown>
-                                  >
-                                | Iterable<ReactNode>
-                                | null
-                                | undefined
-                              >
+                            | ReactElement<
+                              unknown,
+                              string | JSXElementConstructor<unknown>
+                            >
+                            | Iterable<ReactNode>
                             | null
-                            | undefined;
+                            | undefined
+                          >
+                          | null
+                          | undefined;
                         }) => (
                           <MenuItem
                             key={String(component.id)}
@@ -4625,8 +4624,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                        "contactDetails" in editItem &&
-                        editItem.contactDetails?.supplier
+                          "contactDetails" in editItem &&
+                          editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }
@@ -4887,32 +4886,32 @@ export default function InventoryManagementPage() {
                         (sensor: {
                           id: Key | readonly string[] | null | undefined;
                           sensorName:
+                          | string
+                          | number
+                          | bigint
+                          | boolean
+                          | ReactElement<
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
+                          | Iterable<ReactNode>
+                          | ReactPortal
+                          | Promise<
                             | string
                             | number
                             | bigint
                             | boolean
-                            | ReactElement<
-                                unknown,
-                                string | JSXElementConstructor<unknown>
-                              >
-                            | Iterable<ReactNode>
                             | ReactPortal
-                            | Promise<
-                                | string
-                                | number
-                                | bigint
-                                | boolean
-                                | ReactPortal
-                                | ReactElement<
-                                    unknown,
-                                    string | JSXElementConstructor<unknown>
-                                  >
-                                | Iterable<ReactNode>
-                                | null
-                                | undefined
-                              >
+                            | ReactElement<
+                              unknown,
+                              string | JSXElementConstructor<unknown>
+                            >
+                            | Iterable<ReactNode>
                             | null
-                            | undefined;
+                            | undefined
+                          >
+                          | null
+                          | undefined;
                         }) => (
                           <MenuItem
                             key={String(sensor.id)}
@@ -5651,56 +5650,56 @@ export default function InventoryManagementPage() {
                         items: unknown[];
                         assignedDevices: number;
                         id:
-                          | boolean
-                          | Key
-                          | ReactElement<
-                              unknown,
-                              string | JSXElementConstructor<unknown>
-                            >
-                          | Iterable<ReactNode>
-                          | Promise<
-                              | string
-                              | number
-                              | bigint
-                              | boolean
-                              | ReactPortal
-                              | ReactElement<
-                                  unknown,
-                                  string | JSXElementConstructor<unknown>
-                                >
-                              | Iterable<ReactNode>
-                              | null
-                              | undefined
-                            >
-                          | null
-                          | undefined;
-                        customerName:
+                        | boolean
+                        | Key
+                        | ReactElement<
+                          unknown,
+                          string | JSXElementConstructor<unknown>
+                        >
+                        | Iterable<ReactNode>
+                        | Promise<
                           | string
                           | number
                           | bigint
                           | boolean
-                          | ReactElement<
-                              unknown,
-                              string | JSXElementConstructor<unknown>
-                            >
-                          | Iterable<ReactNode>
                           | ReactPortal
-                          | Promise<
-                              | string
-                              | number
-                              | bigint
-                              | boolean
-                              | ReactPortal
-                              | ReactElement<
-                                  unknown,
-                                  string | JSXElementConstructor<unknown>
-                                >
-                              | Iterable<ReactNode>
-                              | null
-                              | undefined
-                            >
+                          | ReactElement<
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
+                          | Iterable<ReactNode>
                           | null
-                          | undefined;
+                          | undefined
+                        >
+                        | null
+                        | undefined;
+                        customerName:
+                        | string
+                        | number
+                        | bigint
+                        | boolean
+                        | ReactElement<
+                          unknown,
+                          string | JSXElementConstructor<unknown>
+                        >
+                        | Iterable<ReactNode>
+                        | ReactPortal
+                        | Promise<
+                          | string
+                          | number
+                          | bigint
+                          | boolean
+                          | ReactPortal
+                          | ReactElement<
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
+                          | Iterable<ReactNode>
+                          | null
+                          | undefined
+                        >
+                        | null
+                        | undefined;
                       }) => {
                         const totalQuantity = order.items.reduce(
                           (sum: number, item) =>
