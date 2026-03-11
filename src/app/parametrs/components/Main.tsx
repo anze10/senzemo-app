@@ -123,7 +123,7 @@ export default function Parameters() {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  console.log(devices)
+  console.log(devices);
 
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>

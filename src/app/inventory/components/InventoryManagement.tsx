@@ -244,10 +244,10 @@ type DialogAction =
   | { type: "OPEN_EDIT"; item: InventoryItem }
   | { type: "OPEN_DELETE"; item: InventoryItem }
   | {
-    type: "OPEN_ADJUSTMENT";
-    item: InventoryItem;
-    adjustmentType: "increase" | "decrease";
-  }
+      type: "OPEN_ADJUSTMENT";
+      item: InventoryItem;
+      adjustmentType: "increase" | "decrease";
+    }
   | { type: "OPEN_DEVICE_ACTION"; item: ProductionDevice }
   | { type: "OPEN_FREQUENCY_EDIT"; item: ProductionDevice }
   | { type: "UPDATE_EDIT_ITEM"; item: InventoryItem }
@@ -1644,13 +1644,13 @@ export default function InventoryManagementPage() {
         prev?.map((group) =>
           group.deviceType === deviceType
             ? {
-              ...group,
-              frequencies: group.frequencies.map((freq) =>
-                freq.frequency === frequency
-                  ? { ...freq, expanded: !freq.expanded }
-                  : freq,
-              ),
-            }
+                ...group,
+                frequencies: group.frequencies.map((freq) =>
+                  freq.frequency === frequency
+                    ? { ...freq, expanded: !freq.expanded }
+                    : freq,
+                ),
+              }
             : group,
         ) || [],
     );
@@ -1861,7 +1861,7 @@ export default function InventoryManagementPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-        // className="mx-auto max-w-7xl"
+          // className="mx-auto max-w-7xl"
         >
           <Box
             sx={{
@@ -2210,86 +2210,86 @@ export default function InventoryManagementPage() {
                       orderId: Key | null | undefined;
                       orderName: unknown;
                       customerName:
-                      | string
-                      | number
-                      | bigint
-                      | boolean
-                      | ReactElement<
-                        unknown,
-                        string | JSXElementConstructor<unknown>
-                      >
-                      | Iterable<ReactNode>
-                      | Promise<
                         | string
                         | number
                         | bigint
                         | boolean
-                        | ReactPortal
                         | ReactElement<
-                          unknown,
-                          string | JSXElementConstructor<unknown>
-                        >
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
                         | Iterable<ReactNode>
+                        | Promise<
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactPortal
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | null
+                            | undefined
+                          >
                         | null
-                        | undefined
-                      >
-                      | null
-                      | undefined;
+                        | undefined;
                       assemblier:
-                      | string
-                      | number
-                      | bigint
-                      | boolean
-                      | ReactElement<
-                        unknown,
-                        string | JSXElementConstructor<unknown>
-                      >
-                      | Iterable<ReactNode>
-                      | ReactPortal
-                      | Promise<
                         | string
                         | number
                         | bigint
                         | boolean
-                        | ReactPortal
                         | ReactElement<
-                          unknown,
-                          string | JSXElementConstructor<unknown>
-                        >
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
                         | Iterable<ReactNode>
+                        | ReactPortal
+                        | Promise<
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactPortal
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | null
+                            | undefined
+                          >
                         | null
-                        | undefined
-                      >
-                      | null
-                      | undefined;
+                        | undefined;
                       deviceCount: number;
                       status:
-                      | string
-                      | number
-                      | bigint
-                      | boolean
-                      | ReactElement<
-                        unknown,
-                        string | JSXElementConstructor<unknown>
-                      >
-                      | Iterable<ReactNode>
-                      | ReactPortal
-                      | Promise<
                         | string
                         | number
                         | bigint
                         | boolean
-                        | ReactPortal
                         | ReactElement<
-                          unknown,
-                          string | JSXElementConstructor<unknown>
-                        >
+                            unknown,
+                            string | JSXElementConstructor<unknown>
+                          >
                         | Iterable<ReactNode>
+                        | ReactPortal
+                        | Promise<
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactPortal
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | null
+                            | undefined
+                          >
                         | null
-                        | undefined
-                      >
-                      | null
-                      | undefined;
+                        | undefined;
                       orderDate: string | number | Date;
                       devices: device[];
                     }) => (
@@ -2317,7 +2317,10 @@ export default function InventoryManagementPage() {
                         >
                           <Box>
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                              {String(order.orderName ?? `Order #${order.orderId?.toString() ?? "N/A"}`)}
+                              {String(
+                                order.orderName ??
+                                  `Order #${order.orderId?.toString() ?? "N/A"}`,
+                              )}
                             </Typography>
                             <Typography variant="body2" sx={{ opacity: 0.9 }}>
                               Kupec: {order.customerName}
@@ -3038,10 +3041,10 @@ export default function InventoryManagementPage() {
                                                                       color:
                                                                         "text.secondary",
                                                                       "&:hover":
-                                                                      {
-                                                                        color:
-                                                                          "primary.main",
-                                                                      },
+                                                                        {
+                                                                          color:
+                                                                            "primary.main",
+                                                                        },
                                                                       p: 0.25,
                                                                     }}
                                                                   >
@@ -3105,10 +3108,10 @@ export default function InventoryManagementPage() {
                                                                         color:
                                                                           "text.secondary",
                                                                         "&:hover":
-                                                                        {
-                                                                          color:
-                                                                            "primary.main",
-                                                                        },
+                                                                          {
+                                                                            color:
+                                                                              "primary.main",
+                                                                          },
                                                                         p: 0.25,
                                                                       }}
                                                                     >
@@ -3540,7 +3543,7 @@ export default function InventoryManagementPage() {
                                           fontWeight={500}
                                         >
                                           {item1.price !== undefined &&
-                                            item1.price !== null
+                                          item1.price !== null
                                             ? `€${Number(item1.price).toFixed(2)}`
                                             : "-"}
                                         </Typography>
@@ -3555,8 +3558,8 @@ export default function InventoryManagementPage() {
                                         <Typography variant="body2">
                                           {item1.lastUpdated
                                             ? new Date(
-                                              item1.lastUpdated,
-                                            ).toLocaleDateString()
+                                                item1.lastUpdated,
+                                              ).toLocaleDateString()
                                             : "-"}
                                         </Typography>
                                       </Box>
@@ -3637,7 +3640,7 @@ export default function InventoryManagementPage() {
                                             fontWeight={500}
                                           >
                                             {item1.lowStockThreshold !== null &&
-                                              item1.lowStockThreshold !==
+                                            item1.lowStockThreshold !==
                                               undefined
                                               ? `${item1.lowStockThreshold} units`
                                               : "No threshold set"}
@@ -3663,14 +3666,14 @@ export default function InventoryManagementPage() {
                                                   bgcolor: isInLowList
                                                     ? "error.light"
                                                     : alertInfo.severity ===
-                                                      "warning"
+                                                        "warning"
                                                       ? "warning.light"
                                                       : "error.light",
                                                   border: 1,
                                                   borderColor: isInLowList
                                                     ? "error.main"
                                                     : alertInfo.severity ===
-                                                      "warning"
+                                                        "warning"
                                                       ? "warning.main"
                                                       : "divider",
                                                 }}
@@ -3988,7 +3991,7 @@ export default function InventoryManagementPage() {
                                       </TableCell>
                                       <TableCell>
                                         {item1.price !== undefined &&
-                                          item1.price !== null
+                                        item1.price !== null
                                           ? `€${Number(item1.price).toFixed(2)}`
                                           : "-"}
                                       </TableCell>
@@ -4039,11 +4042,11 @@ export default function InventoryManagementPage() {
                                           item1.sensorAssignments,
                                         ) && item1.sensorAssignments.length > 0
                                           ? item1.sensorAssignments
-                                            .map(
-                                              (sa) =>
-                                                `${sa.sensorName} (${sa.requiredQuantity})`,
-                                            )
-                                            .join(", ")
+                                              .map(
+                                                (sa) =>
+                                                  `${sa.sensorName} (${sa.requiredQuantity})`,
+                                              )
+                                              .join(", ")
                                           : "-"}
                                       </TableCell>
                                       <TableCell>
@@ -4199,146 +4202,156 @@ export default function InventoryManagementPage() {
                         gap: { xs: 2, md: 3 },
                       }}
                     >
-                      {productionCapacity.map((sensor: ProductionCapacitySensor) => (
-                        <Card
-                          key={sensor.sensorId}
-                          variant="outlined"
-                          sx={{
-                            borderRadius: 2,
-                            "&:hover": {
-                              boxShadow: 2,
-                            },
-                          }}
-                        >
-                          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                            {/* Sensor Product Image */}
-                            <Box sx={{ mb: 2 }}>
-                              <SensorImage sensorName={String(sensor.sensorName) || "Unknown"} />
-                            </Box>
+                      {productionCapacity.map(
+                        (sensor: ProductionCapacitySensor) => (
+                          <Card
+                            key={sensor.sensorId}
+                            variant="outlined"
+                            sx={{
+                              borderRadius: 2,
+                              "&:hover": {
+                                boxShadow: 2,
+                              },
+                            }}
+                          >
+                            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                              {/* Sensor Product Image */}
+                              <Box sx={{ mb: 2 }}>
+                                <SensorImage
+                                  sensorName={
+                                    String(sensor.sensorName) || "Unknown"
+                                  }
+                                />
+                              </Box>
 
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                mb: 2,
-                              }}
-                            >
-                              <Typography
-                                variant="subtitle2"
+                              <Box
                                 sx={{
-                                  fontWeight: 600,
-                                  color: "text.primary",
-                                  flex: 1,
-                                  mr: 1,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  mb: 2,
                                 }}
                               >
-                                {sensor.sensorName}
-                              </Typography>
-                              <Chip
-                                label={`${sensor.maxProducible} units`}
-                                color={
-                                  sensor.maxProducible > 0
-                                    ? "success"
-                                    : "default"
-                                }
-                                size={isMobile ? "medium" : "small"}
-                                sx={{ fontWeight: 600 }}
-                              />
-                            </Box>
-
-                            {sensor.hasAllComponents ? (
-                              <Box>
                                 <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ mb: 1 }}
-                                >
-                                  Can assemble{" "}
-                                  <strong>{sensor.maxProducible}</strong>{" "}
-                                  sensors
-                                </Typography>
-                                <Box
+                                  variant="subtitle2"
                                   sx={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 0.5,
+                                    fontWeight: 600,
+                                    color: "text.primary",
+                                    flex: 1,
+                                    mr: 1,
                                   }}
                                 >
-                                  {sensor.componentDetails.map((comp, idx) => (
-                                    <Typography
-                                      key={idx}
-                                      variant="caption"
-                                      sx={{
-                                        color: comp.isLimitingFactor
-                                          ? "warning.main"
-                                          : "text.secondary",
-                                        fontWeight: comp.isLimitingFactor
-                                          ? 600
-                                          : 400,
-                                      }}
-                                    >
-                                      {comp.name}: {comp.available}/
-                                      {comp.required}
-                                      {comp.isLimitingFactor && " (limiting)"}
-                                    </Typography>
-                                  ))}
-                                </Box>
+                                  {sensor.sensorName}
+                                </Typography>
+                                <Chip
+                                  label={`${sensor.maxProducible} units`}
+                                  color={
+                                    sensor.maxProducible > 0
+                                      ? "success"
+                                      : "default"
+                                  }
+                                  size={isMobile ? "medium" : "small"}
+                                  sx={{ fontWeight: 600 }}
+                                />
                               </Box>
-                            ) : (
-                              <Box>
-                                <Typography
-                                  variant="body2"
-                                  color="error.main"
-                                  sx={{ fontWeight: 500, mb: 1 }}
-                                >
-                                  Missing components:
-                                </Typography>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 0.5,
-                                  }}
-                                >
-                                  {sensor.componentDetails
-                                    .filter(
-                                      (comp) => comp.available < comp.required,
-                                    )
-                                    .map((comp, idx) => (
+
+                              {sensor.hasAllComponents ? (
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mb: 1 }}
+                                  >
+                                    Can assemble{" "}
+                                    <strong>{sensor.maxProducible}</strong>{" "}
+                                    sensors
+                                  </Typography>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    {sensor.componentDetails.map(
+                                      (comp, idx) => (
+                                        <Typography
+                                          key={idx}
+                                          variant="caption"
+                                          sx={{
+                                            color: comp.isLimitingFactor
+                                              ? "warning.main"
+                                              : "text.secondary",
+                                            fontWeight: comp.isLimitingFactor
+                                              ? 600
+                                              : 400,
+                                          }}
+                                        >
+                                          {comp.name}: {comp.available}/
+                                          {comp.required}
+                                          {comp.isLimitingFactor &&
+                                            " (limiting)"}
+                                        </Typography>
+                                      ),
+                                    )}
+                                  </Box>
+                                </Box>
+                              ) : (
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    color="error.main"
+                                    sx={{ fontWeight: 500, mb: 1 }}
+                                  >
+                                    Missing components:
+                                  </Typography>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    {sensor.componentDetails
+                                      .filter(
+                                        (comp) =>
+                                          comp.available < comp.required,
+                                      )
+                                      .map((comp, idx) => (
+                                        <Typography
+                                          key={idx}
+                                          variant="caption"
+                                          sx={{
+                                            color: "error.main",
+                                            fontWeight: 500,
+                                          }}
+                                        >
+                                          {comp.name}: {comp.available}/
+                                          {comp.required}
+                                          (need {comp.required -
+                                            comp.available}{" "}
+                                          more)
+                                        </Typography>
+                                      ))}
+                                    {sensor.componentDetails.length === 0 && (
                                       <Typography
-                                        key={idx}
                                         variant="caption"
                                         sx={{
                                           color: "error.main",
                                           fontWeight: 500,
                                         }}
                                       >
-                                        {comp.name}: {comp.available}/
-                                        {comp.required}
-                                        (need {comp.required -
-                                          comp.available}{" "}
-                                        more)
+                                        No component requirements defined for
+                                        this sensor
                                       </Typography>
-                                    ))}
-                                  {sensor.componentDetails.length === 0 && (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        color: "error.main",
-                                        fontWeight: 500,
-                                      }}
-                                    >
-                                      No component requirements defined for this
-                                      sensor
-                                    </Typography>
-                                  )}
+                                    )}
+                                  </Box>
                                 </Box>
-                              </Box>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
+                              )}
+                            </CardContent>
+                          </Card>
+                        ),
+                      )}
                     </Box>
                   </Box>
                 )}
@@ -4407,10 +4420,16 @@ export default function InventoryManagementPage() {
                 {activeTab === 0 ? (
                   <>
                     <Select
-                      value={editItem ? String((editItem as SenzorStockItem).senzorId ?? "") : ""}
+                      value={
+                        editItem
+                          ? String((editItem as SenzorStockItem).senzorId ?? "")
+                          : ""
+                      }
                       onChange={(e) => {
                         const sensorId = Number(e.target.value);
-                        const selectedSensor = allSensors.find((s: { id: number; }) => s.id === sensorId);
+                        const selectedSensor = allSensors.find(
+                          (s: { id: number }) => s.id === sensorId,
+                        );
                         if (selectedSensor) {
                           dispatchDialog({
                             type: "UPDATE_EDIT_ITEM",
@@ -4428,12 +4447,48 @@ export default function InventoryManagementPage() {
                       className="mb-4"
                       displayEmpty
                     >
-                      <MenuItem value="" disabled>Select a sensor</MenuItem>
-                      {allSensors.map((sensor: { id: Key | readonly string[] | null | undefined; sensorName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
-                        <MenuItem key={String(sensor.id)} value={String(sensor.id)}>
-                          {sensor.sensorName}
-                        </MenuItem>
-                      ))}
+                      <MenuItem value="" disabled>
+                        Select a sensor
+                      </MenuItem>
+                      {allSensors.map(
+                        (sensor: {
+                          id: Key | readonly string[] | null | undefined;
+                          sensorName:
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | ReactPortal
+                            | Promise<
+                                | string
+                                | number
+                                | bigint
+                                | boolean
+                                | ReactPortal
+                                | ReactElement<
+                                    unknown,
+                                    string | JSXElementConstructor<unknown>
+                                  >
+                                | Iterable<ReactNode>
+                                | null
+                                | undefined
+                              >
+                            | null
+                            | undefined;
+                        }) => (
+                          <MenuItem
+                            key={String(sensor.id)}
+                            value={String(sensor.id)}
+                          >
+                            {sensor.sensorName}
+                          </MenuItem>
+                        ),
+                      )}
                     </Select>
 
                     {/* Frequency dropdown for sensors */}
@@ -4498,7 +4553,7 @@ export default function InventoryManagementPage() {
                       onChange={(e) => {
                         const componentId = Number(e.target.value);
                         const selectedComponent = componentOptions.find(
-                          (c: { id: number; }) => c.id === componentId,
+                          (c: { id: number }) => c.id === componentId,
                         );
                         if (selectedComponent) {
                           dispatchDialog({
@@ -4520,11 +4575,45 @@ export default function InventoryManagementPage() {
                       <MenuItem value="" disabled>
                         Select a component
                       </MenuItem>
-                      {componentOptions.map((component: { id: Key | readonly string[] | null | undefined; name: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
-                        <MenuItem key={String(component.id)} value={String(component.id)}>
-                          {component.name}
-                        </MenuItem>
-                      ))}
+                      {componentOptions.map(
+                        (component: {
+                          id: Key | readonly string[] | null | undefined;
+                          name:
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | ReactPortal
+                            | Promise<
+                                | string
+                                | number
+                                | bigint
+                                | boolean
+                                | ReactPortal
+                                | ReactElement<
+                                    unknown,
+                                    string | JSXElementConstructor<unknown>
+                                  >
+                                | Iterable<ReactNode>
+                                | null
+                                | undefined
+                              >
+                            | null
+                            | undefined;
+                        }) => (
+                          <MenuItem
+                            key={String(component.id)}
+                            value={String(component.id)}
+                          >
+                            {component.name}
+                          </MenuItem>
+                        ),
+                      )}
                     </Select>
 
                     <TextField
@@ -4536,8 +4625,8 @@ export default function InventoryManagementPage() {
                       variant="outlined"
                       value={
                         editItem &&
-                          "contactDetails" in editItem &&
-                          editItem.contactDetails?.supplier
+                        "contactDetails" in editItem &&
+                        editItem.contactDetails?.supplier
                           ? editItem.contactDetails.supplier
                           : ""
                       }
@@ -4784,7 +4873,9 @@ export default function InventoryManagementPage() {
                           sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
                         >
                           {(selected as number[]).map((id) => {
-                            const sensor = allSensors.find((s: { id: number; }) => s.id === id);
+                            const sensor = allSensors.find(
+                              (s: { id: number }) => s.id === id,
+                            );
                             return sensor ? (
                               <Chip key={id} label={sensor.sensorName} />
                             ) : null;
@@ -4792,11 +4883,45 @@ export default function InventoryManagementPage() {
                         </Box>
                       )}
                     >
-                      {allSensors.map((sensor: { id: Key | readonly string[] | null | undefined; sensorName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
-                        <MenuItem key={String(sensor.id)} value={String(sensor.id)}>
-                          {sensor.sensorName}
-                        </MenuItem>
-                      ))}
+                      {allSensors.map(
+                        (sensor: {
+                          id: Key | readonly string[] | null | undefined;
+                          sensorName:
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | ReactElement<
+                                unknown,
+                                string | JSXElementConstructor<unknown>
+                              >
+                            | Iterable<ReactNode>
+                            | ReactPortal
+                            | Promise<
+                                | string
+                                | number
+                                | bigint
+                                | boolean
+                                | ReactPortal
+                                | ReactElement<
+                                    unknown,
+                                    string | JSXElementConstructor<unknown>
+                                  >
+                                | Iterable<ReactNode>
+                                | null
+                                | undefined
+                              >
+                            | null
+                            | undefined;
+                        }) => (
+                          <MenuItem
+                            key={String(sensor.id)}
+                            value={String(sensor.id)}
+                          >
+                            {sensor.sensorName}
+                          </MenuItem>
+                        ),
+                      )}
                     </Select>
                   </Box>
 
@@ -5521,22 +5646,80 @@ export default function InventoryManagementPage() {
                     <MenuItem value="">
                       <em>Select an order...</em>
                     </MenuItem>
-                    {allOrders.map((order: { items: unknown[]; assignedDevices: number; id: boolean | Key | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | null | undefined> | null | undefined; customerName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<unknown>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => {
-                      const totalQuantity = order.items.reduce(
-                        (sum: number, item) => sum + ((item as { quantity: number }).quantity || 0),
-                        0,
-                      );
-                      const remainingToAssign =
-                        totalQuantity - order.assignedDevices;
-                      if (remainingToAssign <= 0) return null;
-                      const orderId = String(order.id);
-                      return (
-                        <MenuItem key={orderId} value={orderId}>
-                          Order #{orderId} - {order.customerName} (
-                          {remainingToAssign} remaining)
-                        </MenuItem>
-                      );
-                    })}
+                    {allOrders.map(
+                      (order: {
+                        items: unknown[];
+                        assignedDevices: number;
+                        id:
+                          | boolean
+                          | Key
+                          | ReactElement<
+                              unknown,
+                              string | JSXElementConstructor<unknown>
+                            >
+                          | Iterable<ReactNode>
+                          | Promise<
+                              | string
+                              | number
+                              | bigint
+                              | boolean
+                              | ReactPortal
+                              | ReactElement<
+                                  unknown,
+                                  string | JSXElementConstructor<unknown>
+                                >
+                              | Iterable<ReactNode>
+                              | null
+                              | undefined
+                            >
+                          | null
+                          | undefined;
+                        customerName:
+                          | string
+                          | number
+                          | bigint
+                          | boolean
+                          | ReactElement<
+                              unknown,
+                              string | JSXElementConstructor<unknown>
+                            >
+                          | Iterable<ReactNode>
+                          | ReactPortal
+                          | Promise<
+                              | string
+                              | number
+                              | bigint
+                              | boolean
+                              | ReactPortal
+                              | ReactElement<
+                                  unknown,
+                                  string | JSXElementConstructor<unknown>
+                                >
+                              | Iterable<ReactNode>
+                              | null
+                              | undefined
+                            >
+                          | null
+                          | undefined;
+                      }) => {
+                        const totalQuantity = order.items.reduce(
+                          (sum: number, item) =>
+                            sum +
+                            ((item as { quantity: number }).quantity || 0),
+                          0,
+                        );
+                        const remainingToAssign =
+                          totalQuantity - order.assignedDevices;
+                        if (remainingToAssign <= 0) return null;
+                        const orderId = String(order.id);
+                        return (
+                          <MenuItem key={orderId} value={orderId}>
+                            Order #{orderId} - {order.customerName} (
+                            {remainingToAssign} remaining)
+                          </MenuItem>
+                        );
+                      },
+                    )}
                   </Select>
                   <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
                     <Button

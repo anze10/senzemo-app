@@ -1352,7 +1352,7 @@ export function SensorCheckForm() {
                 backgroundColor: isProcessing
                   ? "info.light"
                   : processingMessage.includes("Napaka") ||
-                    processingMessage.includes("Opozorilo")
+                      processingMessage.includes("Opozorilo")
                     ? "warning.light"
                     : "success.light",
                 color: "white",
@@ -1565,11 +1565,11 @@ export function DynamicFormComponent({
                   typeof value === "number"
                     ? value
                     : (enum_values.find(
-                      (item) =>
-                        (typeof value === "string" &&
-                          item.mapped === value) ||
-                        (typeof value === "number" && item.value === value),
-                    )?.value ?? "")
+                        (item) =>
+                          (typeof value === "string" &&
+                            item.mapped === value) ||
+                          (typeof value === "number" && item.value === value),
+                      )?.value ?? "")
                 }
                 onChange={(e) => {
                   const selectedValue = e.target.value as number;
@@ -1586,7 +1586,9 @@ export function DynamicFormComponent({
           );
         })()
       ) : (
-        <Typography color="error">Neveljaven tip: {typeof my_type} {my_type} {my_key} {value}  .</Typography>
+        <Typography color="error">
+          Neveljaven tip: {typeof my_type} {my_type} {my_key} {value} .
+        </Typography>
       )}
     </FormControl>
   );
