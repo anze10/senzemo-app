@@ -37,7 +37,6 @@ import {
 import type { Prisma } from "@prisma/client";
 
 type FrontendSensor = {
-  frequency: string;
   id: number;
   sensorName: string;
   familyId: number;
@@ -78,7 +77,7 @@ export default function SensorList() {
         sensorName: sensor.sensorName,
         familyId: sensor.familyId,
         productId: sensor.productId,
-        frequency: sensor.pricePerItem,
+        pricePerItem: sensor.pricePerItem,
         photograph: sensor.photograph,
         payloadDecoder: sensor.payloadDecoder,
         decoder: sensor.decoder,
@@ -276,7 +275,6 @@ export default function SensorList() {
                   { label: "Ime senzorja", minWidth: 150 },
                   { label: "ID družine", minWidth: 100 },
                   { label: "ID produkta", minWidth: 100 },
-                  { label: "Frekvenca", minWidth: 120 },
                   { label: "Fotografija", minWidth: 140 },
                   { label: "Payload Decoder", minWidth: 180 },
                   { label: "Decoder", minWidth: 180 },
@@ -330,17 +328,6 @@ export default function SensorList() {
                     </TableCell>
                     <TableCell sx={{ minWidth: 100 }}>
                       {sensor.productId}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        minWidth: 120,
-                        maxWidth: 150,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {sensor.frequency || "-"}
                     </TableCell>
                     <TableCell sx={{ minWidth: 140, maxWidth: 180 }}>
                       {sensor.photograph ? (

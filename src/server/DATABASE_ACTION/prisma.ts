@@ -10,7 +10,7 @@ import type { PrismaClient as PrismaClientType } from "@prisma/client";
 const { PrismaClient: PrismaClientConstructor } =
   await import("@prisma/client");
 const { PrismaPg } = await import("@prisma/adapter-pg");
-const { Pool } = await import("pg");
+import { Pool } from "pg";
 
 // 2. Configure the database connection pool
 const connectionString = process.env.DATABASE_URL;
