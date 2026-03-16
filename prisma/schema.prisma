@@ -6,20 +6,20 @@ datasource db {
   provider = "postgresql"
 }
 
-//// auth 
+/// / auth 
 model User {
-  id           Int            @id @default(autoincrement())
-  googleId     String         @unique
-  email        String         @unique
+  id           Int           @id @default(autoincrement())
+  googleId     String        @unique
+  email        String        @unique
   name         String
   picture      String
   role         String?
-  createdAt    DateTime       @default(now())
+  createdAt    DateTime      @default(now())
+  Mailing      Mailing?
   session      Session[]
-  GoogleTokens GoogleTokens[]
-  Mailing      Mailing[]
+  GoogleTokens GoogleTokens?
 
-  @@index([googleId], name: "google_id_index") // Add the index here
+  @@index([googleId], map: "google_id_index")
 }
 
 model Mailing {
@@ -31,20 +31,18 @@ model Mailing {
   subject                String?   @default("Monthly Inventory Report - {date}")
   includeReportUrl       Boolean   @default(true)
   lastSentAt             DateTime?
+  user                   User      @relation(fields: [userId], references: [id])
 
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId], name: "mailing_user_id_index")
-  @@index([Date_of_monthly_report], name: "mailing_date_index")
-  @@index([dayOfMonth, isSubscribed], name: "mailing_schedule_index")
+  @@index([userId], map: "mailing_user_id_index")
+  @@index([Date_of_monthly_report], map: "mailing_date_index")
+  @@index([dayOfMonth, isSubscribed], map: "mailing_schedule_index")
 }
 
 model Session {
   id        String   @id
   userId    Int
   expiresAt DateTime
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model GoogleTokens {
@@ -65,53 +63,45 @@ model GoogleTokens {
   @@map("google_tokens")
 }
 
-////  ferma
+/// /  ferma
 model Senzor {
-  id             Int     @id @default(autoincrement())
+  id             Int               @id @default(autoincrement())
   sensorName     String
   familyId       Int
   productId      Int
-  pricePerItem   Int? // Dodano za ceno na enoto
+  pricePerItem   Int?
   photograph     String?
   payloadDecoder String?
   decoder        Json?
   zpl            String?
   description    String?
-
-  // Relacije
-  components SenzorComponent[]
-  stockItems SenzorStock[]
-  sales      Sale[]
-  orderItems OrderItem[]
+  orderItems     OrderItem[]
+  sales          Sale[]
+  components     SenzorComponent[]
+  stockItems     SenzorStock[]
 }
 
 model Component {
-  id              Int     @id @default(autoincrement())
-  name            String  @unique
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
   description     String?
   Component_price Float?
-  treshold        Int? // Dodano za prag
-
-  // Relacije
+  treshold        Int?
+  stockItems      ComponentStock?
   senzorComponent SenzorComponent[]
-  //sensors    SenzorComponent[]
-  stockItems      ComponentStock[]
 }
 
-// Many-to-many relacija med senzorji in komponentami
 model SenzorComponent {
-  id               Int @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   senzorId         Int
   componentId      Int
-  requiredQuantity Int @default(1)
-
-  senzor    Senzor    @relation(fields: [senzorId], references: [id])
-  component Component @relation(fields: [componentId], references: [id])
+  requiredQuantity Int       @default(1)
+  component        Component @relation(fields: [componentId], references: [id])
+  senzor           Senzor    @relation(fields: [senzorId], references: [id])
 
   @@unique([senzorId, componentId])
 }
 
-// Zaloga senzorjev
 model SenzorStock {
   id                   Int             @id @default(autoincrement())
   senzorId             Int
@@ -121,37 +111,31 @@ model SenzorStock {
   productionBatch      Int?
   lastUpdated          DateTime        @default(now())
   category             String?
-  senzor               Senzor          @relation(fields: [senzorId], references: [id])
+  productionListId     Int?
+  productionListDevEUI String?
   logs                 InventoryLog[]
-  productionListId     Int? // <-- Add this line
-  productionListDevEUI String? // Foreign key to ProductionList.DevEUI
   productionList       ProductionList? @relation(fields: [productionListDevEUI], references: [DevEUI])
+  senzor               Senzor          @relation(fields: [senzorId], references: [id])
 }
 
-// Zaloga komponent
 model ComponentStock {
-  id          Int      @id @default(autoincrement())
-  componentId Int      @unique
-  quantity    Int
-  location    String
-  lastUpdated DateTime @default(now())
-
-  // Kontaktni podatki dobavitelja
+  id             Int            @id @default(autoincrement())
+  componentId    Int            @unique
+  quantity       Int
+  location       String
+  lastUpdated    DateTime       @default(now())
   supplier       String?
   email          String?
   phone          String?
-  category       String? // Kategorija komponent
-  required       Boolean  @default(true) // Ali je komponenta obvezna za senzor
-  // Povezava z računom
+  category       String?
+  required       Boolean        @default(true)
   invoiceFileKey String?
   invoiceId      Int?
-  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
-
-  component Component      @relation(fields: [componentId], references: [id])
-  logs      InventoryLog[]
+  component      Component      @relation(fields: [componentId], references: [id])
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  logs           InventoryLog[]
 }
 
-// Model za račune
 model Invoice {
   id              Int              @id @default(autoincrement())
   invoiceNumber   String           @unique
@@ -159,33 +143,28 @@ model Invoice {
   supplier        String
   amount          Float?
   filename        String?
-  fileData        Bytes? // Optional PDF binary
+  fileData        Bytes?
   componentStocks ComponentStock[]
   logs            InventoryLog[]
 }
 
-// Zgodovina sprememb
 model InventoryLog {
-  id        Int      @id @default(autoincrement())
-  timestamp DateTime @default(now())
-  itemType  String // 'sensor' | 'component'
-  itemName  String
-  change    Int
-  reason    String
-  user      String
-  details   String?
-  invoiceId Int?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
-
-  // Separate foreign keys
+  id               Int             @id @default(autoincrement())
+  timestamp        DateTime        @default(now())
+  itemType         String
+  itemName         String
+  change           Int
+  reason           String
+  user             String
+  details          String?
+  invoiceId        Int?
   senzorStockId    Int?
   componentStockId Int?
-
-  senzorStock    SenzorStock?    @relation(fields: [senzorStockId], references: [id])
-  componentStock ComponentStock? @relation(fields: [componentStockId], references: [id])
+  componentStock   ComponentStock? @relation(fields: [componentStockId], references: [id])
+  invoice          Invoice?        @relation(fields: [invoiceId], references: [id])
+  senzorStock      SenzorStock?    @relation(fields: [senzorStockId], references: [id])
 }
 
-// Obstojči modeli (nespremenjeni)
 model Sale {
   id           Int      @id @default(autoincrement())
   senzorId     Int
@@ -194,13 +173,6 @@ model Sale {
   price        Float
   customerName String
   senzor       Senzor   @relation(fields: [senzorId], references: [id])
-}
-
-enum OrderStatus {
-  Pending
-  Taken
-  Shipped
-  Arrived
 }
 
 model Order {
@@ -220,18 +192,17 @@ model Order {
   receiptUrl      String?
   priority        String
   orderDate       DateTime         @default(now())
-  productionLists ProductionList[]
   items           OrderItem[]
+  productionLists ProductionList[]
 }
 
 model OrderItem {
-  id       Int @id @default(autoincrement())
+  id       Int    @id @default(autoincrement())
   orderId  Int
   sensorId Int
   quantity Int
-
-  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  sensor Senzor @relation(fields: [sensorId], references: [id])
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sensor   Senzor @relation(fields: [sensorId], references: [id])
 
   @@unique([orderId, sensorId])
 }
@@ -251,8 +222,15 @@ model ProductionList {
   SendPeriod        String?
   ACK               String?
   MovementThreshold String?
-  order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  senzorStocks      SenzorStock[] // remains optional by default
   DateCreated       DateTime      @default(now())
   Batch             String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  senzorStocks      SenzorStock[]
+}
+
+enum OrderStatus {
+  Pending
+  Taken
+  Shipped
+  Arrived
 }
