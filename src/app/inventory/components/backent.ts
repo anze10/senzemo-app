@@ -2619,8 +2619,15 @@ export async function getLowComponents() {
       if (comp.stockItems == null) {
         continue;
       }
-      const stockItem = comp.stockItems[0];
-      const availableQuantity = stockItem?.quantity ?? 0;
+
+      // Safely extract available quantity – handle both array and single object
+      const stockItems = comp.stockItems;
+      let availableQuantity = 0;
+      if (Array.isArray(stockItems)) {
+        availableQuantity = stockItems[0]?.quantity ?? 0;
+      } else if (stockItems) {
+        availableQuantity = stockItems.quantity;
+      }
 
       if (availableQuantity <= (comp.treshold ?? 0)) {
         lowComponents.push({
@@ -2953,8 +2960,15 @@ export async function checkSensorProductionCapability(
       const totalNeeded =
         sensorComponent.requiredQuantity * sensorsToManufacture;
 
-      const availableStock =
-        sensorComponent.component.stockItems[0]?.quantity || 0;
+      // Safely extract available stock – handle both array and single object
+      const stockItems = sensorComponent.component.stockItems;
+      let availableStock = 0;
+      if (Array.isArray(stockItems)) {
+        availableStock = stockItems[0]?.quantity ?? 0;
+      } else if (stockItems) {
+        availableStock = stockItems.quantity;
+      }
+
       const maxWithThisComponent = Math.floor(
         availableStock / sensorComponent.requiredQuantity,
       );
