@@ -2132,11 +2132,6 @@ export async function releaseDeviceFromOrder(
   }
 }
 
-// =====================================
-// NOVE HIERARHIČNE FUNKCIJE ZA PRODUCTION LIST
-// =====================================
-
-// Nivo 1: Grupiraj po DeviceType
 export async function getProductionHierarchy() {
   try {
     const deviceTypes = await prisma.productionList.groupBy({
@@ -2256,12 +2251,20 @@ export async function getSensorProductionCapacity() {
         sensor.components.forEach((sensorComponent) => {
           const component = sensorComponent.component;
           const requiredQuantity = sensorComponent.requiredQuantity;
+          if (component.stockItems == null) {
+            return 0;
+          }
 
-          // Seštej vso razpoložljivo zalogo te komponente
-          const totalAvailable = component.stockItems.reduce(
-            (sum, stock) => sum + stock.quantity,
-            0,
-          );
+          const stockItems = component.stockItems;
+          let totalAvailable = 0;
+          if (Array.isArray(stockItems)) {
+            totalAvailable = stockItems.reduce(
+              (sum, stock) => sum + stock.quantity,
+              0,
+            );
+          } else if (stockItems) {
+            totalAvailable = stockItems.quantity;
+          }
 
           // Izračunaj koliko senzorjev lahko sestavimo s to komponento
           const possibleWithThisComponent = Math.floor(
@@ -2613,7 +2616,9 @@ export async function getLowComponents() {
     }> = [];
 
     for (const comp of componentsWithStock) {
-      // Since componentId is unique in ComponentStock, there should be only one stock item
+      if (comp.stockItems == null) {
+        continue;
+      }
       const stockItem = comp.stockItems[0];
       const availableQuantity = stockItem?.quantity ?? 0;
 
@@ -2947,6 +2952,7 @@ export async function checkSensorProductionCapability(
     for (const sensorComponent of sensor.components) {
       const totalNeeded =
         sensorComponent.requiredQuantity * sensorsToManufacture;
+
       const availableStock =
         sensorComponent.component.stockItems[0]?.quantity || 0;
       const maxWithThisComponent = Math.floor(
