@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// / auth 
+model User {
+  id            Int           @id @default(autoincrement())
+  googleId      String        @unique
+  email         String        @unique
+  name          String
+  image         String        @map("picture")
+  role          String?
+  emailVerified Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt // <-- preveri to vrstico natančno
+  Mailing       Mailing?
+  session       Session[]
+  accounts      Account[]
+  GoogleTokens  GoogleTokens?
+
+  @@index([googleId], map: "google_id_index")
+}
+
+model Mailing {
+  id                     Int       @id @default(autoincrement())
+  userId                 Int       @unique
+  Date_of_monthly_report Int?
+  isSubscribed           Boolean   @default(true)
+  dayOfMonth             Int       @default(1)
+  subject                String?   @default("Monthly Inventory Report - {date}")
+  includeReportUrl       Boolean   @default(true)
+  lastSentAt             DateTime?
+  user                   User      @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "mailing_user_id_index")
+  @@index([Date_of_monthly_report], map: "mailing_date_index")
+  @@index([dayOfMonth, isSubscribed], map: "mailing_schedule_index")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique // NOVO — Better Auth to rabi
+  userId    Int
+  expiresAt DateTime
+  ipAddress String? // NOVO
+  userAgent String? // NOVO
+  createdAt DateTime @default(now()) // NOVO
+  updatedAt DateTime @updatedAt // NOVO
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                Int
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GoogleTokens {
+  id                          Int      @id @default(autoincrement())
+  userId                      Int      @unique
+  accessToken                 String
+  accessTokenExpiresAt        DateTime
+  accessTokenExpiresInSeconds Int
+  idToken                     String
+  refreshToken                String?
+  scopes                      String
+  tokenType                   String
+  data                        Json?
+  hasRefreshToken             Boolean  @default(false)
+  hasScopes                   Boolean  @default(false)
+  user                        User     @relation(fields: [userId], references: [id])
+
+  @@map("google_tokens")
+}
+
+/// /  ferma
+model Senzor {
+  id             Int               @id @default(autoincrement())
+  sensorName     String
+  familyId       Int
+  productId      Int
+  pricePerItem   Int?
+  photograph     String?
+  payloadDecoder String?
+  decoder        Json?
+  zpl            String?
+  description    String?
+  orderItems     OrderItem[]
+  sales          Sale[]
+  components     SenzorComponent[]
+  stockItems     SenzorStock[]
+}
+
+model Component {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
+  description     String?
+  Component_price Float?
+  treshold        Int?
+  stockItems      ComponentStock?
+  senzorComponent SenzorComponent[]
+}
+
+model SenzorComponent {
+  id               Int       @id @default(autoincrement())
+  senzorId         Int
+  componentId      Int
+  requiredQuantity Int       @default(1)
+  component        Component @relation(fields: [componentId], references: [id])
+  senzor           Senzor    @relation(fields: [senzorId], references: [id])
+
+  @@unique([senzorId, componentId])
+}
+
+model SenzorStock {
+  id                   Int             @id @default(autoincrement())
+  senzorId             Int
+  quantity             Int
+  location             String
+  frequency            String?
+  productionBatch      Int?
+  lastUpdated          DateTime        @default(now())
+  category             String?
+  productionListId     Int?
+  productionListDevEUI String?
+  logs                 InventoryLog[]
+  productionList       ProductionList? @relation(fields: [productionListDevEUI], references: [DevEUI])
+  senzor               Senzor          @relation(fields: [senzorId], references: [id])
+}
+
+model ComponentStock {
+  id             Int            @id @default(autoincrement())
+  componentId    Int            @unique
+  quantity       Int
+  location       String
+  lastUpdated    DateTime       @default(now())
+  supplier       String?
+  email          String?
+  phone          String?
+  category       String?
+  required       Boolean        @default(true)
+  invoiceFileKey String?
+  invoiceId      Int?
+  component      Component      @relation(fields: [componentId], references: [id])
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  logs           InventoryLog[]
+}
+
+model Invoice {
+  id              Int              @id @default(autoincrement())
+  invoiceNumber   String           @unique
+  uploadDate      DateTime         @default(now())
+  supplier        String
+  amount          Float?
+  filename        String?
+  fileData        Bytes?
+  componentStocks ComponentStock[]
+  logs            InventoryLog[]
+}
+
+model InventoryLog {
+  id               Int             @id @default(autoincrement())
+  timestamp        DateTime        @default(now())
+  itemType         String
+  itemName         String
+  change           Int
+  reason           String
+  user             String
+  details          String?
+  invoiceId        Int?
+  senzorStockId    Int?
+  componentStockId Int?
+  componentStock   ComponentStock? @relation(fields: [componentStockId], references: [id])
+  invoice          Invoice?        @relation(fields: [invoiceId], references: [id])
+  senzorStock      SenzorStock?    @relation(fields: [senzorStockId], references: [id])
+}
+
+model Sale {
+  id           Int      @id @default(autoincrement())
+  senzorId     Int
+  quantity     Int
+  saleDate     DateTime
+  price        Float
+  customerName String
+  senzor       Senzor   @relation(fields: [senzorId], references: [id])
+}
+
+model Order {
+  id              Int              @id @default(autoincrement())
+  orderName       String
+  assemblier      String?
+  customerName    String
+  street          String
+  city            String
+  postalCode      String
+  country         String
+  frequency       String
+  date            String
+  description     String
+  status          OrderStatus      @default(Pending)
+  shippingCost    Float
+  receiptUrl      String?
+  priority        String
+  orderDate       DateTime         @default(now())
+  items           OrderItem[]
+  productionLists ProductionList[]
+}
+
+model OrderItem {
+  id       Int    @id @default(autoincrement())
+  orderId  Int
+  sensorId Int
+  quantity Int
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sensor   Senzor @relation(fields: [sensorId], references: [id])
+
+  @@unique([orderId, sensorId])
+}
+
+model ProductionList {
+  id                Int           @id @default(autoincrement())
+  orderId           Int?
+  DeviceType        String?
+  DevEUI            String?       @unique
+  AppEUI            String?
+  AppKey            String?
+  FrequencyRegion   String?
+  SubBands          String?
+  HWVersion         String?
+  FWVersion         String?
+  CustomFWVersion   String?
+  SendPeriod        String?
+  ACK               String?
+  MovementThreshold String?
+  DateCreated       DateTime      @default(now())
+  Batch             String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  senzorStocks      SenzorStock[]
+}
+
+enum OrderStatus {
+  Pending
+  Taken
+  Shipped
+  Arrived
+}
+
+//DATABASE_URL="postgresql://postgres.hxjeqnkpcwcavnvyuugq:NImda14.12!@@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"

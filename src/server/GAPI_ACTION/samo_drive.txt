@@ -1,0 +1,269 @@
+"use server"
+import { auth } from "~/server/auth";
+import { OAuth2Client } from "google-auth-library";
+import { google } from "googleapis";
+
+export async function createFolder() {
+    const session = await auth();
+    console.log({ access_token: session?.user.token });
+    const client = new OAuth2Client({});
+
+
+    client.setCredentials({
+        access_token: session?.user.token,
+    });
+
+    const tokenInfo = await client.getTokenInfo(session?.user.token!);
+
+
+    const service = google.drive({ version: 'v3', auth: client as any });
+    const fileMetadata = {
+        name: 'Invoices',
+        mimeType: 'application/vnd.google-apps.folder',
+    };
+    try {
+        const file = await service.files.create({
+            requestBody: fileMetadata,
+            fields: 'id',
+        });
+        console.log('Folder Id:', file.data.id);
+        return file.data.id;
+    } catch (err) {
+        console.log(err);
+
+        throw err;
+    }
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+async function createSpreadsheet(client: OAuth2Client, folderId: string | null | undefined, customer_name: string, order_number: string) {
+    const service = google.drive({ version: 'v3', auth: client as any });
+    const sheets = google.sheets({ version: 'v4', auth: client as any });
+
+    const fileMetadata = {
+        name: 'Order ' + order_number + "-" + "Device list",
+        parents: folderId ? [folderId] : undefined,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+    };
+
+    try {
+        const file = await service.files.create({
+            requestBody: fileMetadata,
+            media: {},
+            fields: 'id',
+        });
+        console.log('Spreadsheet Id:', file.data.id);
+
+        // Adding default data to the spreadsheet
+        const spreadsheetId = file.data.id;
+
+        const data = [
+            { range: 'A3', values: [['Customer Name:']] },
+            { range: 'B3', values: [[customer_name]] },
+            { range: 'A4', values: [['Order No:']] },
+            { range: 'B4', values: [[order_number]] },
+            { range: 'A5', values: [['Date of production:']] },
+            { range: 'B5', values: [['31.07.2024']] },
+            { range: 'A6', values: [['Fulfilled by:']] },
+            { range: 'B6', values: [['Anže Repše']] },
+            { range: 'A8', values: [['Device Type']] },
+            { range: 'B8', values: [['DevEUI']] },
+            { range: 'C8', values: [['AppEUI']] },
+            { range: 'D8', values: [['AppKey']] },
+            { range: 'E8', values: [['Frequency Region']] },
+            { range: 'F8', values: [['Sub Bands']] },
+            { range: 'G8', values: [['HW Version']] },
+            { range: 'H8', values: [['FW Version']] },
+            { range: 'I8', values: [['Custom FW Version']] },
+            { range: 'J8', values: [['Send Period']] },
+            { range: 'K8', values: [['ACK']] },
+            { range: 'L8', values: [['Movement Treshold']] }
+        ];
+
+        const requests = data.map(item => ({
+            range: item.range,
+            values: item.values,
+        }));
+
+        await sheets.spreadsheets.values.batchUpdate({
+
+            requestBody: {
+                valueInputOption: 'USER_ENTERED',
+                data: requests,
+            },
+        });
+
+        return spreadsheetId;
+
+    } catch (err) {
+        console.error("Google spreadsheet error", err);
+        throw err;
+    }
+}
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+async function createSpreadsheet(client: OAuth2Client, folderId: string | null | undefined, customer_name: string, order_number: string, currentTime: Date, name: string) {
+    const service = google.drive({ version: 'v3', auth: client as any });
+    const sheets = google.sheets({ version: 'v4', auth: client as any });
+
+    const fileMetadata = {
+        name: 'Order ' + order_number + "-" + "Device list",
+        parents: folderId ? [folderId] : undefined,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+    };
+
+    try {
+        const file = await service.files.create({
+            requestBody: fileMetadata,
+            media: {},
+            fields: 'id',
+        });
+        console.log('Spreadsheet Id:', file.data.id);
+
+        const spreadsheetId = file.data.id;
+        const time = currentTime.toISOString().split('T')[0];
+
+        const data = [
+            { range: 'A3', values: [['Customer Name:']] },
+            { range: 'B3', values: [[customer_name]] },
+            { range: 'A4', values: [['Order No:']] },
+            { range: 'B4', values: [[order_number]] },
+            { range: 'A5', values: [['Date of production:']] },
+            { range: 'B5', values: [[time]] },
+            { range: 'A7', values: [['Fulfilled by:']] },
+            { range: 'B7', values: [[name]] },
+            { range: 'A9', values: [['Device Type']] },
+            { range: 'B9', values: [['DevEUI']] },
+            { range: 'C9', values: [['AppEUI']] },
+            { range: 'D9', values: [['AppKey']] },
+            { range: 'E9', values: [['Frequency Region']] },
+            { range: 'F9', values: [['Sub Bands']] },
+            { range: 'G9', values: [['HW Version']] },
+            { range: 'H9', values: [['FW Version']] },
+            { range: 'I9', values: [['Custom FW Version']] },
+            { range: 'J9', values: [['Send Period']] },
+            { range: 'K9', values: [['ACK']] },
+            { range: 'L9', values: [['Movement Threshold']] }
+        ];
+
+        const requests = data.map(item => ({
+            range: item.range,
+            values: item.values,
+        }));
+
+        // Insert data into the spreadsheet
+        await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: spreadsheetId !== null ? spreadsheetId : undefined,
+            requestBody: {
+                valueInputOption: 'USER_ENTERED',
+                data: requests,
+            },
+        });
+
+        const boldRequests = [
+            'B3', 'B4', 'B5', 'B7', 'A9', 'B9', 'C9', 'D9', 'E9', 'F9', 'G9', 'H9', 'I9', 'J9', 'K9', 'L9',
+        ].map(cell => ({
+            repeatCell: {
+                range: {
+                    sheetId: 0, // Assuming the data is on the first sheet
+                    startRowIndex: parseInt(cell.substring(1)) - 1,
+                    endRowIndex: parseInt(cell.substring(1)),
+                    startColumnIndex: cell.charCodeAt(0) - 65,
+                    endColumnIndex: cell.charCodeAt(0) - 64,
+                },
+                cell: {
+                    userEnteredFormat: {
+                        "horizontalAlignment": "CENTER",
+                        "verticalAlignment": 'MIDDLE',
+                        textFormat: {
+                            bold: true,
+
+
+                        },
+                        backgroundColor: {
+                            red: 0.9,
+                            green: 0.9,
+                            blue: 0.9,
+                        },
+                        borders: {
+                            top: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            bottom: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            left: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            right: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                        },
+                        autoResizeDimensions: {
+                            dimensions: {
+                                sheetId: 0,
+                                dimension: 'COLUMNS',
+                                startIndex: 0,
+                                endIndex: 12,
+                            },
+                        },
+                    },
+                },
+                fields: 'userEnteredFormat.textFormat.bold',
+            },
+        }));
+
+        // Apply background color, borders, and cell alignment to A9:L9
+        boldRequests.push({
+            repeatCell: {
+                range: {
+                    sheetId: 0,
+                    startRowIndex: 8, // Row 9 in zero-indexed
+                    endRowIndex: 9,
+                    startColumnIndex: 0, // Column A in zero-indexed
+                    endColumnIndex: 12, // Column L in zero-indexed
+                },
+                cell: {
+                    userEnteredFormat: {
+                        backgroundColor: {
+                            red: 0.9,
+                            green: 0.9,
+                            blue: 0.9,
+                        },
+                        borders: {
+                            top: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            bottom: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            left: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                            right: { style: 'SOLID', color: { red: 0.5, green: 0.5, blue: 0.5 } },
+                        },
+                        "horizontalAlignment": "CENTER",
+                        "verticalAlignment": 'MIDDLE',
+
+                        textFormat: {
+                            bold: true,
+
+                        },
+                        autoResizeDimensions: {
+                            dimensions: {
+                                sheetId: 0,
+                                dimension: 'COLUMNS',
+                                startIndex: 0,
+                                endIndex: 12,
+                            },
+                        },
+                    },
+                },
+                fields: 'userEnteredFormat(backgroundColor,borders,textFormat)',
+            },
+        });
+
+
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: spreadsheetId !== null ? spreadsheetId : undefined,
+            requestBody: {
+                requests: [...boldRequests],
+            },
+        });
+
+        return spreadsheetId;
+
+    } catch (err) {
+        console.error("Google spreadsheet error", err);
+        throw err;
+    }
+}
