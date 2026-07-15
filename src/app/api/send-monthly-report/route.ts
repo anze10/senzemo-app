@@ -11,10 +11,9 @@ import type { Mailing } from "@prisma/client";
 
 type MailingWithUser = Mailing & { user: { email: string; name?: string } };
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST() {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const today = new Date();
     const dayOfTheMonth = today.getDate();
 
