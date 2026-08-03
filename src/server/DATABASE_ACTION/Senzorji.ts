@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "../LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "./prisma";
 export interface Senzor {
   id?: number;
   sensorName: string;

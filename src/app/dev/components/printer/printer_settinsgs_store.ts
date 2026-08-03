@@ -1,45 +1,39 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Tiskalnik } from "./printer_server_side";
+import type { Tiskalnik } from "~/types/printer";
 import { createSafeStorage } from "~/lib/storage";
 
-// Define the structure of the PrinterStore state
 interface PrinterStore {
-  printers: Tiskalnik[];
-  selectedPrinter: string;
-  url_server: string;
-  url_connection: string;
-  setPrinters: (
-    printers: Tiskalnik[],
-    url_server: string,
-    url_connection: string,
-  ) => void;
-  setSelectedPrinter: (selectedPrinter: string) => void;
-  getPrinters: () => Tiskalnik[];
+  // seznam OS-registriranih tiskalnikov (USB ali omrežnih, dodanih v CUPS/Windows)
+  localPrinters: string[];
+  // trenutno izbran tiskalnik
+  selectedPrinter: Tiskalnik | null;
+
+  setLocalPrinters: (printers: string[]) => void;
+  selectSystemPrinter: (name: string) => void;
+  selectRawPrinter: (host: string, port?: number) => void;
+  clearSelectedPrinter: () => void;
 }
 
-// Export the Zustand hook for the PrinterStore with persistence
 export const usePrinterStore = create<PrinterStore>()(
   persist(
-    (set, get) => ({
-      printers: [],
-      url_server: "http://localhost:631",
-      url_connection: "http://localhost:631/printers",
-      selectedPrinter: "",
-      setPrinters: (
-        printers: Tiskalnik[],
-        url_server: string,
-        url_connection: string,
-      ) => set({ printers, url_server, url_connection }), // Method to set printers
-      setSelectedPrinter: (selectedPrinter: string) => set({ selectedPrinter }), // Method to set selected printer
-      getPrinters: () => {
-        const state = get();
-        return state.printers;
-      },
+    (set) => ({
+      localPrinters: [],
+      selectedPrinter: null,
+
+      setLocalPrinters: (printers) => set({ localPrinters: printers }),
+
+      selectSystemPrinter: (name) =>
+        set({ selectedPrinter: { type: "system", name } }),
+
+      selectRawPrinter: (host, port) =>
+        set({ selectedPrinter: { type: "raw", host, port } }),
+
+      clearSelectedPrinter: () => set({ selectedPrinter: null }),
     }),
     {
-      name: "printer-store", // Unique name for the store in localStorage
-      storage: createSafeStorage(), // Use safe storage for persistence
+      name: "printer-store",
+      storage: createSafeStorage(),
     },
   ),
 );

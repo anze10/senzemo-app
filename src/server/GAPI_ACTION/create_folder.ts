@@ -1,18 +1,16 @@
 "use server";
 
-import { type Auth, google } from "googleapis";
 import * as stream from "stream";
-import { GetAccessToken } from "src/server/DATABASE_ACTION/GoogleTokenInteractions";
+import { drive, DRIVE_FOLDER_ID, sheets } from "./driveClient";
 import { getCurrentSession } from "src/server/LOGIN_LUCIA_ACTION/session";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
-// Funkcija za ustvarjanje mape
+// Funkcija za ustvarjanje mape - zdaj VEDNO znotraj skupne DRIVE_FOLDER_ID mape,
+// ker Service Account nima lastnega "osebnega" Drive prostora
 async function createFolder(
-  client: Auth.OAuth2Client,
   customer_name: string | null,
   order_number: string | null,
 ) {
-  const service = google.drive({ version: "v3", auth: client });
   const folderName =
     customer_name && order_number
       ? `${customer_name}   ${order_number}`
@@ -21,11 +19,13 @@ async function createFolder(
   const fileMetadata = {
     name: folderName,
     mimeType: "application/vnd.google-apps.folder",
+    parents: [DRIVE_FOLDER_ID],
   };
   try {
-    const file = await service.files.create({
+    const file = await drive.files.create({
       requestBody: fileMetadata,
       fields: "id",
+      supportsAllDrives: true,
     });
     console.log("Folder Id:", file.data.id);
     return file.data.id;
@@ -37,17 +37,12 @@ async function createFolder(
 
 // Funkcija za ustvarjanje preglednice znotraj določene mape
 async function createSpreadsheet(
-  client: Auth.OAuth2Client,
   folderId: string | null | undefined,
   customer_name: string | null,
   order_number: string | null,
   currentTime: Date,
   name: string,
 ) {
-  const service = google.drive({ version: "v3", auth: client });
-
-  const sheets = google.sheets({ version: "v4", auth: client });
-
   const spreadsheetName =
     customer_name && order_number
       ? `Order ${order_number}-Device list`
@@ -55,15 +50,16 @@ async function createSpreadsheet(
 
   const fileMetadata = {
     name: spreadsheetName,
-    parents: folderId ? [folderId] : undefined,
+    parents: folderId ? [folderId] : [DRIVE_FOLDER_ID],
     mimeType: "application/vnd.google-apps.spreadsheet",
   };
 
   try {
-    const file = await service.files.create({
+    const file = await drive.files.create({
       requestBody: fileMetadata,
       media: {},
       fields: "id",
+      supportsAllDrives: true,
     });
     console.log("Spreadsheet Id:", file.data.id);
 
@@ -98,7 +94,6 @@ async function createSpreadsheet(
       values: item.values,
     }));
 
-    // Insert data into the spreadsheet
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: spreadsheetId !== null ? spreadsheetId : undefined,
       requestBody: {
@@ -107,7 +102,6 @@ async function createSpreadsheet(
       },
     });
 
-    // Bold formatting for specific cells without background color and right alignment
     const boldRightAlignRequests = ["B3", "B4", "B5", "B7"].map((cell) => ({
       repeatCell: {
         range: {
@@ -122,45 +116,21 @@ async function createSpreadsheet(
             textFormat: {
               bold: true,
             },
-            horizontalAlignment: "RIGHT", // Right-align text
+            horizontalAlignment: "RIGHT",
           },
         },
         fields: "userEnteredFormat(textFormat,horizontalAlignment)",
       },
     }));
-    // const overlapcel = {
-    //   updateCells: {
-    //     range: {
-    //       sheetId: 0, // Assuming this is the first sheet, update the sheetId if necessary
-    //       startRowIndex: 2, // B3 is row 3 (0-based index)
-    //       endRowIndex: 3,   // End at the next row
-    //       startColumnIndex: 1, // B is the 2nd column (0-based index)
-    //       endColumnIndex: 2,   // End at the next column
-    //     },
-    //     rows: [
-    //       {
-    //         values: [
-    //           {
-    //             userEnteredFormat: {
-    //               wrapStrategy: "CLIP", // This will make the text overflow (clip instead of wrap)
-    //             },
-    //           },
-    //         ],
-    //       },
-    //     ],
-    //     fields: "userEnteredFormat.wrapStrategy",
-    //   },
-    // };
 
-    // Bold, background color, and alignment formatting for header row A9:L9
     const headerFormattingRequest = {
       repeatCell: {
         range: {
           sheetId: 0,
-          startRowIndex: 8, // Row 9 in zero-indexed
+          startRowIndex: 8,
           endRowIndex: 9,
-          startColumnIndex: 0, // Column A in zero-indexed
-          endColumnIndex: 12, // Column L in zero-indexed
+          startColumnIndex: 0,
+          endColumnIndex: 12,
         },
         cell: {
           userEnteredFormat: {
@@ -169,8 +139,8 @@ async function createSpreadsheet(
               green: 0.9,
               blue: 0.9,
             },
-            horizontalAlignment: "CENTER", // Center-align horizontally
-            verticalAlignment: "MIDDLE", // Center-align vertically
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
             textFormat: {
               bold: true,
             },
@@ -199,23 +169,21 @@ async function createSpreadsheet(
       },
     };
 
-    // Manually resize columns to fit content
     const resizeColumnsRequests = {
       updateDimensionProperties: {
         range: {
           sheetId: 0,
           dimension: "COLUMNS",
-          startIndex: 0, // Start at column A
-          endIndex: 12, // End at column L
+          startIndex: 0,
+          endIndex: 12,
         },
         properties: {
-          pixelSize: 150, // Set a specific pixel width for each column
+          pixelSize: 150,
         },
         fields: "pixelSize",
       },
     };
 
-    // Insert image into cells A1, A2, B1, B2
     const mergeCellsRequest = {
       mergeCells: {
         range: {
@@ -232,10 +200,10 @@ async function createSpreadsheet(
       repeatCell: {
         range: {
           sheetId: 0,
-          startRowIndex: 0, // Start at row 0 (A1)
-          endRowIndex: 2, // End at row 2 (B2)
-          startColumnIndex: 0, // Start at column A
-          endColumnIndex: 2, // End at column B
+          startRowIndex: 0,
+          endRowIndex: 2,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
         },
         cell: {
           userEnteredFormat: {
@@ -246,15 +214,14 @@ async function createSpreadsheet(
         fields: "userEnteredFormat(horizontalAlignment,verticalAlignment)",
       },
     };
-    // Insert image into merged cells A1:B2
     const imageRequests = {
       updateCells: {
         range: {
           sheetId: 0,
-          startRowIndex: 0, // A1 starts at row 0
-          endRowIndex: 2, // B2 ends at row 2 (zero-indexed)
-          startColumnIndex: 0, // Column A
-          endColumnIndex: 2, // Column B
+          startRowIndex: 0,
+          endRowIndex: 2,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
         },
         rows: [
           {
@@ -267,7 +234,6 @@ async function createSpreadsheet(
             ],
           },
         ],
-
         fields: "userEnteredValue",
       },
     };
@@ -277,7 +243,6 @@ async function createSpreadsheet(
       requestBody: {
         requests: [
           ...boldRightAlignRequests,
-          // overlapcel,
           headerFormattingRequest,
           resizeColumnsRequests,
           mergeCellsRequest,
@@ -293,22 +258,19 @@ async function createSpreadsheet(
     throw err;
   }
 }
+
 async function insertIntoSpreadsheet(
-  client: Auth.OAuth2Client,
   spreadsheetId: string,
   newRow: string[],
 ): Promise<void> {
-  const sheets = google.sheets({ version: "v4", auth: client });
-
   try {
-    // Fetch current data from the spreadsheet to determine the next empty row
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
-      range: "A9:A", // Check starting from row 8
+      range: "A9:A",
     });
 
     const rows = response.data.values ?? [];
-    const nextRow = rows.length + 9; // Calculate the next available row
+    const nextRow = rows.length + 9;
 
     const data = [
       {
@@ -317,7 +279,6 @@ async function insertIntoSpreadsheet(
       },
     ];
 
-    // Insert new row into the spreadsheet
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: spreadsheetId,
       requestBody: {
@@ -328,17 +289,16 @@ async function insertIntoSpreadsheet(
 
     console.log(`Inserted new row at row ${nextRow}`);
 
-    // Resize columns (handled in a separate call)
     const resizeColumnsRequests = {
       updateDimensionProperties: {
         range: {
           sheetId: 0,
           dimension: "COLUMNS",
-          startIndex: 0, // Start at column A
-          endIndex: 12, // End at column L
+          startIndex: 0,
+          endIndex: 12,
         },
         properties: {
-          pixelSize: 150, // Set a specific pixel width for each column
+          pixelSize: 150,
         },
         fields: "pixelSize",
       },
@@ -347,10 +307,10 @@ async function insertIntoSpreadsheet(
       repeatCell: {
         range: {
           sheetId: 0,
-          startRowIndex: 9, // Start at row 0 (A1)
-          endRowIndex: nextRow, // End at row 2 (B2)
-          startColumnIndex: 0, // Start at column A
-          endColumnIndex: 12, // End at column B
+          startRowIndex: 9,
+          endRowIndex: nextRow,
+          startColumnIndex: 0,
+          endColumnIndex: 12,
         },
         cell: {
           userEnteredFormat: {
@@ -362,7 +322,6 @@ async function insertIntoSpreadsheet(
       },
     };
 
-    // Perform the column resizing operation
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
       requestBody: {
@@ -376,31 +335,30 @@ async function insertIntoSpreadsheet(
 }
 
 async function createSpreadsheetCsv(
-  client: Auth.OAuth2Client,
   folderId: string | null | undefined,
   order_number: string | null,
 ) {
-  const service = google.drive({ version: "v3", auth: client });
   const csvName = order_number
     ? `Order ${order_number}-TTN import.csv`
     : `Stock Inventory-TTN import ${new Date().toISOString().split("T")[0]}.csv`;
 
   const fileMetadata = {
     name: csvName,
-    parents: folderId ? [folderId] : undefined,
+    parents: folderId ? [folderId] : [DRIVE_FOLDER_ID],
     mimeType: "text/csv",
   };
 
   const media = {
     mimeType: "text/csv",
-    body: "id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id\n", // Initial CSV content (headers)
+    body: "id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id\n",
   };
 
   try {
-    const file = await service.files.create({
+    const file = await drive.files.create({
       requestBody: fileMetadata,
-      media: media, // Include this if you want to add initial content
+      media: media,
       fields: "id",
+      supportsAllDrives: true,
     });
     console.log("Spreadsheet Id:", file.data.id);
     return file.data.id;
@@ -411,12 +369,9 @@ async function createSpreadsheetCsv(
 }
 
 async function insertIntoCsvFile(
-  client: Auth.OAuth2Client,
   fileId: string,
   newRow: string[],
 ): Promise<void> {
-  const drive = google.drive({ version: "v3", auth: client });
-
   try {
     const newRowString = newRow.join(",") + "\n";
 
@@ -424,6 +379,7 @@ async function insertIntoCsvFile(
       {
         fileId: fileId,
         alt: "media",
+        supportsAllDrives: true,
       },
       { responseType: "stream" },
     );
@@ -447,6 +403,7 @@ async function insertIntoCsvFile(
     await drive.files.update({
       fileId: fileId,
       media: media,
+      supportsAllDrives: true,
     });
 
     console.log("File successfully updated with new data.");
@@ -455,44 +412,30 @@ async function insertIntoCsvFile(
     throw error;
   }
 }
-// Glavna funkcija za izvajanje zgornjih korakov
+
+// Glavna funkcija - zdaj brez per-user OAuth tokena, uporablja skupen
+// Service Account. `getCurrentSession()` obdržimo SAMO za pridobitev
+// imena uporabnika (za "Fulfilled by" polje), ne za avtentikacijo proti Google-u.
 export async function createFolderAndSpreadsheet(
   customer_name: string | null,
   order_number: string | null,
 ) {
   const session = await getCurrentSession();
-  if (!session.session?.userId) {
-    throw new Error("User ID is undefined");
-  }
-  const token = await GetAccessToken(session.session.userId);
   const currentTime = new Date();
-  //   console.log({ access_token: session?.user.token });
-
-  // const google_client = new google.auth.OAuth2();
-  const client = new google.auth.OAuth2() as unknown as Auth.OAuth2Client;
-
-  client.setCredentials({
-    access_token: token,
-  });
-
-  if (!token) throw new Error("No access token found");
-  const name = session?.user.name;
+  const name = session?.user?.name ?? "Neznano";
 
   try {
-    // Ustvarimo mapo
-    const folderId = await createFolder(client, customer_name, order_number);
+    const folderId = await createFolder(customer_name, order_number);
 
-    // Ustvarimo preglednico znotraj te mape
     const spreadsheetId = await createSpreadsheet(
-      client,
       folderId,
       customer_name,
       order_number,
       currentTime,
-      name ?? "Neznano",
+      name,
     );
 
-    const fileId = await createSpreadsheetCsv(client, folderId, order_number);
+    const fileId = await createSpreadsheetCsv(folderId, order_number);
 
     if (!folderId || !spreadsheetId || !fileId) {
       throw new Error("Error creating folder, spreadsheet or csv file");
@@ -505,7 +448,6 @@ export async function createFolderAndSpreadsheet(
   }
 }
 
-// New function to create documents AND insert sensor data
 export async function createFolderAndSpreadsheetWithData(
   customer_name: string | null,
   order_number: string | null,
@@ -517,14 +459,11 @@ export async function createFolderAndSpreadsheetWithData(
   }>,
 ) {
   try {
-    // First create the folder and documents
     const { folderId, spreadsheetId, fileId } =
       await createFolderAndSpreadsheet(customer_name, order_number);
 
-    // Get detailed sensor data from database for each device
     for (const device of devices) {
       if (device.devEUI && device.deviceType) {
-        // Fetch detailed sensor data from database
         const sensorData = await prisma.productionList.findUnique({
           where: { DevEUI: device.devEUI },
           include: {
@@ -542,10 +481,7 @@ export async function createFolderAndSpreadsheetWithData(
           continue;
         }
 
-        // Use actual data from ProductionList table
         const devEUI = validateAndFormatEUI(sensorData.DevEUI, "dev");
-        // Create a TTN-compatible device ID instead of using database ID
-        // TTN device IDs should be lowercase alphanumeric with hyphens, similar to model_id format
         const deviceId = `device-${devEUI.toLowerCase()}`;
         const appEUI = validateAndFormatEUI(
           sensorData.AppEUI || generateJoinEUI(devEUI),
@@ -564,38 +500,28 @@ export async function createFolderAndSpreadsheetWithData(
         const ack = sensorData.ACK || "false";
         const movementThreshold = sensorData.MovementThreshold || "10";
 
-        // Map frequency to TTN format for CSV
         const frequencyPlan = mapFrequencyToTTNFormat(frequencyRegion);
-
-        // Sanitize fields to match TTN import requirements
-        // TTN requires model_id and brand_id to follow regex: ^[a-z0-9](?:[-]?[a-z0-9]){2,}$
         const sanitizedModelId = sanitizeModelId(deviceType);
         const sanitizedBrandId = sanitizeBrandId("senzemo");
-
-        // Build device name in format: {model_id}-{dev_eui}
         const deviceName = `${sanitizedModelId}-${devEUI}`;
+        const ttnFirmwareVersion = "";
 
-        // Use empty firmware version to avoid TTN device repository lookup issues
-        const ttnFirmwareVersion = ""; // Empty to prevent "firmware_version_not_found" errors
-
-        // CSV row format: id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id
         const csvRow = [
           deviceId,
           devEUI,
-          appEUI, // join_eui is the same as AppEUI
-          deviceName, // Use format: {model_id}-{dev_eui}
+          appEUI,
+          deviceName,
           frequencyPlan,
-          "1.0.3", // lorawan_version
-          "1.0.3-a", // lorawan_phy_version
+          "1.0.3",
+          "1.0.3-a",
           appKey,
-          sanitizedBrandId, // Use sanitized brand_id
-          sanitizedModelId, // Use sanitized model_id instead of deviceType
+          sanitizedBrandId,
+          sanitizedModelId,
           hwVersion,
-          ttnFirmwareVersion, // Empty firmware version to avoid repository lookup
+          ttnFirmwareVersion,
           frequencyPlan,
         ];
 
-        // Spreadsheet row format: Device Type, DevEUI, AppEUI, AppKey, Frequency Region, Sub Bands, HW Version, FW Version, Custom FW Version, Send Period, ACK, Movement Threshold
         const spreadsheetRow = [
           deviceType,
           devEUI,
@@ -611,7 +537,6 @@ export async function createFolderAndSpreadsheetWithData(
           movementThreshold,
         ];
 
-        // Insert into both files
         await insert(fileId, csvRow, spreadsheetId, spreadsheetRow);
       }
     }
@@ -623,18 +548,12 @@ export async function createFolderAndSpreadsheetWithData(
   }
 }
 
-// Helper functions to generate or map sensor data
 function generateJoinEUI(devEUI: string): string {
-  // Generate a consistent JoinEUI based on DevEUI
-  // You might want to store this in the database instead
   if (!devEUI) return "70B3D57ED0000000";
-
-  // Create a hash-based JoinEUI using the DevEUI
   const hash = devEUI.split("").reduce((a, b) => {
     a = (a << 5) - a + b.charCodeAt(0);
     return a & a;
   }, 0);
-
   const hashedSuffix = Math.abs(hash)
     .toString(16)
     .padStart(8, "0")
@@ -643,8 +562,6 @@ function generateJoinEUI(devEUI: string): string {
 }
 
 function generateAppKey(devEUI: string): string {
-  // Generate a consistent AppKey based on DevEUI
-  // You might want to store this in the database instead
   const hash = devEUI.split("").reduce((a, b) => {
     a = (a << 5) - a + b.charCodeAt(0);
     return a & a;
@@ -654,7 +571,6 @@ function generateAppKey(devEUI: string): string {
 
 function mapFrequencyToTTNFormat(frequency: string | null): string {
   if (!frequency) return "EU_863_870";
-
   switch (frequency) {
     case "EU868":
       return "EU_863_870";
@@ -674,52 +590,38 @@ function mapFrequencyToTTNFormat(frequency: string | null): string {
 
 function sanitizeModelId(deviceType: string | null): string {
   if (!deviceType) return "senzemo-device";
-
-  // Convert to lowercase and replace spaces and invalid characters with hyphens
   let modelId = deviceType
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-") // Replace any non-alphanumeric character (except hyphen) with hyphen
-    .replace(/-+/g, "-") // Replace multiple consecutive hyphens with single hyphen
-    .replace(/^-+|-+$/g, ""); // Remove leading and trailing hyphens
-
-  // Ensure it starts with alphanumeric character
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
   if (modelId.length === 0 || !/^[a-z0-9]/.test(modelId)) {
     modelId = "senzemo-" + modelId;
   }
-
-  // Ensure minimum length of 3 characters
   if (modelId.length < 3) {
     modelId = modelId + "-dev";
   }
-
-  // Ensure it doesn't end with hyphen
   if (modelId.endsWith("-")) {
     modelId = modelId.slice(0, -1);
   }
-
   return modelId;
 }
 
 function sanitizeBrandId(brandName: string): string {
-  // TTN brand_id also follows similar rules
   let brandId = brandName
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
-
   if (brandId.length === 0 || !/^[a-z0-9]/.test(brandId)) {
     brandId = "senzemo";
   }
-
   if (brandId.length < 3) {
     brandId = "senzemo";
   }
-
   if (brandId.endsWith("-")) {
     brandId = brandId.slice(0, -1);
   }
-
   return brandId;
 }
 
@@ -728,25 +630,14 @@ function validateAndFormatEUI(
   type: "dev" | "join",
 ): string {
   if (!eui) {
-    // Generate a default EUI if none provided
-    if (type === "dev") {
-      return "0000000000000000";
-    } else {
-      return "70B3D57ED0000000";
-    }
+    return type === "dev" ? "0000000000000000" : "70B3D57ED0000000";
   }
-
-  // Remove any non-hex characters and convert to uppercase
   const cleanEUI = eui.replace(/[^a-fA-F0-9]/g, "").toUpperCase();
-
-  // Ensure it's exactly 16 characters (8 bytes)
   if (cleanEUI.length === 16) {
     return cleanEUI;
   } else if (cleanEUI.length < 16) {
-    // Pad with zeros
     return cleanEUI.padStart(16, "0");
   } else {
-    // Truncate to 16 characters
     return cleanEUI.substring(0, 16);
   }
 }
@@ -755,48 +646,27 @@ function validateAndFormatAppKey(appKey: string | null): string {
   if (!appKey) {
     return "00000000000000000000000000000000";
   }
-
-  // Remove any non-hex characters and convert to uppercase
   const cleanKey = appKey.replace(/[^a-fA-F0-9]/g, "").toUpperCase();
-
-  // Ensure it's exactly 32 characters (16 bytes)
   if (cleanKey.length === 32) {
     return cleanKey;
   } else if (cleanKey.length < 32) {
-    // Pad with zeros
     return cleanKey.padStart(32, "0");
   } else {
-    // Truncate to 32 characters
     return cleanKey.substring(0, 32);
   }
 }
 
+// Zdaj brez per-user tokena - Service Account je skupen za vse klice
 export async function insert(
   fileId: string,
   newRow: string[],
   spreadsheetId: string,
   nerEXE: string[],
 ) {
-  const session = await getCurrentSession();
-  if (!session.session?.userId) {
-    throw new Error("User ID is undefined");
-  }
-  const token = await GetAccessToken(session.session.userId);
-  console.log({ access_token: token });
-  const client = new google.auth.OAuth2() as unknown as Auth.OAuth2Client;
-
-  client.setCredentials({
-    access_token: token,
-  });
-
-  if (!token) throw new Error("No access token");
-
-  //const tokenInfo = await client.getTokenInfo(session?.user.token);
-  //console.log(tokenInfo);
   console.log("Inserting new row into the spreadsheet...");
   try {
-    await insertIntoCsvFile(client, fileId, newRow);
-    await insertIntoSpreadsheet(client, spreadsheetId, nerEXE);
+    await insertIntoCsvFile(fileId, newRow);
+    await insertIntoSpreadsheet(spreadsheetId, nerEXE);
   } catch (err) {
     console.error(err);
     throw err;

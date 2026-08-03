@@ -32,7 +32,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CreateOrder, GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
 import { InventorySettings } from "./InventorySettings";
-import { resetSensorStore } from "~/app/dev/components/SensorStore";
+//import { resetSensorStore } from "~/app/dev/components/SensorStore";
 
 type DeviceType = {
   name: string;

@@ -1,7 +1,12 @@
 {
-  "name": "autizem",
-  "version": "0.1.0",
+  "name": "production_app",
+  "version": "1.0.0",
+  "desktopName": "Production app",
   "private": true,
+  "author": {
+    "name": "Senzemo",
+    "email": "anze.repse@senzemo.com"
+  },
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -15,9 +20,11 @@
     "preview": "next build && next start",
     "typecheck": "tsc --noEmit",
     "deps": "ncu --interactive --format group",
-    "postinstall": "prisma generate",
-    "electron:compile": "tsc -p electron/tsconfig.json",
-    "electron:dev": "concurrently -k \"bun run dev\" \"bun run electron:compile --watch\" \"wait-on http://localhost:3000 dist-electron/main.js && electron .\"",
+    "postinstall": "prisma generate && electron-rebuild",
+    "electron:rebuild": "electron-rebuild",
+    "electron:compile": "mkdir -p dist-electron && cp electron/package.json dist-electron/package.json && tsc -p electron/tsconfig.json",
+    "electron:compile:watch": "mkdir -p dist-electron && cp electron/package.json dist-electron/package.json && tsc -p electron/tsconfig.json --watch --preserveWatchOutput",
+    "electron:dev": "concurrently -k \"bun run dev\" \"bun run electron:compile:watch\" \"wait-on http://localhost:3000 dist-electron/main.js && electron .\"",
     "electron:build": "bun run build && bun run electron:compile && electron-builder"
   },
   "dependencies": {
@@ -28,14 +35,13 @@
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "google-auth-library": "^10.9.1",
     "@hookform/resolvers": "^5.1.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.3.1",
     "@mui/material-nextjs": "^7.2.0",
-    "@oslojs/crypto": "^1.0.1",
-    "@oslojs/encoding": "^1.1.0",
-    "@prisma/adapter-pg": "^7.5.0",
-    "@prisma/client": "^7.5.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@radix-ui/react-tabs": "^1.1.12",
     "@react-pdf/renderer": "^4.3.0",
     "@remixicon/react": "^4.6.0",
@@ -47,12 +53,9 @@
     "@types/ipp": "^2.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.18.0",
+    "@types/printer": "^0.4.5",
     "@types/request": "^2.48.12",
-    "arctic": "^3.7.0",
-    "argon2": "^0.43.0",
-    "aws-sdk": "^1.18.0",
     "axios": "^1.10.0",
-    "bcrypt": "^6.0.0",
     "better-auth": "^1.6.23",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -60,20 +63,16 @@
     "deep-equal": "^2.2.3",
     "dotenv": "^17.3.1",
     "framer-motion": "^12.23.5",
-    "from": "^0.1.7",
     "googleapis": "^152.0.0",
     "immer": "^10.1.1",
-    "import": "^0.0.6",
-    "install": "^0.13.0",
     "ipp": "^2.0.1",
     "jsonwebtoken": "^9.0.2",
-    "jwt": "^0.2.0",
     "lucide-react": "^0.525.0",
     "next": "^15.5.20",
     "node-fetch": "^3.3.2",
     "pg": "^8.20.0",
+    "printer": "https://github.com/tojocky/node-printer.git",
     "prisma": "^7.8.0",
-    "prizma": "^0.0.22",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.60.0",
@@ -90,6 +89,9 @@
     "zod-key-parser": "^1.5.5",
     "zustand": "^5.0.6"
   },
+  "overrides": {
+    "google-auth-library": "10.9.1"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.11",
@@ -97,9 +99,11 @@
     "@types/node": "^24",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19",
+    "@types/w3c-web-serial": "^1.0.8",
     "concurrently": "^10.0.3",
     "electron": "^43.1.0",
     "electron-builder": "^26.15.3",
+    "electron-rebuild": "^3.2.9",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "eslint-config-prettier": "^10.1.5",
@@ -113,14 +117,20 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.tvojapodjetje.autizem",
-    "productName": "Autizem",
+    "appId": "com.senzemo.production_app",
+    "productName": "Production app",
+    "asar": false,
     "files": [
-      ".next/**/*",
-      "electron/**/*",
+      "dist-electron/**/*",
       "public/**/*",
       "node_modules/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next",
+        "to": "app/.next"
+      }
     ],
     "directories": {
       "buildResources": "assets"
@@ -130,7 +140,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Office"
+      "category": "Office",
+      "syncDesktopName": true
     }
   }
 }

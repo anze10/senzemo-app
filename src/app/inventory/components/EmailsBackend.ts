@@ -1,5 +1,5 @@
 "use server";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 import type { Mailing } from "@prisma/client";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 import type { EmailSettings } from "./EmailReportManager";
@@ -24,7 +24,7 @@ export async function UpdateOrSetEmailSettings(
     }
 
     await prisma.mailing.upsert({
-      where: { userId: session.user.id },
+      where: { userId: Number(session.user.id) },
       update: {
         isSubscribed: onOff,
         Date_of_monthly_report: day,
@@ -35,7 +35,7 @@ export async function UpdateOrSetEmailSettings(
         Date_of_monthly_report: day,
         subject: subject,
         user: {
-          connect: { id: session.user.id },
+          connect: { id: Number(session.user.id) },
         },
       },
     });
@@ -115,7 +115,7 @@ export async function isCurrentUserEmailEnabled(): Promise<boolean> {
     }
 
     const settings = await prisma.mailing.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: Number(session.user.id) },
       select: { isSubscribed: true },
     });
 
@@ -183,7 +183,7 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
     }
 
     const settings = await prisma.mailing.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: Number(session.user.id) },
       include: {
         user: {
           select: {

@@ -1,11 +1,11 @@
 "use server";
 
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 import type {
   ComponentStockItem,
   LogEntry,
 } from "~/app/inventory/components/InventoryManagement";
-import type { Prisma } from "@prisma/client";
+//import type { Prisma } from "@prisma/client";
 
 //import { getUser } from "src/server/LOGIN_LUCIA_ACTION/lucia"
 
@@ -30,79 +30,77 @@ export async function addSensorToInventory(
   dev_eui: string,
 ) {
   try {
-    const result = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // 1. Check if dev_eui already exists
-        const existingDevEui = await tx.productionList.findUnique({
-          where: { DevEUI: dev_eui },
-        });
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Check if dev_eui already exists
+      const existingDevEui = await tx.productionList.findUnique({
+        where: { DevEUI: dev_eui },
+      });
 
-        if (existingDevEui) {
-          throw new Error(
-            "The provided dev_eui already exists in the ProductionList table.",
-          );
+      if (existingDevEui) {
+        throw new Error(
+          "The provided dev_eui already exists in the ProductionList table.",
+        );
+      }
+
+      // 2. Get sensor information to determine DeviceType if not provided
+      const sensorInfo = await tx.senzor.findUnique({
+        where: { id: sensorId },
+        select: {
+          id: true,
+          sensorName: true,
+          familyId: true,
+          productId: true,
+        },
+      });
+
+      if (!sensorInfo) {
+        throw new Error(`Sensor with ID ${sensorId} not found`);
+      }
+
+      // 3. Determine DeviceType - use provided deviceType or generate from sensor info
+      const finalDeviceType = sensorInfo.sensorName;
+
+      // 4. Map frequency to FrequencyRegion format
+      const mapFrequencyToRegion = (freq: string | null): string => {
+        if (!freq) return "EU868";
+        switch (freq) {
+          case "868 MHz":
+            return "EU868";
+          case "915 MHz":
+            return "US915";
+          case "433 MHz":
+            return "EU433";
+          case "2.4 GHz":
+            return "ISM2400";
+          default:
+            return "EU868";
         }
+      };
 
-        // 2. Get sensor information to determine DeviceType if not provided
-        const sensorInfo = await tx.senzor.findUnique({
-          where: { id: sensorId },
-          select: {
-            id: true,
-            sensorName: true,
-            familyId: true,
-            productId: true,
-          },
-        });
+      // 5. Create the dev_eui in productionList (orderId = null means it's in inventory)
+      const productionDevice = await tx.productionList.create({
+        data: {
+          DevEUI: dev_eui,
+          DeviceType: finalDeviceType,
+          FrequencyRegion: mapFrequencyToRegion(frequency),
+          orderId: null, // Null means it's available in inventory
+        },
+      });
 
-        if (!sensorInfo) {
-          throw new Error(`Sensor with ID ${sensorId} not found`);
-        }
+      // 6. Log inventory addition
+      await tx.inventoryLog.create({
+        data: {
+          itemType: "sensor",
+          itemName: sensorInfo.sensorName,
+          change: quantity,
+          reason: "Proizvodnja",
+          user: "Neznan uporabnik",
+          details: `DevEUI: ${dev_eui} | DeviceType: ${finalDeviceType} | Batch: ${BN}`,
+        },
+      });
 
-        // 3. Determine DeviceType - use provided deviceType or generate from sensor info
-        const finalDeviceType = sensorInfo.sensorName;
-
-        // 4. Map frequency to FrequencyRegion format
-        const mapFrequencyToRegion = (freq: string | null): string => {
-          if (!freq) return "EU868";
-          switch (freq) {
-            case "868 MHz":
-              return "EU868";
-            case "915 MHz":
-              return "US915";
-            case "433 MHz":
-              return "EU433";
-            case "2.4 GHz":
-              return "ISM2400";
-            default:
-              return "EU868";
-          }
-        };
-
-        // 5. Create the dev_eui in productionList (orderId = null means it's in inventory)
-        const productionDevice = await tx.productionList.create({
-          data: {
-            DevEUI: dev_eui,
-            DeviceType: finalDeviceType,
-            FrequencyRegion: mapFrequencyToRegion(frequency),
-            orderId: null, // Null means it's available in inventory
-          },
-        });
-
-        // 6. Log inventory addition
-        await tx.inventoryLog.create({
-          data: {
-            itemType: "sensor",
-            itemName: sensorInfo.sensorName,
-            change: quantity,
-            reason: "Proizvodnja",
-            user: "Neznan uporabnik",
-            details: `DevEUI: ${dev_eui} | DeviceType: ${finalDeviceType} | Batch: ${BN}`,
-          },
-        });
-
-        return productionDevice;
-      },
-    );
+      return productionDevice;
+    });
 
     return result;
   } catch (error) {

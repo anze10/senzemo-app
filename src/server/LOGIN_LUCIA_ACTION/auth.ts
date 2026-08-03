@@ -2,7 +2,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { admin } from "better-auth/plugins";
+import { Resend } from "resend";
 import { prisma } from "src/server/DATABASE_ACTION/prisma";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Better Auth interno povsod predpostavlja, da je userId string (glej
 // https://github.com/better-auth/better-auth/issues/2349 - to je namerno
@@ -64,6 +68,30 @@ export const auth = betterAuth({
     },
   },
 
+  emailAndPassword: {
+    enabled: true,
+    // Onemogoči javno samoregistracijo - samo admin ustvarja uporabnike
+    disableSignUp: true,
+    minPasswordLength: 8,
+    sendResetPassword: async ({ user, url }) => {
+      await resend.emails.send({
+        // Resend-ov vgrajen testni pošiljatelj - deluje TAKOJ, brez verifikacije
+        // lastne domene. Ko bo senzemo.com verificiran v Resend, zamenjaj nazaj
+        // na "Senzemo <noreply@senzemo.com>".
+        from: "Senzemo (test) <onboarding@resend.dev>",
+        to: user.email,
+        subject: "Nastavi geslo za svoj Senzemo račun",
+        html: `
+          <p>Zdravo${user.name ? " " + user.name : ""},</p>
+          <p>Administrator je ustvaril tvoj račun. Klikni spodnjo povezavo, da nastaviš svoje geslo:</p>
+          <p><a href="${url}">Nastavi geslo</a></p>
+          <p>Če te povezave nisi pričakoval, jo lahko ignoriraš.</p>
+        `,
+      });
+    },
+    resetPasswordTokenExpiresIn: 3600 * 24, // 24 ur - dovolj časa da uporabnik ukrepa
+  },
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -88,9 +116,16 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       role: { type: "string", required: false },
-      googleId: { type: "string", required: true, unique: true },
+      // POPRAVLJENO: required: false namesto true - uporabniki, ki jih
+      // admin ustvari preko email/password (brez Googla), nimajo googleId,
+      // in required: true bi povzročil constraint napako pri vsakem
+      // takem createUser klicu.
+      googleId: { type: "string", required: false, unique: true },
     },
   },
 
-  plugins: [nextCookies()], // mora biti zadnji v seznamu pluginov — poskrbi za pravilno nastavljanje cookie-jev iz server akcij
+  plugins: [
+    admin(), // omogoči auth.api.createUser, listUsers, banUser, itd. - MORA biti pred nextCookies
+    nextCookies(), // mora biti zadnji v seznamu pluginov — poskrbi za pravilno nastavljanje cookie-jev iz server akcij
+  ],
 });

@@ -1,7 +1,7 @@
 "use server";
 
 import type { ProductionList } from "@prisma/client";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 export interface ProductionList2 {
   DeviceType: string;

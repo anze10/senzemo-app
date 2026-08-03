@@ -35,7 +35,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Grid } from "@mui/material";
-import { PrintSticker } from "./printer/printer_server_side";
+
 import {
   Box,
   Button,
@@ -51,6 +51,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 //import deepEqual from "deep-equal";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { getZplForSensor } from "src/app/dev/components/Reader/Get_Sensors_database_chace"
 import { RightDecoder } from "./Reader/Get_Sensors_database_chace";
 import { GetSensors } from "~/app/sensors/components/backend";
 import type { Senzor } from "@prisma/client";
@@ -59,6 +60,8 @@ import Printer_settings from "./printer/Printer_settings";
 import { logOut } from "~/server/LOGIN_LUCIA_ACTION/auth-action";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent"; // Konfiguracija za avtomatsko odštevanje komponent
+import { SerialPortPicker } from "src/app/dev/components/Reader/SerialPortPicker";
+//import type { Sensor } from "~/app/parametrs/components/functions";
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
 const getAutoDeductComponents = (): boolean => {
   if (typeof window !== "undefined") {
@@ -115,6 +118,43 @@ export function SensorCheckForm() {
     setAutoDeductComponentsState(enabled);
     setAutoDeductComponents(enabled);
   };
+
+
+
+  // function getZplForSensor(devEui: string): string {
+  //   return ZPL_TEMPLATE.replace(/{{DEV_EUI}}/g, devEui);
+  // }
+
+  async function PrintSticker(
+
+    dev_eui: string,
+    sensors: Senzor[],
+    family_id: number,
+    product_id: number,
+    frequency: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!window.electronAPI) {
+      return {
+        success: false,
+        message: "Tiskanje je na voljo samo v namizni aplikaciji.",
+      };
+    }
+    if (!selectedPrinter) {
+      return { success: false, message: "Tiskalnik ni izbran." };
+    }
+
+    const zpl = getZplForSensor(dev_eui, sensors, family_id, product_id, frequency);
+
+    try {
+      await window.electronAPI.printZpl(selectedPrinter, zpl);
+      return { success: true, message: "Nalepka natisnjena." };
+    } catch (err) {
+      return {
+        success: false,
+        message: `Napaka pri tiskanju: ${(err as Error).message}`,
+      };
+    }
+  }
 
   // Auto-clear USB status messages after 5 seconds
   useEffect(() => {
@@ -592,6 +632,7 @@ export function SensorCheckForm() {
       <AppBar position="static" sx={{ backgroundColor: "#f5f5f5" }}>
         <Container maxWidth={false}>
           <Toolbar disableGutters>
+            <SerialPortPicker />
             {/* <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, color: "black" }} />*/}
             <Typography
               variant="h6"
@@ -701,7 +742,7 @@ export function SensorCheckForm() {
                     // 3. Počakaš da se vse validira (decoder)
                     console.log("3. Validating and finding decoder...");
                     const decoder = RightDecoder(uint_array, sensors);
-
+                    console.log("Decoder found:", decoder);
                     if (!decoder) {
                       setUsbStatus({
                         isConnecting: false,
@@ -798,7 +839,7 @@ export function SensorCheckForm() {
 
               <Tooltip title="Odpri nastavitve">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt="User Avatar" src={session.data?.user?.picture} />
+                  <Avatar alt="User Avatar" src={session.data?.user?.image ?? undefined} />
                 </IconButton>
               </Tooltip>
               <Typography sx={{ ml: 1, color: "black" }}>
@@ -1148,9 +1189,10 @@ export function SensorCheckForm() {
                     try {
                       await PrintSticker(
                         data.dev_eui as string,
+                        sensors ?? [],
                         data.family_id as number,
                         data.product_id as number,
-                        selectedPrinter,
+                        data.frequency_region as string
                       );
                     } catch (printError) {
                       console.error("Error printing sticker:", printError);
@@ -1275,9 +1317,10 @@ export function SensorCheckForm() {
                     try {
                       await PrintSticker(
                         data.dev_eui as string,
+                        sensors ?? [],
                         data.family_id as number,
                         data.product_id as number,
-                        selectedPrinter,
+                        data.frequency_region as string
                       );
                     } catch (printError) {
                       console.error("Error printing sticker:", printError);
@@ -1507,7 +1550,7 @@ export function DynamicFormComponent({
   return (
     <FormControl fullWidth>
       {my_type === "boolean" ? (
-        <Box display="flex" alignItems="center">
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Checkbox
             checked={Boolean(value)}
             onChange={handleChange}

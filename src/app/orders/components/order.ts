@@ -1,5 +1,5 @@
 "use server";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 import type { Order } from "@prisma/client";
 
 export async function GetOrdersFromDB() {

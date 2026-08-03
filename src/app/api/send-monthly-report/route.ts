@@ -6,7 +6,7 @@ import {
   getLowComponents,
 } from "src/app/inventory/components/backent";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "src/server/DATABASE_ACTION/prisma";
 import type { Mailing } from "@prisma/client";
 
 type MailingWithUser = Mailing & { user: { email: string; name?: string } };

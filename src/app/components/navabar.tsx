@@ -41,6 +41,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isAdmin = true;
 
   // Determine active tab based on current pathname
   const getActiveTab = () => {
@@ -53,6 +54,13 @@ export default function Navbar() {
   const handleLogout = () => {
     logOut();
     router.push("/");
+  };
+
+  const handleAdminNavigation = (path: string) => {
+    router.push(path);
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+    }
   };
 
   const handleTabClick = (tab: { id: string; label: string; path: string }) => {
@@ -103,6 +111,32 @@ export default function Navbar() {
               gap: 2,
             }}
           >
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleAdminNavigation("/admin")}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                  }}
+                >
+                  Users
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleAdminNavigation("/senzors")}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                  }}
+                >
+                  Senzorji
+                </Button>
+              </>
+            )}
             <Avatar
               src="/professional-profile-avatar.png"
               alt="Profile"
@@ -161,8 +195,10 @@ export default function Navbar() {
                 >
                   <ListItemText
                     primary={tab.label}
-                    primaryTypographyProps={{
-                      fontWeight: activeTab === tab.id ? 600 : 400,
+                    sx={{
+                      "& .MuiListItemText-primary": {
+                        fontWeight: activeTab === tab.id ? 600 : 400,
+                      },
                     }}
                   />
                 </ListItemButton>
@@ -170,10 +206,39 @@ export default function Navbar() {
             ))}
           </List>
 
+          {isAdmin && (
+            <Stack spacing={1} sx={{ mb: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleAdminNavigation("/admin")}
+                fullWidth
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+              >
+                Users
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleAdminNavigation("/senzors")}
+                fullWidth
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+              >
+                Senzorji
+              </Button>
+            </Stack>
+          )}
+
           <Divider sx={{ my: 2 }} />
 
-          <Stack spacing={2} alignItems="center">
-            <Stack direction="row" spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{ alignItems: "center" }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
               <Avatar
                 src="/professional-profile-avatar.png"
                 alt="Profile"

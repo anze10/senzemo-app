@@ -1,9 +1,16 @@
-// src/server/google/googleOauth.ts
-import { Google } from "arctic";
+import { auth } from "./auth";
 
-const clientId = process.env.GOOGLE_CLIENT_ID!;
-const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-const redirectURI = process.env.GOOGLE_REDIRECT_URI!;
-// npr. "http://localhost:3000/api/auth/callback/google" (isti kot ga uporablja Better Auth)
+export async function GetAccessToken(userId: number): Promise<string> {
+  const { accessToken } = await auth.api.getAccessToken({
+    body: {
+      providerId: "google",
+      userId: userId.toString(), // Better Auth API pričakuje string
+    },
+  });
 
-export const google = new Google(clientId, clientSecret, redirectURI);
+  if (!accessToken) {
+    throw new Error(`No Google access token found for user with ID: ${userId}`);
+  }
+
+  return accessToken;
+}

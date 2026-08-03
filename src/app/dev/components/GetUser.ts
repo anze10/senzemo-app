@@ -1,16 +1,19 @@
-import type { Session } from "lucia";
-import { prisma } from "~/server/LOGIN_LUCIA_ACTION/auth";
+import type { auth } from "src/server/LOGIN_LUCIA_ACTION/auth";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
+
+type Session = typeof auth.$Infer.Session.session;
 
 export async function GetUseFromSession(session: Session) {
   return prisma.user.findUnique({ where: { id: Number(session.userId) } });
 }
+
 export async function getUserFromGoogleId(googleId: string) {
   return prisma.user.findUnique({ where: { googleId } });
 }
 
 interface GoogleData {
   email: string;
-  picture: string;
+  picture: string; // to lahko pustiš, ker Google API vrne polje "picture" - samo mapping spodaj popravi
 }
 
 export async function createUser(
@@ -24,14 +27,14 @@ export async function createUser(
       googleId: googleUserId,
       name: username,
       email: googleData.email,
-      picture: googleData.picture,
+      image: googleData.picture, // <- picture -> image
       role: "user",
     },
     create: {
       googleId: googleUserId,
       name: username,
       email: googleData.email,
-      picture: googleData.picture,
+      image: googleData.picture, // <- picture -> image
       role: "user",
     },
   });
