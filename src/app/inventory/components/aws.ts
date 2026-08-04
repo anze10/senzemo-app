@@ -1,15 +1,6 @@
 "use server";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-
-const b2Client = new S3Client({
-  endpoint: process.env.AWS_ENDPOINT,
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-  forcePathStyle: true,
-});
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { b2Client } from "src/app/inventory/components/B2client"; // prilagodi na dejansko pot/ime datoteke svojega obstoječega clienta
 
 // Sanitize S3 key components (critical for B2 compatibility)
 const sanitizeKeyComponent = (input: string): string => {

@@ -66,7 +66,9 @@ export function ParseSensorData(
             const byte = bytes[i] ?? 0;
             numericValue = (numericValue << 8) | byte;
           }
-          value = scale ? numericValue * scale : numericValue;
+          value = scale
+            ? Math.round(numericValue * scale * 1000) / 1000
+            : numericValue;
           break;
         }
 
@@ -107,46 +109,3 @@ export function ParseSensorData(
   return result;
 }
 
-// Example usage:
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const exampleParser: SensorParserCombinator = [
-  {
-    input: { byte_position: 0, byte_length: 1 },
-    output: { type: "number", name: "family_id", default: 0 },
-  },
-  {
-    input: { byte_position: 2, byte_length: 1 },
-    output: {
-      type: "number",
-      name: "device_device_hw_ver",
-      default: 0,
-      scale: 0.1,
-    },
-  },
-  {
-    input: { byte_position: 8, byte_length: 8 },
-    output: {
-      type: "string",
-      name: "dev_eui",
-      default: "",
-      format: "hex",
-    },
-  },
-  {
-    input: { byte_position: 41, byte_length: 1 },
-    output: {
-      type: "enum",
-      name: "lora_freq_reg",
-      default: 4,
-      enum_values: [
-        { value: 4, mapped: "EU868" },
-        { value: 8, mapped: "US915" },
-        { value: 0, mapped: "AS923" },
-      ],
-    },
-  },
-];
-
-// Usage with sample data:
-// const sensorData = new Uint8Array(64); // Sample buffer
-// const parsedData = ParseSensorData(exampleParser, sensorData);

@@ -68,7 +68,7 @@ export default function Signin() {
           marginBottom: 3,
         }}
       >
-        Prijava v SENZEMO
+        Prijava v SENZEMO production tool
       </Typography>
 
       {error && (

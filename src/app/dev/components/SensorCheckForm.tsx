@@ -6,6 +6,8 @@ import type {
   ParsedSensorValue,
   //ParseSensorData,
 } from "./Reader/ParseSensorData";
+import { DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemText, Dialog as MismatchDialog } from "@mui/material";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
 import { EncodeSensorData } from "./Reader/WriteSensorData";
@@ -49,6 +51,9 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import type {
+  SensorParserCombinator, // ← dodaj to
+} from "./Reader/ParseSensorData";
 //import deepEqual from "deep-equal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getZplForSensor } from "src/app/dev/components/Reader/Get_Sensors_database_chace"
@@ -70,6 +75,72 @@ const getAutoDeductComponents = (): boolean => {
   }
   return true;
 };
+function normalizeNumber(n: number): number {
+  return Math.round(n * 1000) / 1000; // odpravi floating point šum na 3 decimalke
+}
+
+function resolveEnumValue(
+  value: ParsedSensorValue,
+  enumValues: { value: number; mapped: string }[],
+): number | undefined {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    return enumValues.find((e) => e.mapped === value)?.value;
+  }
+  return undefined;
+}
+
+function isFieldMismatch(
+  name: string,
+  value: ParsedSensorValue,
+  target: Record<string, ParsedSensorValue> | undefined,
+  parser?: {
+    output: {
+      type: string;
+      enum_values?: { value: number; mapped: string }[];
+    };
+  },
+  allParsers?: SensorParserCombinator,
+): boolean {
+  if (!target) return false;
+  if (
+    name === "dev_eui" ||
+    name === "join_eui" ||
+    name === "app_key" ||
+    name === "app_eui"
+  ) {
+    return false;
+  }
+
+  const targetValue = target[name];
+  if (targetValue === undefined) return false;
+
+  // Enum polja - primerjaj po numerični vrednosti
+  if (parser?.output.type === "enum" && parser.output.enum_values) {
+    const resolvedTarget = resolveEnumValue(targetValue, parser.output.enum_values);
+    const resolvedActual = resolveEnumValue(value, parser.output.enum_values);
+    return resolvedTarget !== resolvedActual;
+  }
+
+  // Poišči sorodno "{name}_tol" polje za toleranco
+  const tolParser = allParsers?.find((p) => p.output.name === `${name}_tol`);
+  const tolerance = tolParser?.output.default as number | undefined;
+
+  if (
+    tolerance !== undefined &&
+    typeof value === "number" &&
+    typeof targetValue === "number"
+  ) {
+    return Math.abs(value - targetValue) > tolerance;
+  }
+
+  // Navadna števila - odpravi floating point šum
+  if (typeof value === "number" && typeof targetValue === "number") {
+    return normalizeNumber(value) !== normalizeNumber(targetValue);
+  }
+
+  return targetValue !== value;
+}
 
 const setAutoDeductComponents = (enabled: boolean): void => {
   if (typeof window !== "undefined") {
@@ -173,12 +244,59 @@ export function SensorCheckForm() {
   const current_sensor_index = useSensorStore(
     (state) => state.current_sensor_index,
   );
-
+  const [mismatchDialogOpen, setMismatchDialogOpen] = useState(false);
+  const [mismatchList, setMismatchList] = useState<{ name: string; expected: ParsedSensorValue; actual: ParsedSensorValue }[]>([]);
   const current_sensor = useSensorStore((state) => {
     if (state.sensors.length !== 0)
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
+  useEffect(() => {
+    if (!current_sensor || !target_sensor_data) return;
+
+    const mismatches: {
+      name: string;
+      expected: ParsedSensorValue;
+      actual: ParsedSensorValue;
+    }[] = [];
+
+    Object.entries(current_sensor.data).forEach(([key, value]) => {
+      if (key.endsWith("_tol")) return; // preskoči metapodatkovna tolerance polja
+
+      const parser = sensor_parsers.find((p) => p.output.name === key);
+
+      if (
+        isFieldMismatch(
+          key,
+          value as ParsedSensorValue,
+          target_sensor_data,
+          parser,
+          sensor_parsers,
+        )
+      ) {
+        let displayExpected = target_sensor_data[key];
+
+        // Za enum polja - pretvori surovo številko v mapirano ime za prikaz v dialogu
+        if (parser?.output.type === "enum" && parser.output.enum_values) {
+          const mapped = parser.output.enum_values.find(
+            (e) => e.value === displayExpected,
+          );
+          if (mapped) displayExpected = mapped.mapped;
+        }
+
+        mismatches.push({
+          name: key,
+          expected: displayExpected,
+          actual: value as ParsedSensorValue,
+        });
+      }
+    });
+
+    if (mismatches.length > 0) {
+      setMismatchList(mismatches);
+      setMismatchDialogOpen(true);
+    }
+  }, [current_sensor, target_sensor_data, sensor_parsers]);
 
   // Remove static dataforDB object - it will be created dynamically in useMemo
   const all_sensors = useSensorStore((state) => state.sensors);
@@ -206,6 +324,7 @@ export function SensorCheckForm() {
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
   };
+
 
   const handleCloseNavMenu = () => {
     setAnchorElNav(null);
@@ -360,9 +479,9 @@ export function SensorCheckForm() {
     throw new Error("Failed to get sensor data after multiple attempts");
   };
 
-  // useEffect(() => {
-  //   useSensorStore.setState({ start_time: Date.now() });
-  // }, []);
+  useEffect(() => {
+    useSensorStore.setState({ start_time: Date.now() });
+  }, []);
 
   const [important_sensor_data, unimportant_sensor_data, dataforDB] =
     useMemo(() => {
@@ -1514,6 +1633,47 @@ export function SensorCheckForm() {
           </Box>
         </form>
       </Paper>
+
+      <MismatchDialog
+        open={mismatchDialogOpen}
+        onClose={() => { }}
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon color="warning" />
+          Neujemajoči podatki
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Naslednje vrednosti se ne ujemajo s pričakovanimi:
+          </Typography>
+          <List dense>
+            {mismatchList.map((m) => (
+              <ListItem
+                key={m.name}
+                sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+              >
+                <ListItemText
+                  primary={m.name}
+                  secondary={`Pričakovano: ${m.expected}  →  Dejansko: ${m.actual}`}
+                  slotProps={{ secondary: { color: "error" } }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => setMismatchDialogOpen(false)}
+            autoFocus
+          >
+            V redu, razumem
+          </Button>
+        </DialogActions>
+      </MismatchDialog>
     </>
   );
 }
@@ -1583,17 +1743,17 @@ export function DynamicFormComponent({
         (() => {
           let primerjator = 0;
           switch (value) {
-            case "EU868":
-              primerjator = 5;
-              break;
-            case "US915":
-              primerjator = 8;
-              break;
-            case "AS923":
-              primerjator = 3;
-              break;
-            default:
-              break;
+            case "AS923": primerjator = 0; break;
+            case "AU915": primerjator = 1; break;
+            case "CN470": primerjator = 2; break;
+            case "CN779": primerjator = 3; break;
+            case "EU433": primerjator = 4; break;
+            case "EU868": primerjator = 5; break;
+            case "KR920": primerjator = 6; break;
+            case "IN865": primerjator = 7; break;
+            case "US915": primerjator = 8; break;
+            case "RU864": primerjator = 9; break;
+            default: break;
           }
 
           return (
@@ -1630,28 +1790,17 @@ export function DynamicFormComponent({
         })()
       ) : (
         <Typography color="error">
-          Neveljaven tip: {typeof my_type} {my_type} {my_key} {value} .
+          Neveljaven tip: deklariran tip=&quot;{my_type}&quot;, dejanski JS tip
+          vrednosti={typeof value}, ime polja={my_key}, vrednost=
+          {JSON.stringify(value)}
         </Typography>
       )}
     </FormControl>
   );
 }
-
 function getStatusColor2(name: string, vrednost: ParsedSensorValue): string {
   const target = useSensorStore.getState().target_sensor_data;
-  if (!target) {
-    return "white";
-  }
-  if (name === "dev_eui" || name === "join_eui" || name === "app_key") {
-    return "white";
-  }
-
-  for (const [key, value] of Object.entries(target)) {
-    if (name === key && value === vrednost) {
-      return "white";
-    }
-  }
-  console.log("Name", name, "Vrednost", vrednost, "Target", target);
-
-  return "red";
+  const decoder = useSensorStore.getState().current_decoder;
+  const parser = decoder?.find((p) => p.output.name === name);
+  return isFieldMismatch(name, vrednost, target, parser, decoder) ? "red" : "white";
 }

@@ -14,9 +14,14 @@ import {
   CardActions,
   CardContent,
   Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Divider,
+  LinearProgress,
   List,
   ListItem,
+  //ListItemIcon,
   ListItemText,
   Paper,
   Typography,
@@ -155,6 +160,14 @@ function SensorReport({ sensorData }: SensorReportProps) {
   );
 }
 
+interface UploadProgress {
+  current: number;
+  total: number;
+  currentDevEui: string;
+  status: "idle" | "uploading" | "done" | "error";
+  errorMessage?: string;
+}
+
 // Main Konec Component
 export function Konec() {
   const { data: sensors } = useQuery({
@@ -166,6 +179,13 @@ export function Konec() {
   const resetStore = useSensorStore((state) => state.reset);
   const router = useRouter();
   const [dataAdded, setDataAdded] = useState(false);
+
+  const [progress, setProgress] = useState<UploadProgress>({
+    current: 0,
+    total: 0,
+    currentDevEui: "",
+    status: "idle",
+  });
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -193,8 +213,18 @@ export function Konec() {
       throw new Error("No credentials");
     }
 
+    const validSensors = sensor_data.filter((el) => el.okay);
+
+    setProgress({
+      current: 0,
+      total: validSensors.length,
+      currentDevEui: "",
+      status: "uploading",
+    });
+
     // Process each sensor individually
-    for (const element of sensor_data.filter((el) => el.okay)) {
+    for (let i = 0; i < validSensors.length; i++) {
+      const element = validSensors[i]!;
       const sensorData = element.data;
       const custom_FW = "N/A";
       let freq_reg = "";
@@ -202,6 +232,12 @@ export function Konec() {
       let Device_Type = "";
       let model_id = "";
       const lorawan_version = "RP001_V1_0_3_REV_A";
+
+      setProgress((prev) => ({
+        ...prev,
+        current: i,
+        currentDevEui: String(sensorData.dev_eui ?? `#${i + 1}`),
+      }));
 
       // Find matching sensor details
       (sensors ?? []).forEach((sensor: Senzor) => {
@@ -262,17 +298,36 @@ export function Konec() {
         band_id,
       ];
 
-      // Insert the row for this sensor
-      await insert(
-        credentials.fileId,
-        newRowCSV,
-        credentials.spreadsheetId,
-        newROWEXE,
-      );
+      try {
+        // Insert the row for this sensor
+        await insert(
+          credentials.fileId,
+          newRowCSV,
+          credentials.spreadsheetId,
+          newROWEXE,
+        );
+      } catch (err) {
+        setProgress((prev) => ({
+          ...prev,
+          status: "error",
+          errorMessage: `Napaka pri pošiljanju senzorja ${sensorData.dev_eui}: ${(err as Error).message
+            }`,
+        }));
+        return; // ustavi ob prvi napaki, ne nadaljuj tiho
+      }
+
+      setProgress((prev) => ({
+        ...prev,
+        current: i + 1,
+      }));
     }
 
+    setProgress((prev) => ({ ...prev, status: "done" }));
     setDataAdded(true); // Mark data as added
   }
+
+  const progressPercent =
+    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
   return (
     <Box sx={{ maxWidth: 800, margin: "auto", mt: 4 }}>
@@ -282,11 +337,12 @@ export function Konec() {
         <Button
           variant="contained"
           color="primary"
+          disabled={progress.status === "uploading"}
           onClick={async () => {
-            alert("Dodajanje podatkov v Drive je v teku...");
             await posli(sensor_data, sensors);
-            resetStore();
-            alert("Podatki so bili uspešno dodani v Drive!");
+            if (progress.status !== "error") {
+              resetStore();
+            }
           }}
         >
           Dodaj podatke v drive
@@ -294,6 +350,7 @@ export function Konec() {
         <Button
           variant="outlined"
           color="secondary"
+          disabled={progress.status === "uploading"}
           onClick={() => {
             resetStore();
             router.push("/parametrs");
@@ -301,10 +358,111 @@ export function Konec() {
         >
           Reset and Go Back
         </Button>
-        <Button variant="outlined" onClick={() => posli(sensor_data, sensors)}>
+        <Button
+          variant="outlined"
+          disabled={progress.status === "uploading"}
+          onClick={() => posli(sensor_data, sensors)}
+        >
           Test z TTN
         </Button>
       </CardActions>
+
+      {/* Progress dialog - blokira zapiranje med pošiljanjem */}
+      <Dialog
+        open={progress.status === "uploading" || progress.status === "error"}
+        onClose={() => { }}
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {progress.status === "error"
+            ? "Napaka pri pošiljanju"
+            : "Pošiljam podatke na Google Drive..."}
+        </DialogTitle>
+        <DialogContent>
+          {progress.status === "uploading" && (
+            <>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Senzor {progress.current + 1} od {progress.total}
+                {progress.currentDevEui && ` (${progress.currentDevEui})`}
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={progressPercent}
+                sx={{ height: 10, borderRadius: 1 }}
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 1, display: "block" }}
+              >
+                {Math.round(progressPercent)}% končano
+              </Typography>
+            </>
+          )}
+
+          {progress.status === "error" && (
+            <>
+              <Typography color="error" sx={{ mb: 2 }}>
+                {progress.errorMessage}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Poslano {progress.current} od {progress.total} senzorjev pred
+                napako.
+              </Typography>
+              <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  variant="contained"
+                  onClick={() =>
+                    setProgress({
+                      current: 0,
+                      total: 0,
+                      currentDevEui: "",
+                      status: "idle",
+                    })
+                  }
+                >
+                  V redu
+                </Button>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Success dialog */}
+      <Dialog
+        open={progress.status === "done"}
+        onClose={() =>
+          setProgress({ current: 0, total: 0, currentDevEui: "", status: "idle" })
+        }
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogContent sx={{ textAlign: "center", py: 4 }}>
+          <CheckCircleIcon className="mx-auto mb-2 h-12 w-12 text-green-500" />
+          <Typography variant="h6" gutterBottom>
+            Podatki uspešno poslani!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Vseh {progress.total} senzorjev je bilo dodanih v Google Drive.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() =>
+              setProgress({
+                current: 0,
+                total: 0,
+                currentDevEui: "",
+                status: "idle",
+              })
+            }
+          >
+            V redu
+          </Button>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

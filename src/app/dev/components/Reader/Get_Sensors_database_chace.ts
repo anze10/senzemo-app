@@ -38,8 +38,8 @@ export function getZplForSensor(
     console.log("right decoder from database", ZPL_TEMPLATE.zpl);
     if (typeof ZPL_TEMPLATE.zpl === "string") {
       return ZPL_TEMPLATE.zpl
-        .replace("{devEui}", devEui)
-        .replace("{frequencyRegion}", frequency_region);
+        .replace(/{{DEV_EUI}}/g, devEui)
+        .replace(/{{FREQUENCY}}/g, frequency_region);
     }
   }
   return `^XA^FO50,50^A0N,50,50^FD${devEui}^FS^XZ`;

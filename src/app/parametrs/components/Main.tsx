@@ -32,6 +32,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CreateOrder, GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
 import { InventorySettings } from "./InventorySettings";
+import { ConfigSelector } from "./ConfigSelector";
 //import { resetSensorStore } from "~/app/dev/components/SensorStore";
 
 type DeviceType = {
@@ -40,7 +41,6 @@ type DeviceType = {
   familyId: number;
   decoder: SensorParserCombinator;
 };
-//;
 
 export default function Parameters() {
   const [order_number, set_order_number] = useState<string>("");
@@ -49,7 +49,7 @@ export default function Parameters() {
   const [family_id, set_family_id] = useState<number>(1);
   const [company_name, set_company_name] = useState<string>("");
   const [addToStock, setAddToStock] = useState<boolean>(false);
-
+  const [product_id, set_product_id] = useState<number>(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -60,13 +60,26 @@ export default function Parameters() {
     (state) => state.set_target_sensor_data,
   );
   const set_credentials = useGoogleIDSstore((state) => state.set_credentials);
+  useEffect(() => {
+    // Zbriši persistirano stanje iz localStorage
+    localStorage.removeItem("sensor-store"); // zamenjaj z dejanskim imenom iz persist config
+
+    // Resetiraj store nazaj na začetno stanje (ne samo eno polje)
+    useSensorStore.setState({
+      sensors: [],
+      current_sensor_index: 0,
+      current_decoder: [],
+      target_sensor_data: undefined,
+      start_time: 0,
+      end_time: 0,
+      OrderID: undefined, // preveri pravilno ime/tip iz svojega store-a
+    });
+  }, []);
 
   const { data: sensors, isLoading } = useQuery({
     queryKey: ["sensors"],
     queryFn: async () => await GetSensors(),
   });
-
-
 
   const devices: DeviceType[] | undefined = useMemo(() => {
     return sensors?.map((device) => ({
@@ -78,9 +91,9 @@ export default function Parameters() {
   }, [sensors]);
 
   const handleSelectChange = useCallback(
-    (value: number) => {
+    (familyId: number, productId: number) => {
       const selectedDevice = devices?.find(
-        (device) => device.familyId === value,
+        (device) => device.familyId === familyId && device.product === productId,
       );
       setDecoder(selectedDevice?.decoder);
 
@@ -91,7 +104,6 @@ export default function Parameters() {
         if (defaultValue !== undefined) {
           newValues[parser.output.name] = defaultValue;
         } else {
-          // Provide appropriate default based on type
           switch (parser.output.type) {
             case "string":
               newValues[parser.output.name] = "";
@@ -115,14 +127,15 @@ export default function Parameters() {
     },
     [devices],
   );
-  const handleFamilyIdChange = (value: number) => {
-    set_family_id(value);
-    handleSelectChange(value);
+  const handleFamilyIdChange = (familyId: number, productId: number) => {
+    set_family_id(familyId);
+    set_product_id(productId);
+    handleSelectChange(familyId, productId);
   };
 
   useEffect(() => {
-    handleSelectChange(family_id);
-  }, [family_id, handleSelectChange]);
+    handleSelectChange(family_id, product_id);
+  }, [family_id, product_id, handleSelectChange]);
 
   const handleValueChange = (name: string, value: ParsedSensorValue) => {
     setFormValues((prev) => ({ ...prev, [name]: value }));
@@ -202,18 +215,33 @@ export default function Parameters() {
                   <InputLabel htmlFor="family_id">Izberi senzor</InputLabel>
                   <Select
                     id="family_id"
-                    value={family_id}
-                    onChange={(e: SelectChangeEvent<number>) => {
-                      handleFamilyIdChange(Number(e.target.value));
+                    value={`${family_id}_${product_id}`}
+                    onChange={(e: SelectChangeEvent<string>) => {
+                      const parts = e.target.value.split("_");
+                      const newFamilyId = Number(parts[0]);
+                      const newProductId = Number(parts[1]);
+                      handleFamilyIdChange(newFamilyId, newProductId);
                     }}
                   >
                     {devices?.map((device) => (
-                      <MenuItem key={device.familyId} value={device.familyId}>
+                      <MenuItem
+                        key={`${device.familyId}_${device.product}`}
+                        value={`${device.familyId}_${device.product}`}
+                      >
                         {device.name}, {device.familyId},{device.product}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+
+                {/* Izbira/shranjevanje configov iz Backblaze B2 - override privzetih
+                    vrednosti iz baze glede na stranko */}
+                <ConfigSelector
+                  familyId={family_id}
+                  productId={product_id}
+                  currentValues={formValues}
+                  onApplyConfig={(values) => setFormValues(values)}
+                />
 
                 <FormControl fullWidth>
                   <FormControlLabel
