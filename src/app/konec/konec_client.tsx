@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   type RatedSensorData,
   useSensorStore,
@@ -21,10 +22,10 @@ import {
   LinearProgress,
   List,
   ListItem,
-  //ListItemIcon,
   ListItemText,
   Paper,
   Typography,
+  useTheme,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { GetSensors } from "../sensors/components/backend";
@@ -49,6 +50,8 @@ interface SensorReportProps {
 }
 
 function SensorReport({ sensorData }: SensorReportProps) {
+  const theme = useTheme();
+
   // Calculate statistics
   const totalSensors = sensorData.length;
   const successfulSensors = sensorData.filter((sensor) => sensor.okay).length;
@@ -58,14 +61,14 @@ function SensorReport({ sensorData }: SensorReportProps) {
   const failedSensors = totalSensors - successfulSensors;
 
   return (
-    <Card sx={{ maxWidth: 800, margin: "auto", mt: 4 }}>
+    <Card variant="outlined" sx={{ borderRadius: 3 }}>
       <CardContent>
         <Typography variant="h4" component="div" gutterBottom align="center">
           Poročilo o testiranju senzorjev
         </Typography>
 
         {/* Statistics */}
-        <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: "#f8f9fa" }}>
+        <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: "grey.50" }}>
           <Box
             sx={{
               display: "flex",
@@ -85,7 +88,7 @@ function SensorReport({ sensorData }: SensorReportProps) {
             </Box>
             <Box sx={{ flex: 1, textAlign: "center" }}>
               <Typography variant="h6">Neuspešno</Typography>
-              <Typography variant="h3" color="red">
+              <Typography variant="h3" color="error.main">
                 {unsuccessfulSensors}
               </Typography>
             </Box>
@@ -106,9 +109,9 @@ function SensorReport({ sensorData }: SensorReportProps) {
               divider={index < sensorData.length - 1}
               secondaryAction={
                 sensor.okay ? (
-                  <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                  <CheckCircleIcon size={22} color={theme.palette.success.main} />
                 ) : (
-                  <XCircleIcon className="h-6 w-6 text-red-500" />
+                  <XCircleIcon size={22} color={theme.palette.error.main} />
                 )
               }
             >
@@ -170,6 +173,7 @@ interface UploadProgress {
 
 // Main Konec Component
 export function Konec() {
+  const theme = useTheme();
   const { data: sensors } = useQuery({
     queryKey: ["sensors"],
     queryFn: () => GetSensors(),
@@ -186,6 +190,7 @@ export function Konec() {
     currentDevEui: "",
     status: "idle",
   });
+  const [resetWarningOpen, setResetWarningOpen] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -330,42 +335,56 @@ export function Konec() {
     progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
   return (
-    <Box sx={{ maxWidth: 800, margin: "auto", mt: 4 }}>
-      {/* Sensor Report Component */}
-      <SensorReport sensorData={sensor_data} />
-      <CardActions sx={{ justifyContent: "space-between", p: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={progress.status === "uploading"}
-          onClick={async () => {
-            await posli(sensor_data, sensors);
-            if (progress.status !== "error") {
-              resetStore();
-            }
-          }}
-        >
-          Dodaj podatke v drive
-        </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          disabled={progress.status === "uploading"}
-          onClick={() => {
-            resetStore();
-            router.push("/parametrs");
-          }}
-        >
-          Reset and Go Back
-        </Button>
-        <Button
+    <>
+      {/* Mali logo v zgornjem levem kotu - konsistentno s /parametrs,
+          brez Navbar/BackButton, ker gre za zavezujoč zaključni korak procesa */}
+      <Box sx={{ display: "flex", alignItems: "center", pl: 2, pt: 2 }}>
+        <Image src="/senzemo-logo.svg" alt="Senzemo" width={90} height={24} />
+      </Box>
+
+      <Box sx={{ maxWidth: 960, mx: "auto", px: { xs: 2, md: 3 }, py: 3 }}>
+        <SensorReport sensorData={sensor_data} />
+
+        <CardActions sx={{ justifyContent: "space-between", p: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={progress.status === "uploading"}
+            onClick={async () => {
+              await posli(sensor_data, sensors);
+              if (progress.status !== "error") {
+                resetStore();
+              }
+            }}
+          >
+            Dodaj podatke v drive
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            disabled={progress.status === "uploading"}
+            onClick={() => {
+              if (!dataAdded) {
+                // Podatki še niso bili poslani na Drive - opozori pred izgubo
+                setResetWarningOpen(true);
+              } else {
+                // Podatki so že bili poslani - varno je resetirati brez opozorila
+                resetStore();
+                router.push("/parametrs");
+              }
+            }}
+          >
+            Reset and Go Back
+          </Button>
+          {/* <Button
           variant="outlined"
           disabled={progress.status === "uploading"}
           onClick={() => posli(sensor_data, sensors)}
         >
           Test z TTN
-        </Button>
-      </CardActions>
+        </Button> */}
+        </CardActions>
+      </Box>
 
       {/* Progress dialog - blokira zapiranje med pošiljanjem */}
       <Dialog
@@ -441,7 +460,11 @@ export function Konec() {
         fullWidth
       >
         <DialogContent sx={{ textAlign: "center", py: 4 }}>
-          <CheckCircleIcon className="mx-auto mb-2 h-12 w-12 text-green-500" />
+          <CheckCircleIcon
+            size={48}
+            color={theme.palette.success.main}
+            style={{ margin: "0 auto 8px", display: "block" }}
+          />
           <Typography variant="h6" gutterBottom>
             Podatki uspešno poslani!
           </Typography>
@@ -463,6 +486,55 @@ export function Konec() {
           </Button>
         </DialogContent>
       </Dialog>
-    </Box>
+
+      {/* Warning dialog - opozori pred izgubo nepoislanih podatkov */}
+      <Dialog
+        open={resetWarningOpen}
+        onClose={() => setResetWarningOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <XCircleIcon size={22} color={theme.palette.warning.main} />
+          Podatki niso bili poslani
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Podatki o testiranih senzorjih še niso bili poslani na Google
+            Drive. Če nadaljuješ, bodo vsi podatki o tej seji{" "}
+            <strong>trajno izgubljeni</strong>.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Ali si prepričan, da želiš resetirati in se vrniti nazaj?
+          </Typography>
+          <Box
+            sx={{
+              mt: 3,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 1,
+            }}
+          >
+            <Button
+              variant="outlined"
+              onClick={() => setResetWarningOpen(false)}
+            >
+              Prekliči
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                setResetWarningOpen(false);
+                resetStore();
+                router.push("/parametrs");
+              }}
+            >
+              Da, zavrzi podatke
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

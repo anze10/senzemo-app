@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import {
     Alert,
     Box,
@@ -33,6 +34,7 @@ import {
     setRoleAction,
     unbanUserAction,
 } from "src/app/admin/components/adminactions";
+import { BackButton } from "~/app/components/BackButton";
 
 interface AdminUser {
     id: string;
@@ -161,157 +163,166 @@ export default function AdminConsole() {
     }
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>
-                Upravljanje uporabnikov
-            </Typography>
-
-            {status && (
-                <Alert severity={status.type} sx={{ mb: 2 }} onClose={() => setStatus(null)}>
-                    {status.message}
-                </Alert>
-            )}
-
-            <Box sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
-                <TextField
-                    label="Išči po emailu"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    size="small"
-                />
-                <Button variant="contained" onClick={() => setAddOpen(true)}>
-                    + Dodaj uporabnika
-                </Button>
-                <Typography variant="body2" color="text.secondary">
-                    Skupaj: {total}
-                </Typography>
+        <>
+            {/* Mali logo + BackButton v zgornjem levem kotu - konsistentno
+                s /parametrs in /konec, brez Navbar (namenska podstran) */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, pl: 2, pt: 2 }}>
+                <Image src="/senzemo-logo.svg" alt="Senzemo" width={90} height={24} />
             </Box>
 
-            <TableContainer component={Paper}>
-                <Table size="small">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Ime</TableCell>
-                            <TableCell>Email</TableCell>
-                            <TableCell>Vloga</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Ustvarjen</TableCell>
-                            <TableCell align="right">Akcije</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {users.map((user) => (
-                            <>
-                                <TableRow key={user.id}>
-                                    <TableCell>{user.name}</TableCell>
-                                    <TableCell>{user.email}</TableCell>
-                                    <TableCell>
-                                        <Select
-                                            value={user.role ?? "user"}
-                                            size="small"
-                                            onChange={(e) =>
-                                                handleRoleChange(user.id, e.target.value as "user" | "admin")
-                                            }
-                                        >
-                                            <MenuItem value="user">Uporabnik</MenuItem>
-                                            <MenuItem value="admin">Administrator</MenuItem>
-                                        </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                        {user.banned ? (
-                                            <Chip label="Blokiran" color="error" size="small" />
-                                        ) : (
-                                            <Chip label="Aktiven" color="success" size="small" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {new Date(user.createdAt).toLocaleDateString("sl-SI")}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Button size="small" onClick={() => handleResendReset(user.email)}>
-                                            Reset gesla
-                                        </Button>
-                                        <Button size="small" onClick={() => handleToggleBan(user)}>
-                                            {user.banned ? "Odblokiraj" : "Blokiraj"}
-                                        </Button>
-                                        <Button size="small" onClick={() => handleToggleSessions(user.id)}>
-                                            Seje
-                                        </Button>
-                                        <Button size="small" color="error" onClick={() => handleRemove(user)}>
-                                            Izbriši
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                                <TableRow>
-                                    <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
-                                        <Collapse in={expandedUserId === user.id}>
-                                            <Box sx={{ p: 2, backgroundColor: "grey.50" }}>
-                                                <Typography variant="subtitle2" gutterBottom>
-                                                    Aktivne seje (prijave)
-                                                </Typography>
-                                                {sessions.length === 0 ? (
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        Ni aktivnih sej.
-                                                    </Typography>
-                                                ) : (
-                                                    sessions.map((s) => (
-                                                        <Typography key={s.id} variant="body2">
-                                                            {new Date(s.createdAt).toLocaleString("sl-SI")} — IP:{" "}
-                                                            {s.ipAddress ?? "neznano"} — {s.userAgent ?? ""}
-                                                        </Typography>
-                                                    ))
-                                                )}
-                                            </Box>
-                                        </Collapse>
-                                    </TableCell>
-                                </TableRow>
-                            </>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <Box sx={{ maxWidth: 1300, mx: "auto", px: { xs: 2, md: 3 }, py: 3 }}>
+                <BackButton fallbackHref="/dashboard" />
+                <Typography variant="h4" fontWeight={700} gutterBottom>
+                    Upravljanje uporabnikov
+                </Typography>
 
-            <Dialog open={addOpen} onClose={() => setAddOpen(false)}>
-                <DialogTitle>Dodaj uporabnika</DialogTitle>
-                <Box component="form" onSubmit={handleAddUser}>
-                    <DialogContent sx={{ minWidth: 350 }}>
-                        <TextField
-                            label="Ime in priimek"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            fullWidth
-                            required
-                            margin="normal"
-                        />
-                        <TextField
-                            label="Email"
-                            type="email"
-                            value={newEmail}
-                            onChange={(e) => setNewEmail(e.target.value)}
-                            fullWidth
-                            required
-                            margin="normal"
-                        />
-                        <TextField
-                            select
-                            label="Vloga"
-                            value={newRole}
-                            onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
-                            fullWidth
-                            margin="normal"
-                        >
-                            <MenuItem value="user">Uporabnik</MenuItem>
-                            <MenuItem value="admin">Administrator</MenuItem>
-                        </TextField>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setAddOpen(false)}>Prekliči</Button>
-                        <Button type="submit" variant="contained">
-                            Ustvari in pošlji email
-                        </Button>
-                    </DialogActions>
+                {status && (
+                    <Alert severity={status.type} sx={{ mb: 2 }} onClose={() => setStatus(null)}>
+                        {status.message}
+                    </Alert>
+                )}
+
+                <Box sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
+                    <TextField
+                        label="Išči po emailu"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        size="small"
+                    />
+                    <Button variant="contained" onClick={() => setAddOpen(true)}>
+                        + Dodaj uporabnika
+                    </Button>
+                    <Typography variant="body2" color="text.secondary">
+                        Skupaj: {total}
+                    </Typography>
                 </Box>
-            </Dialog>
-        </Box>
+
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Ime</TableCell>
+                                <TableCell>Email</TableCell>
+                                <TableCell>Vloga</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Ustvarjen</TableCell>
+                                <TableCell align="right">Akcije</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {users.map((user) => (
+                                <Fragment key={user.id}>
+                                    <TableRow>
+                                        <TableCell>{user.name}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell>
+                                            <Select
+                                                value={user.role ?? "user"}
+                                                size="small"
+                                                onChange={(e) =>
+                                                    handleRoleChange(user.id, e.target.value as "user" | "admin")
+                                                }
+                                            >
+                                                <MenuItem value="user">Uporabnik</MenuItem>
+                                                <MenuItem value="admin">Administrator</MenuItem>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.banned ? (
+                                                <Chip label="Blokiran" color="error" size="small" />
+                                            ) : (
+                                                <Chip label="Aktiven" color="success" size="small" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {new Date(user.createdAt).toLocaleDateString("sl-SI")}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Button size="small" onClick={() => handleResendReset(user.email)}>
+                                                Reset gesla
+                                            </Button>
+                                            <Button size="small" onClick={() => handleToggleBan(user)}>
+                                                {user.banned ? "Odblokiraj" : "Blokiraj"}
+                                            </Button>
+                                            <Button size="small" onClick={() => handleToggleSessions(user.id)}>
+                                                Seje
+                                            </Button>
+                                            <Button size="small" color="error" onClick={() => handleRemove(user)}>
+                                                Izbriši
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
+                                            <Collapse in={expandedUserId === user.id}>
+                                                <Box sx={{ p: 2, backgroundColor: "grey.50" }}>
+                                                    <Typography variant="subtitle2" gutterBottom>
+                                                        Aktivne seje (prijave)
+                                                    </Typography>
+                                                    {sessions.length === 0 ? (
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Ni aktivnih sej.
+                                                        </Typography>
+                                                    ) : (
+                                                        sessions.map((s) => (
+                                                            <Typography key={s.id} variant="body2">
+                                                                {new Date(s.createdAt).toLocaleString("sl-SI")} — IP:{" "}
+                                                                {s.ipAddress ?? "neznano"} — {s.userAgent ?? ""}
+                                                            </Typography>
+                                                        ))
+                                                    )}
+                                                </Box>
+                                            </Collapse>
+                                        </TableCell>
+                                    </TableRow>
+                                </Fragment>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                <Dialog open={addOpen} onClose={() => setAddOpen(false)}>
+                    <DialogTitle>Dodaj uporabnika</DialogTitle>
+                    <Box component="form" onSubmit={handleAddUser}>
+                        <DialogContent sx={{ minWidth: 350 }}>
+                            <TextField
+                                label="Ime in priimek"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                fullWidth
+                                required
+                                margin="normal"
+                            />
+                            <TextField
+                                label="Email"
+                                type="email"
+                                value={newEmail}
+                                onChange={(e) => setNewEmail(e.target.value)}
+                                fullWidth
+                                required
+                                margin="normal"
+                            />
+                            <TextField
+                                select
+                                label="Vloga"
+                                value={newRole}
+                                onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
+                                fullWidth
+                                margin="normal"
+                            >
+                                <MenuItem value="user">Uporabnik</MenuItem>
+                                <MenuItem value="admin">Administrator</MenuItem>
+                            </TextField>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={() => setAddOpen(false)}>Prekliči</Button>
+                            <Button type="submit" variant="contained">
+                                Ustvari in pošlji email
+                            </Button>
+                        </DialogActions>
+                    </Box>
+                </Dialog>
+            </Box>
+        </>
     );
 }

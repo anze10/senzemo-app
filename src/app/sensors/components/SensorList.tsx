@@ -37,6 +37,8 @@ import {
   UpdateorAddSenor,
 } from "./backend";
 import type { Prisma } from "@prisma/client";
+import { BackButton } from "~/app/components/BackButton";
+
 
 type FrontendSensor = {
   id: number;
@@ -244,7 +246,9 @@ export default function SensorList() {
   };
 
   return (
+
     <Container maxWidth={false} sx={{ py: { xs: 2, md: 4 } }}>
+      <BackButton fallbackHref="/dashboard" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Providers } from "~/providers";
 import { Toaster } from "sonner";
+import { Footer } from "./components/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,11 +34,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} antialiased flex min-h-screen flex-col`}
       >
         <Toaster richColors position="top-right" />
         <AppRouterCacheProvider>
-          <Providers>{children}</Providers>
+          <Providers>
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </Providers>
         </AppRouterCacheProvider>
       </body>
     </html>

@@ -4,20 +4,30 @@ import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   Grid,
+  IconButton,
   Input,
   InputLabel,
   MenuItem,
   Select,
   type SelectChangeEvent,
+  Step,
+  StepLabel,
+  Stepper,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import { motion } from "framer-motion";
+import { Home } from "lucide-react";
+import Image from "next/image";
 import { createFolderAndSpreadsheet } from "~/server/GAPI_ACTION/create_folder";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,8 +41,10 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { CreateOrder, GetSensors } from "./db";
 import { DynamicFormComponent } from "~/app/dev/components/SensorCheckForm";
-import { InventorySettings } from "./InventorySettings";
+//import { InventorySettings } from "./InventorySettings";
 import { ConfigSelector } from "./ConfigSelector";
+import { BackButton } from "src/app/components/BackButton";
+import { ToleranceRangeInput } from "./Tolerancerangeinput";
 //import { resetSensorStore } from "~/app/dev/components/SensorStore";
 
 type DeviceType = {
@@ -41,6 +53,13 @@ type DeviceType = {
   familyId: number;
   decoder: SensorParserCombinator;
 };
+
+const SETUP_STEPS = [
+  "Ustvarjam naročilo",
+  "Ustvarjam mapo na Drive",
+  "Ustvarjam preglednico",
+  "Ustvarjam CSV datoteko",
+];
 
 export default function Parameters() {
   const [order_number, set_order_number] = useState<string>("");
@@ -54,6 +73,11 @@ export default function Parameters() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const router = useRouter();
+
+  // --- Setup progress dialog state ---
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState(0);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   const set_order_id = useSensorStore((state) => state.set_order_id);
   const set_target_sensor_data = useSensorStore(
@@ -99,6 +123,15 @@ export default function Parameters() {
 
       const newValues: ParsedSensorData = {};
       selectedDevice?.decoder?.forEach((parser) => {
+        // NOVO: dodano na vrh - za tolerance polja shrani from/upTo namesto
+        // navadne default vrednosti, potem preskoči ostanek (return)
+        if (parser.output.tolerance) {
+          newValues[`${parser.output.name}__from`] = parser.output.from ?? 0;
+          newValues[`${parser.output.name}__upTo`] = parser.output.upTo ?? 0;
+          return;
+        }
+
+        // OBSTOJEČE - nespremenjeno
         const defaultValue = parser.output.default;
 
         if (defaultValue !== undefined) {
@@ -144,246 +177,336 @@ export default function Parameters() {
   console.log(devices);
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Box component="form">
-          {isLoading && (
-            <Typography
-              variant="h6"
-              sx={{ textAlign: "center", color: "text.secondary" }}
-            >
-              Loading...
-            </Typography>
-          )}
-
-          <Box
+    <><Box sx={{ display: "flex", alignItems: "center", gap: 2, pl: 2, pt: 2 }}>
+      <Image
+        src="/senzemo-logo.svg"
+        alt="Senzemo"
+        width={90}
+        height={24} />
+    </Box>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <BackButton fallbackHref="/dashboard" />
+          <IconButton
+            onClick={() => router.push("/dashboard")}
+            size="small"
+            title="Domov"
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: { xs: "auto", md: "80vh" },
-              py: { xs: 3, md: 6 },
+              color: "text.secondary",
+              transform: "translateY(-6px)",
             }}
           >
-            <Typography
-              variant={isMobile ? "h4" : "h3"}
-              sx={{
-                mb: { xs: 4, md: 8 },
-                fontWeight: "bold",
-                color: "primary.main",
-                textAlign: "center",
-              }}
-            >
-              SENZEMO
-            </Typography>
+            <Home size={20} />
+          </IconButton>
+        </Box>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box component="form">
+            {isLoading && (
+              <Typography
+                variant="h6"
+                sx={{ textAlign: "center", color: "text.secondary" }}
+              >
+                Loading...
+              </Typography>
+            )}
 
             <Box
               sx={{
-                width: "100%",
-                maxWidth: { xs: "100%", md: "800px" },
-                backgroundColor: "background.paper",
-                borderRadius: 2,
-                p: { xs: 3, md: 6 },
-                boxShadow: theme.shadows[4],
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: { xs: "auto", md: "80vh" },
+                py: { xs: 3, md: 6 },
               }}
             >
-              <Typography
-                variant={isMobile ? "h6" : "h5"}
-                sx={{
-                  mb: { xs: 3, md: 6 },
-                  textAlign: "center",
-                  fontWeight: 600,
-                  color: "text.primary",
-                }}
-              >
-                Configuration
-              </Typography>
+              <Image
+                src="/senzemo-logo.svg"
+                alt="Senzemo"
+                width={180}
+                height={48}
+                className="mb-6"
+                priority />
 
               <Box
                 sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: { xs: 3, md: 4 },
+                  width: "100%",
+                  maxWidth: { xs: "100%", md: "960px" },
+                  backgroundColor: "background.paper",
+                  borderRadius: 2,
+                  p: { xs: 3, md: 6 },
+                  boxShadow: theme.shadows[4],
                 }}
               >
-                <FormControl fullWidth>
-                  <InputLabel htmlFor="family_id">Izberi senzor</InputLabel>
-                  <Select
-                    id="family_id"
-                    value={`${family_id}_${product_id}`}
-                    onChange={(e: SelectChangeEvent<string>) => {
-                      const parts = e.target.value.split("_");
-                      const newFamilyId = Number(parts[0]);
-                      const newProductId = Number(parts[1]);
-                      handleFamilyIdChange(newFamilyId, newProductId);
-                    }}
-                  >
-                    {devices?.map((device) => (
-                      <MenuItem
-                        key={`${device.familyId}_${device.product}`}
-                        value={`${device.familyId}_${device.product}`}
-                      >
-                        {device.name}, {device.familyId},{device.product}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Typography
+                  variant={isMobile ? "h6" : "h5"}
+                  sx={{
+                    mb: { xs: 3, md: 6 },
+                    textAlign: "center",
+                    fontWeight: 600,
+                    color: "text.primary",
+                  }}
+                >
+                  Configuration
+                </Typography>
 
-                {/* Izbira/shranjevanje configov iz Backblaze B2 - override privzetih
-                    vrednosti iz baze glede na stranko */}
-                <ConfigSelector
-                  familyId={family_id}
-                  productId={product_id}
-                  currentValues={formValues}
-                  onApplyConfig={(values) => setFormValues(values)}
-                />
-
-                <FormControl fullWidth>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={addToStock}
-                        onChange={(e) => setAddToStock(e.target.checked)}
-                      />
-                    }
-                    label="Add to stock inventory"
-                  />
-                </FormControl>
-
-                {!addToStock && (
-                  <>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor="Company_name">
-                        Company Name
-                      </InputLabel>
-                      <Input
-                        id="Company_name"
-                        value={company_name}
-                        onChange={(e) => set_company_name(e.target.value)}
-                        required
-                      />
-                    </FormControl>
-
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor="serial-number">
-                        Order Number
-                      </InputLabel>
-                      <Input
-                        id="serial-number"
-                        value={order_number}
-                        onChange={(e) => set_order_number(e.target.value)}
-                        required
-                      />
-                    </FormControl>
-                  </>
-                )}
-
-                <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
-                  {decoder?.map((parser) => (
-                    <Grid
-                      size={{ xs: 12, sm: 6, md: 4 }}
-                      key={parser.output.name}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: { xs: 3, md: 4 },
+                  }}
+                >
+                  <FormControl fullWidth>
+                    <InputLabel htmlFor="family_id">Izberi senzor</InputLabel>
+                    <Select
+                      id="family_id"
+                      value={`${family_id}_${product_id}`}
+                      onChange={(e: SelectChangeEvent<string>) => {
+                        const parts = e.target.value.split("_");
+                        const newFamilyId = Number(parts[0]);
+                        const newProductId = Number(parts[1]);
+                        handleFamilyIdChange(newFamilyId, newProductId);
+                      }}
                     >
-                      <DynamicFormComponent
-                        my_key={parser.output.name}
-                        my_type={parser.output.type}
-                        value={
-                          formValues[parser.output.name] ??
-                          parser.output.default ??
-                          (parser.output.type === "string"
-                            ? ""
-                            : parser.output.type === "number"
-                              ? 0
-                              : parser.output.type === "boolean"
-                                ? false
-                                : parser.output.type === "enum"
-                                  ? (parser.output.enum_values?.[0]?.value ?? 0)
-                                  : "")
-                        }
-                        enum_values={parser.output.enum_values}
-                        onValueChange={handleValueChange}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
+                      {devices?.map((device) => (
+                        <MenuItem
+                          key={`${device.familyId}_${device.product}`}
+                          value={`${device.familyId}_${device.product}`}
+                        >
+                          {device.name}, {device.familyId},{device.product}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {/* Izbira/shranjevanje configov iz Backblaze B2 - override privzetih
+        vrednosti iz baze glede na stranko */}
+                  <ConfigSelector
+                    familyId={family_id}
+                    productId={product_id}
+                    currentValues={formValues}
+                    onApplyConfig={(values) => setFormValues(values)} />
+
+                  <FormControl fullWidth>
+                    <FormControlLabel
+                      control={<Checkbox
+                        checked={addToStock}
+                        onChange={(e) => setAddToStock(e.target.checked)} />}
+                      label="Add to stock inventory" />
+                  </FormControl>
+
+                  {!addToStock && (
+                    <>
+                      <FormControl fullWidth>
+                        <InputLabel htmlFor="Company_name">
+                          Company Name
+                        </InputLabel>
+                        <Input
+                          id="Company_name"
+                          value={company_name}
+                          onChange={(e) => set_company_name(e.target.value)}
+                          required />
+                      </FormControl>
+
+                      <FormControl fullWidth>
+                        <InputLabel htmlFor="serial-number">
+                          Order Number
+                        </InputLabel>
+                        <Input
+                          id="serial-number"
+                          value={order_number}
+                          onChange={(e) => set_order_number(e.target.value)}
+                          required />
+                      </FormControl>
+                    </>
+                  )}
+
+                  <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
+                    {decoder?.map((parser) => (
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={parser.output.name}>
+                        {parser.output.tolerance ? (
+                          <ToleranceRangeInput
+                            label={parser.output.name}
+                            from={(formValues[`${parser.output.name}__from`] as number) ??
+                              parser.output.from ??
+                              0}
+                            upTo={(formValues[`${parser.output.name}__upTo`] as number) ??
+                              parser.output.upTo ??
+                              0}
+                            onChange={(from, upTo) => {
+                              setFormValues((prev) => ({
+                                ...prev,
+                                [`${parser.output.name}__from`]: from,
+                                [`${parser.output.name}__upTo`]: upTo,
+                              }));
+                            }} />
+                        ) : (
+                          <DynamicFormComponent
+                            my_key={parser.output.name}
+                            my_type={parser.output.type}
+                            value={formValues[parser.output.name] ??
+                              parser.output.default ??
+                              (parser.output.type === "string"
+                                ? ""
+                                : parser.output.type === "number"
+                                  ? 0
+                                  : parser.output.type === "boolean"
+                                    ? false
+                                    : parser.output.type === "enum"
+                                      ? (parser.output.enum_values?.[0]?.value ?? 0)
+                                      : "")}
+                            enum_values={parser.output.enum_values}
+                            onValueChange={handleValueChange} />
+                        )}
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  mt: { xs: 4, md: 8 },
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size={isMobile ? "large" : "large"}
+                  disabled={setupOpen}
+                  sx={{
+                    px: { xs: 4, md: 6 },
+                    py: { xs: 1.5, md: 2 },
+                    fontSize: { xs: "1rem", md: "1.1rem" },
+                    fontWeight: 600,
+                    minWidth: { xs: "200px", md: "250px" },
+                  }}
+                  onClick={async () => {
+                    if (!addToStock && company_name.trim() === "") {
+                      alert("Company name must not be empty.");
+                      return;
+                    }
+
+                    setSetupError(null);
+                    setSetupStep(0);
+                    setSetupOpen(true);
+
+                    try {
+                      const formData = {
+                        family_id,
+                        addToStock,
+                        company_name: addToStock ? "" : company_name,
+                        order_number: addToStock ? "" : order_number,
+                        ...formValues,
+                      };
+
+                      // Korak 1: Ustvari naročilo v bazi
+                      set_order_id(
+                        await CreateOrder(company_name, Number(order_number))
+                      );
+
+                      set_target_sensor_data(formData);
+                      console.log("Data stored:", formData);
+
+                      // Koraki 2-4: mapa, preglednica, CSV - vsi trije se
+                      // dejansko zgodijo znotraj enega server klica, zato
+                      // simuliramo napredek postopoma za boljšo UX povratno
+                      // informacijo (server sam ne poroča vmesnih korakov)
+                      setSetupStep(1);
+                      const stepTimer1 = setTimeout(() => setSetupStep(2), 600);
+                      const stepTimer2 = setTimeout(() => setSetupStep(3), 1200);
+
+                      const result = await createFolderAndSpreadsheet(
+                        addToStock ? null : company_name,
+                        addToStock ? null : order_number
+                      );
+
+                      clearTimeout(stepTimer1);
+                      clearTimeout(stepTimer2);
+                      setSetupStep(SETUP_STEPS.length);
+
+                      set_credentials(result);
+
+                      // kratek premor da uporabnik vidi "dokončano" stanje
+                      await new Promise((resolve) => setTimeout(resolve, 400));
+
+                      router.push("/dev");
+                    } catch (error) {
+                      console.error("Error creating order:", error);
+                      const message = error instanceof Error
+                        ? error.message
+                        : "Prišlo je do neznane napake.";
+                      setSetupError(message);
+                    }
+                  }}
+                >
+                  Start Scan
+                </Button>
               </Box>
             </Box>
-
-            <Box
-              sx={{
-                mt: { xs: 4, md: 8 },
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <Button
-                variant="contained"
-                color="primary"
-                size={isMobile ? "large" : "large"}
-                sx={{
-                  px: { xs: 4, md: 6 },
-                  py: { xs: 1.5, md: 2 },
-                  fontSize: { xs: "1rem", md: "1.1rem" },
-                  fontWeight: 600,
-                  minWidth: { xs: "200px", md: "250px" },
-                }}
-                onClick={async () => {
-                  if (!addToStock && company_name.trim() === "") {
-                    alert("Company name must not be empty.");
-                    return;
-                  }
-
-                  try {
-                    const formData = {
-                      family_id,
-                      addToStock,
-                      company_name: addToStock ? "" : company_name,
-                      order_number: addToStock ? "" : order_number,
-                      ...formValues,
-                    };
-
-                    set_order_id(
-                      await CreateOrder(company_name, Number(order_number)),
-                    );
-
-                    set_target_sensor_data(formData);
-                    console.log("Data stored:", formData);
-
-                    const result = await createFolderAndSpreadsheet(
-                      addToStock ? null : company_name,
-                      addToStock ? null : order_number,
-                    );
-
-                    set_credentials(result);
-                    router.push("/dev");
-                  } catch (error) {
-                    console.error("Error creating order:", error);
-                    if (error instanceof Error) {
-                      alert(`Error: ${error.message}`);
-                    } else {
-                      alert(
-                        "An unknown error occurred while creating the order.",
-                      );
-                    }
-                  }
-                }}
-              >
-                Start Scan
-              </Button>
-            </Box>
           </Box>
-        </Box>
 
-        {/* Inventory Settings Section */}
-        <Box sx={{ mt: 4 }}>
-          <InventorySettings />
-        </Box>
-      </motion.div>
-    </Container>
+          {/* Inventory Settings Section
+    <Box sx={{ mt: 4 }}>
+      <InventorySettings />
+    </Box> */}
+        </motion.div>
+
+        {/* Progress dialog - prikazuje napredek ustvarjanja mape/dokumentov na Drive */}
+        <Dialog
+          open={setupOpen}
+          onClose={() => {
+            if (setupError) setSetupOpen(false);
+          }}
+          disableEscapeKeyDown={!setupError}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>
+            {setupError ? "Napaka pri pripravi" : "Pripravljam podatke..."}
+          </DialogTitle>
+          <DialogContent>
+            {!setupError ? (
+              <>
+                <Stepper activeStep={setupStep} orientation="vertical">
+                  {SETUP_STEPS.map((label, index) => (
+                    <Step key={label}>
+                      <StepLabel
+                        icon={index === setupStep ? (
+                          <CircularProgress size={20} />
+                        ) : undefined}
+                      >
+                        {label}
+                      </StepLabel>
+                    </Step>
+                  ))}
+                </Stepper>
+              </>
+            ) : (
+              <>
+                <Typography color="error" sx={{ mb: 2 }}>
+                  {setupError}
+                </Typography>
+                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                  <Button
+                    variant="contained"
+                    onClick={() => setSetupOpen(false)}
+                  >
+                    Zapri
+                  </Button>
+                </Box>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </Container></>
   );
 }

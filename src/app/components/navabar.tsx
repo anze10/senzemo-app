@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppBar,
   Avatar,
   Box,
   Button,
-  Container,
   Divider,
   Drawer,
   IconButton,
@@ -43,7 +44,6 @@ export default function Navbar() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isAdmin = true;
 
-  // Determine active tab based on current pathname
   const getActiveTab = () => {
     const currentTab = tabs.find((tab) => tab.path === pathname);
     return currentTab ? currentTab.id : "home";
@@ -72,107 +72,126 @@ export default function Navbar() {
 
   return (
     <AppBar position="static" color="default" elevation={1}>
-      <Container maxWidth="xl">
-        <Toolbar sx={{ justifyContent: "space-between", height: 64 }}>
-          {/* Logo/Brand and Navigation combined on left */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {/* <Typography variant="h6" component="h1" sx={{ fontWeight: 600 }}>
-                            Senzemo Platform
-                        </Typography> */}
-
-            {/* Desktop Navigation */}
-            <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
-              {tabs.map((tab) => (
-                <Button
-                  key={tab.id}
-                  onClick={() => handleTabClick(tab)}
-                  variant={activeTab === tab.id ? "contained" : "text"}
-                  size="small"
-                  sx={{
-                    minWidth: "auto",
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 500,
-                  }}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </Box>
-          </Box>
-
-          {/* Desktop Profile Picture with Logout */}
-          <Box
-            sx={{
-              display: { xs: "none", md: "flex" },
+      <Toolbar
+        disableGutters
+        sx={{
+          justifyContent: "space-between",
+          height: 64,
+          width: "100%",
+        }}
+      >
+        {/* Logo - popolnoma poravnan z levim robom zaslona, brez paddinga */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Link
+            href="/dashboard"
+            style={{
+              display: "flex",
               alignItems: "center",
-              gap: 2,
+              paddingLeft: "16px",
             }}
           >
-            {isAdmin && (
-              <>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => handleAdminNavigation("/admin")}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                  }}
-                >
-                  Users
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => handleAdminNavigation("/senzors")}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                  }}
-                >
-                  Senzorji
-                </Button>
-              </>
-            )}
-            <Avatar
-              src="/professional-profile-avatar.png"
-              alt="Profile"
-              sx={{
-                width: 32,
-                height: 32,
-                background: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)",
-              }}
+            <Image
+              src="/senzemo-logo.svg"
+              alt="Senzemo"
+              width={120}
+              height={32}
+              priority
             />
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleLogout}
-              startIcon={<Logout />}
-              sx={{
-                textTransform: "none",
-                borderRadius: 2,
-              }}
-            >
-              Odjava
-            </Button>
-          </Box>
+          </Link>
 
-          {/* Mobile menu button */}
-          <Box sx={{ display: { xs: "block", md: "none" } }}>
-            <IconButton
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              edge="end"
-              color="inherit"
-              aria-label="menu"
-            >
-              {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
-            </IconButton>
+          {/* Desktop Navigation */}
+          <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
+            {tabs.map((tab) => (
+              <Button
+                key={tab.id}
+                onClick={() => handleTabClick(tab)}
+                variant={activeTab === tab.id ? "contained" : "text"}
+                size="small"
+                sx={{
+                  minWidth: "auto",
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 500,
+                }}
+              >
+                {tab.label}
+              </Button>
+            ))}
           </Box>
-        </Toolbar>
-      </Container>
+        </Box>
+
+        {/* Desktop Profile Picture with Logout */}
+        <Box
+          sx={{
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            gap: 2,
+            pr: { xs: 2, md: 4 },
+          }}
+        >
+          {isAdmin && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleAdminNavigation("/admin")}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+              >
+                Users
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleAdminNavigation("/sensors")}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+              >
+                Senzorji
+              </Button>
+            </>
+          )}
+          <Avatar
+            src="/professional-profile-avatar.png"
+            alt="Profile"
+            sx={{
+              width: 32,
+              height: 32,
+              background: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)",
+            }}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleLogout}
+            startIcon={<Logout />}
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+            }}
+          >
+            Odjava
+          </Button>
+        </Box>
+
+        {/* Mobile menu button */}
+        <Box sx={{ display: { xs: "block", md: "none" }, pr: 2 }}>
+          <IconButton
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            edge="end"
+            color="inherit"
+            aria-label="menu"
+          >
+            {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+          </IconButton>
+        </Box>
+      </Toolbar>
 
       {/* Mobile Navigation Drawer */}
       <Drawer

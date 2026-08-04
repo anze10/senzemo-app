@@ -14,15 +14,17 @@ type SensorParserInput = {
 };
 
 type SensorParserOutput = {
-  type: "number" | "string" | "boolean" | "enum";
+  type: "number" | "string" | "boolean" | "enum" | "ignore";
   name: string;
   default: ParsedSensorValue;
   important?: boolean;
   format?: "hex";
   enum_values?: { value: number; mapped: string }[];
   scale?: number;
+  tolerance?: boolean;
+  from?: number;
+  upTo?: number;
 };
-
 export type SensorParser = {
   input: SensorParserInput;
   output: SensorParserOutput;

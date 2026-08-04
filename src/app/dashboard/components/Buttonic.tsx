@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Avatar,
   Box,
   Button,
   Card,
@@ -14,10 +15,6 @@ import {
 import { Cloud, FileBox, Gauge } from "lucide-react";
 import Link from "next/link";
 
-export const metadata = {
-  title: "Dashboard",
-  description: "Pregled in upravljanje vaše aplikacije",
-};
 
 export default function Dashboard() {
   const theme = useTheme();
@@ -26,28 +23,28 @@ export default function Dashboard() {
   const cards = [
     {
       title: "Sestavi senzorje",
-      icon: <Gauge size={20} />,
+      icon: <Gauge size={22} />,
       href: "/parametrs",
       buttonText: "Začni sestavljanje",
       description: "Konfiguriraj in sestavi senzorje",
     },
     {
       title: "Zaloga",
-      icon: <FileBox size={20} />,
+      icon: <FileBox size={22} />,
       href: "/inventory",
       buttonText: "Preglej zalogo",
       description: "Upravljaj z zalogo in količinami",
     },
     {
       title: "Naročila",
-      icon: <FileBox size={20} />,
+      icon: <FileBox size={22} />,
       href: "/orders",
       buttonText: "Preglej naročila",
       description: "Upravljaj naročila strank",
     },
     {
       title: "Google Drive",
-      icon: <Cloud size={20} />,
+      icon: <Cloud size={22} />,
       href: "https://drive.google.com",
       buttonText: "Odpri Google Drive",
       description: "Dostop do spletne shranitvena",
@@ -57,6 +54,8 @@ export default function Dashboard() {
 
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+
+
       <Box sx={{ mb: { xs: 3, md: 4 } }}>
         <Typography
           variant={isMobile ? "h4" : "h3"}
@@ -93,34 +92,55 @@ export default function Dashboard() {
         {cards.map((card) => (
           <Card
             key={card.title}
+            variant="outlined"
             sx={{
               height: "100%",
               display: "flex",
               flexDirection: "column",
+              borderRadius: 3,
               transition: "all 0.2s ease-in-out",
               "&:hover": {
                 transform: "translateY(-4px)",
-                boxShadow: theme.shadows[8],
+                boxShadow: theme.shadows[6],
+                borderColor: "primary.main",
               },
             }}
           >
             <CardHeader
+              avatar={
+                <Avatar
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    width: 40,
+                    height: 40,
+                  }}
+                >
+                  {card.icon}
+                </Avatar>
+              }
               title={card.title}
-              action={card.icon}
-              titleTypographyProps={{
-                variant: "h6",
-                fontWeight: 600,
-                color: "primary.main",
-              }}
-              sx={{
-                pb: 1,
-                "& .MuiCardHeader-action": {
-                  color: "primary.main",
+              slotProps={{
+                title: {
+                  variant: "h6",
+                  fontWeight: 600,
                 },
               }}
+              sx={{ pb: 1 }}
             />
-            <CardContent sx={{ flexGrow: 1, pt: 0 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <CardContent
+              sx={{
+                flexGrow: 1,
+                pt: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 2, flexGrow: 1 }}
+              >
                 {card.description}
               </Typography>
               <Link
@@ -136,8 +156,9 @@ export default function Dashboard() {
                   variant="contained"
                   size={isMobile ? "large" : "medium"}
                   sx={{
-                    mt: "auto",
                     fontWeight: 600,
+                    borderRadius: 2,
+                    textTransform: "none",
                   }}
                 >
                   {card.buttonText}
