@@ -164,10 +164,15 @@ export default function AdminConsole() {
 
     return (
         <>
-            {/* Mali logo + BackButton v zgornjem levem kotu - konsistentno
-                s /parametrs in /konec, brez Navbar (namenska podstran) */}
+
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, pl: 2, pt: 2 }}>
-                <Image src="/senzemo-logo.svg" alt="Senzemo" width={90} height={24} />
+                <Image
+                    src="/senzemo-logo.svg"
+                    alt="Senzemo"
+                    width={120}
+                    height={32}
+                    priority
+                />
             </Box>
 
             <Box sx={{ maxWidth: 1300, mx: "auto", px: { xs: 2, md: 3 }, py: 3 }}>

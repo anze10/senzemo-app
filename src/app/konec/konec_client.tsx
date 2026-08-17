@@ -339,7 +339,13 @@ export function Konec() {
       {/* Mali logo v zgornjem levem kotu - konsistentno s /parametrs,
           brez Navbar/BackButton, ker gre za zavezujoč zaključni korak procesa */}
       <Box sx={{ display: "flex", alignItems: "center", pl: 2, pt: 2 }}>
-        <Image src="/senzemo-logo.svg" alt="Senzemo" width={90} height={24} />
+        <Image
+          src="/senzemo-logo.svg"
+          alt="Senzemo"
+          width={120}
+          height={32}
+          priority
+        />
       </Box>
 
       <Box sx={{ maxWidth: 960, mx: "auto", px: { xs: 2, md: 3 }, py: 3 }}>

@@ -181,8 +181,10 @@ export default function Parameters() {
       <Image
         src="/senzemo-logo.svg"
         alt="Senzemo"
-        width={90}
-        height={24} />
+        width={120}
+        height={32}
+        priority
+      />
     </Box>
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -225,13 +227,13 @@ export default function Parameters() {
                 py: { xs: 3, md: 6 },
               }}
             >
-              <Image
+              {/* <Image
                 src="/senzemo-logo.svg"
                 alt="Senzemo"
                 width={180}
                 height={48}
                 className="mb-6"
-                priority />
+                priority /> */}
 
               <Box
                 sx={{
@@ -279,7 +281,7 @@ export default function Parameters() {
                           key={`${device.familyId}_${device.product}`}
                           value={`${device.familyId}_${device.product}`}
                         >
-                          {device.name}, {device.familyId},{device.product}
+                          {device.name}
                         </MenuItem>
                       ))}
                     </Select>
