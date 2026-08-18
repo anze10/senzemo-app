@@ -22,10 +22,10 @@
     "deps": "ncu --interactive --format group",
     "postinstall": "prisma generate && electron-rebuild",
     "electron:rebuild": "electron-rebuild",
-    "electron:compile": "mkdir -p dist-electron && cp electron/package.json dist-electron/package.json && tsc -p electron/tsconfig.json",
-    "electron:compile:watch": "mkdir -p dist-electron && cp electron/package.json dist-electron/package.json && tsc -p electron/tsconfig.json --watch --preserveWatchOutput",
     "electron:dev": "concurrently -k \"bun run dev\" \"bun run electron:compile:watch\" \"wait-on http://localhost:3000 dist-electron/main.js && electron .\"",
-    "electron:build": "bun run build && bun run electron:compile && electron-builder"
+    "electron:compile": "node prepare-electron.mjs && tsc -p electron/tsconfig.json",
+    "electron:compile:watch": "node prepare-electron.mjs && tsc -p electron/tsconfig.json --watch --preserveWatchOutput",
+    "electron:build": "bun run build && node prepare-electron.mjs && tsc -p electron/tsconfig.json && electron-builder"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.844.0",
