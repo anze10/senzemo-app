@@ -117,6 +117,7 @@
   "build": {
     "appId": "com.senzemo.production_app",
     "productName": "Production app",
+    "publish": null,
     "asar": false,
     "files": [
       "dist-electron/**/*",
@@ -140,6 +141,12 @@
       ],
       "category": "Office",
       "syncDesktopName": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
     }
   }
 }
