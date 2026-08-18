@@ -21,7 +21,9 @@ jobs:
 
       - name: Ustvari .env
         shell: bash
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE }}
+        run: echo "$ENV_FILE_CONTENT" > .env
 
       - name: Preveri .env (debug - brez razkritja vsebine)
         shell: bash
