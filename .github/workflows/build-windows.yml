@@ -20,21 +20,14 @@ jobs:
         run: bun install
 
       - name: Ustvari .env
+        shell: bash
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Preveri .env (debug - brez razkritja vsebine)
+        shell: bash
         run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" >> .env
-          echo "GOOGLE_DRIVE_FOLDER_ID=${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}" >> .env
-          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
-          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
-          echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
-          echo "AWS_ENDPOINT=${{ secrets.AWS_ENDPOINT }}" >> .env
-          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
-          echo "AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}" >> .env
-          echo "B2_CONFIGS_BUCKET_NAME=${{ secrets.B2_CONFIGS_BUCKET_NAME }}" >> .env
-          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
-          # dodaj še vse ostale env spremenljivke, ki jih tvoj build potrebuje
+          echo "Število vrstic v .env: $(wc -l < .env)"
+          echo "Ali DATABASE_URL obstaja: $(grep -c '^DATABASE_URL=' .env || echo 0)"
 
       - name: Zgradi Windows exe
         run: bun run electron:build
