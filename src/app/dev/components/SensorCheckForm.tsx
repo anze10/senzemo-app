@@ -250,8 +250,16 @@ export function SensorCheckForm() {
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
+  const lastCheckedIndexRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!current_sensor || !target_sensor_data) return;
+
+    // Preveri samo ENKRAT na vsak senzor (po indeksu) - prepreči ponoven
+    // prožitev ob nepovezanih store spremembah (npr. set_sensor_status
+    // med "Sprejmi" flow-om), ki bi sicer primerjal STAR senzor znova.
+    if (lastCheckedIndexRef.current === current_sensor_index) return;
+    lastCheckedIndexRef.current = current_sensor_index;
 
     const mismatches: {
       name: string;
@@ -260,7 +268,7 @@ export function SensorCheckForm() {
     }[] = [];
 
     Object.entries(current_sensor.data).forEach(([key, value]) => {
-      if (key.endsWith("_tol")) return; // preskoči metapodatkovna tolerance polja
+      if (key.endsWith("_tol")) return;
 
       const parser = sensor_parsers.find((p) => p.output.name === key);
 
@@ -269,12 +277,11 @@ export function SensorCheckForm() {
           key,
           value as ParsedSensorValue,
           target_sensor_data,
-          parser
+          parser,
         )
       ) {
         let displayExpected = target_sensor_data[key];
 
-        // Za enum polja - pretvori surovo številko v mapirano ime za prikaz v dialogu
         if (parser?.output.type === "enum" && parser.output.enum_values) {
           const mapped = parser.output.enum_values.find(
             (e) => e.value === displayExpected,
@@ -294,7 +301,7 @@ export function SensorCheckForm() {
       setMismatchList(mismatches);
       setMismatchDialogOpen(true);
     }
-  }, [current_sensor, target_sensor_data, sensor_parsers]);
+  }, [current_sensor_index, current_sensor, target_sensor_data, sensor_parsers]);
 
   // Remove static dataforDB object - it will be created dynamically in useMemo
   const all_sensors = useSensorStore((state) => state.sensors);
