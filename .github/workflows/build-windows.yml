@@ -1,0 +1,46 @@
+name: Build Windows exe
+
+on:
+  workflow_dispatch: # ROČEN zagon preko "Actions" zavihka - klikneš "Run workflow"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest # pravi Windows stroj v oblaku
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+        with:
+          ref: quick-push # vedno ta veja, koda je samo tukaj
+
+      - name: Namesti Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Namesti odvisnosti
+        run: bun install
+
+      - name: Ustvari .env
+        run: |
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" >> .env
+          echo "GOOGLE_DRIVE_FOLDER_ID=${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "AWS_ENDPOINT=${{ secrets.AWS_ENDPOINT }}" >> .env
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
+          echo "AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}" >> .env
+          echo "B2_CONFIGS_BUCKET_NAME=${{ secrets.B2_CONFIGS_BUCKET_NAME }}" >> .env
+          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
+          # dodaj še vse ostale env spremenljivke, ki jih tvoj build potrebuje
+
+      - name: Zgradi Windows exe
+        run: bun run electron:build
+
+      - name: Naloži .exe kot prenosljiv artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/*.exe
