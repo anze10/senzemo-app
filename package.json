@@ -130,6 +130,10 @@
       {
         "from": ".next",
         "to": "app/.next"
+      },
+      {
+        "from": "node_modules/.prisma",
+        "to": "app/node_modules/.prisma"
       }
     ],
     "directories": {

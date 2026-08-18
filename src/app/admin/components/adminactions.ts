@@ -55,7 +55,7 @@ export async function resendPasswordResetAction(email: string) {
   await auth.api.requestPasswordReset({
     body: {
       email,
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/resetpass`,
     },
   });
   return { success: true };
