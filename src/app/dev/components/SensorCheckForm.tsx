@@ -250,16 +250,17 @@ export function SensorCheckForm() {
       return state.sensors[state.current_sensor_index];
     else return undefined;
   });
-  const lastCheckedIndexRef = useRef<number | null>(null);
+  const checkedIndicesRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!current_sensor || !target_sensor_data) return;
 
-    // Preveri samo ENKRAT na vsak senzor (po indeksu) - prepreči ponoven
-    // prožitev ob nepovezanih store spremembah (npr. set_sensor_status
-    // med "Sprejmi" flow-om), ki bi sicer primerjal STAR senzor znova.
-    if (lastCheckedIndexRef.current === current_sensor_index) return;
-    lastCheckedIndexRef.current = current_sensor_index;
+    // Preveri vsak senzor SAMO ENKRAT v celotni seji (po indeksu) -
+    // Set namesto ene vrednosti, ker se current_sensor_index lahko
+    // resetira nazaj na 0 (npr. ob kliku "Končaj"), kar bi sicer
+    // sprožilo ponoven, napačen prikaz mismatch dialoga za prvi senzor.
+    if (checkedIndicesRef.current.has(current_sensor_index)) return;
+    checkedIndicesRef.current.add(current_sensor_index);
 
     const mismatches: {
       name: string;
