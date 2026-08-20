@@ -21,6 +21,7 @@ COPY . .
 # RUN cp .env.docker .env
 
 RUN bunx prisma generate
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN bun run build
 
 # --- Faza 3: runtime (minimalna, produkcijska slika) ---
