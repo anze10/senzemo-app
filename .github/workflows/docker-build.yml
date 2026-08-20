@@ -2,7 +2,7 @@ name: Build and push Docker image
 
 on:
   push:
-    branches: [quick-push] # ali master, kar uporabljaš
+    branches: [quick-push]
 
 env:
   IMAGE: ghcr.io/anze10/senzemo-app

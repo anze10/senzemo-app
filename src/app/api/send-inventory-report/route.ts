@@ -5,6 +5,7 @@ import {
   getDetailedSensorInventory,
   getLowComponents,
 } from "src/app/inventory/components/backent";
+export const dynamic = "force-dynamic";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
