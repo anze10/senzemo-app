@@ -22,6 +22,7 @@ COPY . .
 
 RUN bunx prisma generate
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+ENV RESEND_API_KEY="re_build_dummy"
 RUN bun run build
 
 # --- Faza 3: runtime (minimalna, produkcijska slika) ---
