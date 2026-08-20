@@ -8,6 +8,7 @@ import {
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
 import { prisma } from "src/server/DATABASE_ACTION/prisma";
 import type { Mailing } from "@prisma/client";
+export const dynamic = "force-dynamic";
 
 type MailingWithUser = Mailing & { user: { email: string; name?: string } };
 
