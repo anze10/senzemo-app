@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: senzemo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: senzemo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U senzemo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: postgresql://senzemo:${POSTGRES_PASSWORD}@postgres:5432/senzemo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - n8n_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tool-nfc.entrypoints=web,websecure"
+      - "traefik.http.routers.tool-nfc.rule=Host(`tool.senzemo.com`)"
+      - "traefik.http.routers.tool-nfc.tls=true"
+      - "traefik.http.routers.tool-nfc.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.tool-nfc.loadbalancer.server.port=3000"
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+  n8n_default:
+    external: true

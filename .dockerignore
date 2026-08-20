@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env.local
+.env
+dist
+dist-electron
+electron
+*.log
+.DS_Store
+backup_pred_better_auth_20260714.sql
