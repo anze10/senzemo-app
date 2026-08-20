@@ -18,7 +18,7 @@ COPY . .
 # sam). Preimenujemo jo v .env ZNOTRAJ slike, ker Next.js pričakuje
 # točno to ime - tako dobimo pravilno parsirane vrednosti brez potrebe
 # po ročnem ARG/ENV seznamu za vsako spremenljivko posebej.
-RUN cp .env.docker .env
+# RUN cp .env.docker .env
 
 RUN bunx prisma generate
 RUN bun run build
