@@ -78,7 +78,7 @@ export const auth = betterAuth({
         // Resend-ov vgrajen testni pošiljatelj - deluje TAKOJ, brez verifikacije
         // lastne domene. Ko bo senzemo.com verificiran v Resend, zamenjaj nazaj
         // na "Senzemo <noreply@senzemo.com>".
-        from: "Senzemo (test) <onboarding@resend.dev>",
+        from: "anze@repse.si",
         to: user.email,
         subject: "Nastavi geslo za svoj Senzemo račun",
         html: `
