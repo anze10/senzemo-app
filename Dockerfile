@@ -21,7 +21,7 @@ COPY . .
 # RUN cp .env.docker .env
 
 RUN bunx prisma generate
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+ENV DATABASE_URL="postgresql://senzemo:testno_geslo_123@postgres:5432/senzemo"
 ENV RESEND_API_KEY="re_build_dummy"
 RUN bun run build
 
