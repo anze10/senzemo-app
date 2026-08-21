@@ -12,6 +12,7 @@ if (!connectionString) {
 const adapter = new PrismaPg({
   connectionString,
   max: 5,
+  ssl: false,
 });
 
 const logLevels: Prisma.LogLevel[] =
