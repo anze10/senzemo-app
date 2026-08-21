@@ -56,7 +56,7 @@ function createWindow(): void {
     },
   });
 
-  mainWindow.loadURL("http://localhost:3000");
+  mainWindow.loadURL("https://tool.senzemo.com");
 
   if (isDev) {
     mainWindow.webContents.openDevTools();
