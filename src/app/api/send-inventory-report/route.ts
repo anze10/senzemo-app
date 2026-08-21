@@ -5,7 +5,6 @@ import {
   getDetailedSensorInventory,
   getLowComponents,
 } from "src/app/inventory/components/backent";
-export const dynamic = "force-dynamic";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -59,7 +58,7 @@ export async function POST() {
 
   // Send test email to single recipient
   const fields = {
-    from: "delivered@resend.dev", // Use Resend's test domain
+    from: "anze@repse.si", // Use Resend's test domain
     to: testEmail,
     subject: `Senzemo Inventory Report (TEST) - ${today.toDateString()}`,
     react: InventoryEmailTemplate({

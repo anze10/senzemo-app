@@ -67,7 +67,7 @@ export async function POST() {
     await Promise.all(
       mailingList.map((mail: MailingWithUser) =>
         resend.emails.send({
-          from: "anze.repse@sensedge.co", // Use Resend's test domain
+          from: "anze@repse.si", // Use Resend's test domain
           to: [mail.user.email],
           subject: `Monthly Inventory Report - ${today.toDateString()}`,
           react: InventoryEmailTemplate({
