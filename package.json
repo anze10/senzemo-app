@@ -118,23 +118,9 @@
     "appId": "com.senzemo.production_app",
     "productName": "Production app",
     "publish": null,
-    "asar": false,
     "files": [
       "dist-electron/**/*",
-      "public/**/*",
-      "node_modules/**/*",
-      "package.json",
-      ".env"
-    ],
-    "extraResources": [
-      {
-        "from": ".next",
-        "to": "app/.next"
-      },
-      {
-        "from": "node_modules/.prisma",
-        "to": "app/node_modules/.prisma"
-      }
+      "package.json"
     ],
     "directories": {
       "buildResources": "assets"

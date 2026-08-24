@@ -44,7 +44,7 @@ export async function inviteUser(
   await auth.api.requestPasswordReset({
     body: {
       email,
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/ressetpass`,
+      redirectTo: `${process.env.URL}/ressetpass`,
     },
   });
 
@@ -55,7 +55,7 @@ export async function resendPasswordResetAction(email: string) {
   await auth.api.requestPasswordReset({
     body: {
       email,
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/resetpass`,
+      redirectTo: `${process.env.URL}/resetpass`,
     },
   });
   return { success: true };

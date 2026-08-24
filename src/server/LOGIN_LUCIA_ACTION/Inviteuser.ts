@@ -29,7 +29,7 @@ export async function inviteUser(
   await auth.api.requestPasswordReset({
     body: {
       email,
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/resetpass`, // uporabnik bo preusmerjen na to stran po kliku na link v emailu
+      redirectTo: `${process.env.URL}/resetpass`, // uporabnik bo preusmerjen na to stran po kliku na link v emailu
     },
   });
 

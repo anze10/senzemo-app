@@ -26,7 +26,7 @@ export function InventoryEmailTemplate({
   reportDate,
   sensorInventory,
   lowStockItems,
-  reportUrl = `${process.env.NEXT_PUBLIC_APP_URL}/inventory`, // Default URL if not provided
+  reportUrl = `${process.env.URL}/inventory`, // Default URL if not provided
 }: InventoryEmailTemplateProps) {
   return (
     <div

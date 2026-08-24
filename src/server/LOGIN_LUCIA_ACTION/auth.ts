@@ -22,12 +22,12 @@ export const auth = betterAuth({
   // Eksplicitno nastavi (namesto zanašanja na implicitno branje env) -
   // odpravi "Base URL is not set" opozorilo, ki smo ga videli med buildom,
   // in je bolj robustno za Docker/Traefik postavitev
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: process.env.URL,
   secret: process.env.BETTER_AUTH_SECRET,
 
   // Eksplicitno dovoljena izvorišča - pomembno zdaj ko app teče za Traefik
   // reverse proxy-jem, prepreči morebitne bodoče CORS/origin probleme
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL!],
+  trustedOrigins: [process.env.URL!],
 
   database: prismaAdapter(prisma, {
     provider: "postgresql",
