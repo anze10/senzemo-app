@@ -49,3 +49,11 @@ export async function insertIntoDB(
     },
   });
 }
+
+export async function checkDevEuiExists(devEui: string): Promise<boolean> {
+  const existing = await prisma.productionList.findFirst({
+    where: { DevEUI: devEui },
+    select: { id: true },
+  });
+  return existing !== null;
+}

@@ -6,7 +6,7 @@ import type {
   ParsedSensorValue,
   //ParseSensorData,
 } from "./Reader/ParseSensorData";
-import { DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemText, Dialog as MismatchDialog } from "@mui/material";
+import { Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemText, Dialog as MismatchDialog } from "@mui/material";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useSensorStore } from "./SensorStore";
 import { usePrinterStore } from "./printer/printer_settinsgs_store";
@@ -64,6 +64,7 @@ import Printer_settings from "./printer/Printer_settings";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 //import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent"; // Konfiguracija za avtomatsko odštevanje komponent
 import { SerialPortPicker } from "src/app/dev/components/Reader/SerialPortPicker";
+import { checkDevEuiExists } from "./PrismaCode";
 //import type { Sensor } from "~/app/parametrs/components/functions";
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
 // const getAutoDeductComponents = (): boolean => {
@@ -251,7 +252,10 @@ export function SensorCheckForm() {
     else return undefined;
   });
   const checkedIndicesRef = useRef<Set<number>>(new Set());
-
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [duplicateResolveRef, setDuplicateResolveRef] = useState<
+    ((shouldPrint: boolean) => void) | null
+  >(null);
   useEffect(() => {
     if (!current_sensor || !target_sensor_data) return;
 
@@ -1182,6 +1186,28 @@ export function SensorCheckForm() {
                         return;
                       }
 
+                      // NOVO: preveri, ali je ta DevEUI že bil sprejet v preteklosti -
+                      // prepreči nehoteno podvajanje zapisov v bazi
+                      setProcessingMessage("Preverjam podvajanje...");
+                      const alreadyExists = await checkDevEuiExists(
+                        data.dev_eui as string,
+                      );
+                      let shouldPrint = true;
+
+                      if (alreadyExists) {
+                        shouldPrint = await new Promise<boolean>((resolve) => {
+                          setDuplicateResolveRef(() => resolve);
+                          setDuplicateWarningOpen(true);
+                        });
+
+                        if (shouldPrint === null) {
+                          // Uporabnik je preklical celotno akcijo
+                          setIsProcessing(false);
+                          setProcessingMessage("");
+                          return;
+                        }
+                      }
+
                       console.log("Processing accept for current sensor");
                       setProcessingMessage("Shranjujem v bazo...");
 
@@ -1274,19 +1300,23 @@ export function SensorCheckForm() {
                       //   );
                       // }
 
-                      setProcessingMessage("Tiskam nalepko...");
-                      try {
-                        await PrintSticker(
-                          data.dev_eui as string,
-                          sensors ?? [],
-                          data.family_id as number,
-                          data.product_id as number,
-                          data.frequency_region as string
-                        );
-                      } catch (printError) {
-                        console.error("Error printing sticker:", printError);
-                        setProcessingMessage("Opozorilo: Napaka pri tiskanju");
-                        // Continue execution even if printing fails
+                      // Pogojno tiskanje - preskoči, če je uporabnik za podvojen
+                      // DevEUI izbral "Nadaljuj BREZ tiskanja nalepke"
+                      if (shouldPrint) {
+                        setProcessingMessage("Tiskam nalepko...");
+                        try {
+                          await PrintSticker(
+                            data.dev_eui as string,
+                            sensors ?? [],
+                            data.family_id as number,
+                            data.product_id as number,
+                            data.frequency_region as string,
+                          );
+                        } catch (printError) {
+                          console.error("Error printing sticker:", printError);
+                          setProcessingMessage("Opozorilo: Napaka pri tiskanju");
+                          // Continue execution even if printing fails
+                        }
                       }
 
                       console.log("Sensor processing completed.");
@@ -1645,6 +1675,60 @@ export function SensorCheckForm() {
           </Button>
         </DialogActions>
       </MismatchDialog>
+      <Dialog
+        open={duplicateWarningOpen}
+        onClose={() => { }}
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon color="error" />
+          Senzor je že bil skeniran!
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Senzor s tem DevEUI (
+            <strong>{current_sensor?.data.dev_eui as string}</strong>) je{" "}
+            <strong>že bil sprejet</strong> v preteklosti. Če nadaljuješ, bo
+            ustvarjen <strong>podvojen</strong> zapis v bazi.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Ali želiš ponovno natisniti nalepko za ta senzor?
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={() => {
+                setDuplicateWarningOpen(false);
+                duplicateResolveRef?.(true);
+              }}
+            >
+              Nadaljuj IN ponovno natisni nalepko
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={() => {
+                setDuplicateWarningOpen(false);
+                duplicateResolveRef?.(false);
+              }}
+            >
+              Nadaljuj BREZ tiskanja nalepke
+            </Button>
+            <Button
+              variant="text"
+              onClick={() => {
+                setDuplicateWarningOpen(false);
+                duplicateResolveRef?.(null as unknown as boolean);
+              }}
+            >
+              Prekliči celotno akcijo
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
