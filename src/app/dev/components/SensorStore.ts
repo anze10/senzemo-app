@@ -59,7 +59,10 @@ export interface SensorState {
   end_time: number; // Time in milliseconds
   reset: () => void;
   set_target_sensor_data: (data: ParsedSensorData) => void;
-  add_new_sensor: (decoder: SensorParserCombinator, data: Uint8Array) => void;
+  add_new_sensor: (
+    decoder: SensorParserCombinator,
+    data: Uint8Array,
+  ) => Promise<boolean>;
   set_current_sensor_index: (new_index: number) => void;
   set_sensor_status: (sensor_number: number, okay: boolean) => void;
   set_sensor_data: (sensor_number: number, data: ParsedSensorData) => void;
@@ -105,18 +108,12 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
   add_new_sensor: async (decoder, data) => {
     const parsed_data = ParseSensorData(decoder, data);
 
-    /* const { common_data, custom_data } =
-      split_common_custom_sensor_data(parsed_data);
-
-    const new_data: SensorData = {
-      common_data,
-      custom_data,
-    }; */
-
     console.log("Adding new sensor:", parsed_data);
 
-    // For custom simple reader, accept any parsed data
-    // Remove strict validation that was blocking simple sensors
+    // Ključno: zabeleži, ali je bil ta senzor ŽE SPREJET (okay: true)
+    // v tej seji - to razlikuje "šele berem, prvič" od "uporabnik ga
+    // je po pomoti preskeniral drugič po tem, ko ga je že potrdil"
+    let wasAlreadyAccepted = false;
 
     set(
       produce((state: SensorState) => {
@@ -138,6 +135,9 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
             // For simple reader, always update and show the data
             const existingSensor = state.sensors[existingIndex];
             if (existingSensor) {
+              if (existingSensor.okay === true) {
+                wasAlreadyAccepted = true;
+              }
               console.log("Updating existing sensor data");
               existingSensor.data = parsed_data;
               state.current_sensor_index = existingIndex;
@@ -153,6 +153,8 @@ const sensor_callback: StateCreator<SensorState> = (set) => ({
         state.current_sensor_index = state.sensors.length - 1;
       }),
     );
+
+    return wasAlreadyAccepted;
   },
   set_current_sensor_index: (new_index: number) =>
     set({ current_sensor_index: new_index }),
