@@ -31,7 +31,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMediaQuery, useTheme } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
 import Container from "@mui/material/Container";
-import Image from "next/image";
+//import Image from "next/image";
 import {
   Alert,
   Box,
@@ -1881,13 +1881,13 @@ export default function InventoryManagementPage() {
                 textAlign: { xs: "center", md: "left" },
               }}
             >
-              <Image
+              {/* <Image
                 src="/senzemo-large-01 (9).png"
                 alt="Senzemo Logo"
                 width={isMobile ? 60 : 80}
                 height={isMobile ? 60 : 80}
                 className="h-auto w-auto"
-              />
+              /> */}
               <Box>
                 <Typography
                   variant={isMobile ? "h5" : "h4"}

@@ -45,9 +45,9 @@ export default function Dashboard() {
     {
       title: "Google Drive",
       icon: <Cloud size={22} />,
-      href: "https://drive.google.com",
+      href: `https://drive.google.com/drive/u/2/folders/${process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_ID}`,
       buttonText: "Odpri Google Drive",
-      description: "Dostop do spletne shranitvena",
+      description: "Dostop do CSV datotek",
       external: true,
     },
   ];
