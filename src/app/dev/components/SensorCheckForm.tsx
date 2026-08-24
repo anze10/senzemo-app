@@ -859,7 +859,16 @@ export function SensorCheckForm() {
 
                     // 4. Dodaš senzor
                     console.log("4. Adding sensor to store...");
-                    add_new_sensor(decoder, uint_array);
+                    const wasAlreadyAccepted862 = await add_new_sensor(decoder, uint_array);
+                    setUsbStatus({
+                      isConnecting: false,
+                      message: wasAlreadyAccepted862
+                        ? "OPOZORILO: Ta senzor je bil že sprejet v tej seji!"
+                        : "Senzor uspešno prebran",
+                      type: wasAlreadyAccepted862 ? "warning" : "success",
+                    });
+                    console.log("Simple read cycle completed successfully");
+                    // add_new_sensor(decoder, uint_array);
 
                     setUsbStatus({
                       isConnecting: false,
@@ -1365,8 +1374,12 @@ export function SensorCheckForm() {
                           const decoder = RightDecoder(uint_array, sensors);
                           if (decoder) {
                             console.log("Auto-adding next sensor...");
-                            add_new_sensor(decoder, uint_array);
-                            setProcessingMessage("Senzor uspešno obdelan");
+                            const wasAlreadyAccepted1368 = await add_new_sensor(decoder, uint_array);
+                            setProcessingMessage(
+                              wasAlreadyAccepted1368
+                                ? "OPOZORILO: Naslednji senzor je bil ŽE SPREJET v tej seji!"
+                                : "Senzor uspešno obdelan",
+                            );
                           } else {
                             console.log("No decoder found for auto-read sensor");
                             setProcessingMessage("Naslednji senzor ni prepoznan");
@@ -1493,9 +1506,11 @@ export function SensorCheckForm() {
                           const decoder = RightDecoder(uint_array, sensors);
                           if (decoder) {
                             console.log("Auto-adding next sensor...");
-                            add_new_sensor(decoder, uint_array);
+                            const wasAlreadyAccepted1496 = await add_new_sensor(decoder, uint_array);
                             setProcessingMessage(
-                              "Senzor uspešno obdelan (brez inventarja)",
+                              wasAlreadyAccepted1496
+                                ? "OPOZORILO: Naslednji senzor je bil ŽE SPREJET v tej seji!"
+                                : "Senzor uspešno obdelan (brez inventarja)",
                             );
                           } else {
                             console.log("No decoder found for auto-read sensor");
