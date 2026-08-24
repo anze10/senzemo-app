@@ -238,6 +238,10 @@ export function SensorCheckForm() {
     }
   }, [usbStatus.message, usbStatus.isConnecting]);
   const orderId = useSensorStore((state) => state.OrderID);
+  const [sessionDuplicateWarningOpen, setSessionDuplicateWarningOpen] = useState(false);
+  const [sessionDuplicateResolveRef, setSessionDuplicateResolveRef] = useState<
+    ((proceed: boolean) => void) | null
+  >(null);
   const target_sensor_data = useSensorStore(
     (state) => state.target_sensor_data,
   );
@@ -1186,15 +1190,45 @@ export function SensorCheckForm() {
                         return;
                       }
 
-                      // NOVO: preveri, ali je ta DevEUI že bil sprejet v preteklosti -
-                      // prepreči nehoteno podvajanje zapisov v bazi
+                      // PRVA preverba: je senzor ŽE V TRENUTNI SEJI (napaka
+                      // uporabnika - isti senzor bi šel v CSV/Drive DVAKRAT
+                      // v istem izvozu, ker ga je po pomoti skeniral dvakrat)
+                      const inCurrentSession = all_sensors.some(
+                        (sensor, index) =>
+                          index !== current_sensor_index &&
+                          sensor.okay &&
+                          sensor.data.dev_eui === data.dev_eui,
+                      );
+
+                      if (inCurrentSession) {
+                        const proceedAnyway = await new Promise<boolean>(
+                          (resolve) => {
+                            setSessionDuplicateResolveRef(() => resolve);
+                            setSessionDuplicateWarningOpen(true);
+                          },
+                        );
+
+                        if (!proceedAnyway) {
+                          // Uporabnik je preklical - senzor OSTANE
+                          // neobdelan, ni side-effectov
+                          setIsProcessing(false);
+                          setProcessingMessage("");
+                          return;
+                        }
+                        // Če je uporabnik VSEENO potrdil, nadaljuje naprej
+                        // (redek, eksplicitno potrjen primer)
+                      }
+
+                      // DRUGA preverba: je senzor bil ŽE PREJ sprejet V BAZI
+                      // (legitimen scenarij - senzor iz zaloge, vprašaj za
+                      // ponovno tiskanje nalepke)
                       setProcessingMessage("Preverjam podvajanje...");
-                      const alreadyExists = await checkDevEuiExists(
+                      const alreadyInDb = await checkDevEuiExists(
                         data.dev_eui as string,
                       );
                       let shouldPrint = true;
 
-                      if (alreadyExists) {
+                      if (alreadyInDb) {
                         shouldPrint = await new Promise<boolean>((resolve) => {
                           setDuplicateResolveRef(() => resolve);
                           setDuplicateWarningOpen(true);
@@ -1300,8 +1334,8 @@ export function SensorCheckForm() {
                       //   );
                       // }
 
-                      // Pogojno tiskanje - preskoči, če je uporabnik za podvojen
-                      // DevEUI izbral "Nadaljuj BREZ tiskanja nalepke"
+                      // Pogojno tiskanje - preskoči, če je uporabnik za
+                      // podvojen DevEUI izbral "Nadaljuj BREZ tiskanja nalepke"
                       if (shouldPrint) {
                         setProcessingMessage("Tiskam nalepko...");
                         try {
@@ -1690,8 +1724,8 @@ export function SensorCheckForm() {
           <Typography sx={{ mb: 2 }}>
             Senzor s tem DevEUI (
             <strong>{current_sensor?.data.dev_eui as string}</strong>) je{" "}
-            <strong>že bil sprejet</strong> v preteklosti. Če nadaljuješ, bo
-            ustvarjen <strong>podvojen</strong> zapis v bazi.
+            <strong>že bil sprejet</strong> v preteklosti. Obstoječ zapis v bazi{" "}
+            <strong>ne bo podvojen</strong> — sistem bo uporabil obstoječ zapis.
           </Typography>
           <Typography variant="body2" sx={{ mb: 3 }}>
             Ali želiš ponovno natisniti nalepko za ta senzor?
@@ -1725,6 +1759,50 @@ export function SensorCheckForm() {
               }}
             >
               Prekliči celotno akcijo
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={sessionDuplicateWarningOpen}
+        onClose={() => { }}
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon color="error" />
+          Senzor je že v trenutnem seznamu!
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Senzor s tem DevEUI (
+            <strong>{current_sensor?.data.dev_eui as string}</strong>) je{" "}
+            <strong>že sprejet</strong> v tej seji in bo poslan na Drive/CSV.
+            Če nadaljuješ, bo ta senzor <strong>DVAKRAT</strong> v izvozu.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            To je verjetno pomota (isti senzor si po nesreči skeniral dvakrat).
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSessionDuplicateWarningOpen(false);
+                sessionDuplicateResolveRef?.(false);
+              }}
+            >
+              Prekliči (priporočeno)
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                setSessionDuplicateWarningOpen(false);
+                sessionDuplicateResolveRef?.(true);
+              }}
+            >
+              Vseeno dodaj
             </Button>
           </Box>
         </DialogContent>

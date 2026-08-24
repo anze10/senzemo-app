@@ -33,13 +33,18 @@ export async function insertIntoDB(
   });
 
   if (existing) {
-    if (orderId && existing.orderId == null) {
-      return await prisma.productionList.update({
-        where: { DevEUI: data.DevEUI ?? undefined },
-        data: { orderId: orderId },
-      });
-    }
-    return existing;
+    // Senzor je bil že prej skeniran - posodobi VSE podatke na najnovejše
+    // vrednosti (ne samo orderId), ker je uporabnik lahko ponovno programiral
+    // senzor z drugačnimi nastavitvami od prvega skeniranja
+    return await prisma.productionList.update({
+      where: { DevEUI: data.DevEUI ?? undefined },
+      data: {
+        ...data,
+        // orderId posodobi SAMO če ga senzor še nima (ne prepiši
+        // obstoječega naročila z null, če je nov klic brez orderId)
+        orderId: orderId ?? existing.orderId,
+      },
+    });
   }
 
   return await prisma.productionList.create({
