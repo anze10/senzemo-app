@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
+import { headers } from "next/headers";
 import { Resend } from "resend";
 import { prisma } from "src/server/DATABASE_ACTION/prisma";
 
@@ -18,6 +19,16 @@ function toIntId(value: unknown): number {
 }
 
 export const auth = betterAuth({
+  // Eksplicitno nastavi (namesto zanašanja na implicitno branje env) -
+  // odpravi "Base URL is not set" opozorilo, ki smo ga videli med buildom,
+  // in je bolj robustno za Docker/Traefik postavitev
+  baseURL: process.env.BETTER_AUTH_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
+
+  // Eksplicitno dovoljena izvorišča - pomembno zdaj ko app teče za Traefik
+  // reverse proxy-jem, prepreči morebitne bodoče CORS/origin probleme
+  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL!],
+
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
@@ -44,40 +55,75 @@ export const auth = betterAuth({
     account: {
       create: {
         before: async (account) => {
-          (account as { userId: unknown }).userId = toIntId(account.userId);
-          // ničesar ne vračamo - Better Auth uporabi isti (zdaj mutiran) objekt naprej
+          const userId = toIntId(account.userId);
+          if (Number.isNaN(userId)) {
+            throw new Error(
+              `toIntId vrnil NaN za account.userId=${String(account.userId)} - preveri format`,
+            );
+          }
+          (account as { userId: unknown }).userId = userId;
         },
       },
       update: {
         before: async (account) => {
-          (account as { userId: unknown }).userId = toIntId(account.userId);
+          const userId = toIntId(account.userId);
+          if (Number.isNaN(userId)) {
+            throw new Error(
+              `toIntId vrnil NaN za account.userId=${String(account.userId)} - preveri format`,
+            );
+          }
+          (account as { userId: unknown }).userId = userId;
         },
       },
     },
     session: {
       create: {
         before: async (session) => {
-          (session as { userId: unknown }).userId = toIntId(session.userId);
+          const userId = toIntId(session.userId);
+          if (Number.isNaN(userId)) {
+            throw new Error(
+              `toIntId vrnil NaN za session.userId=${String(session.userId)} - preveri format`,
+            );
+          }
+          (session as { userId: unknown }).userId = userId;
         },
       },
       update: {
         before: async (session) => {
-          (session as { userId: unknown }).userId = toIntId(session.userId);
+          const userId = toIntId(session.userId);
+          if (Number.isNaN(userId)) {
+            throw new Error(
+              `toIntId vrnil NaN za session.userId=${String(session.userId)} - preveri format`,
+            );
+          }
+          (session as { userId: unknown }).userId = userId;
         },
       },
     },
   },
 
+  // Nadzor nad dolžino/obnavljanjem seje - uporabnik se MORA znova prijaviti
+  // po 8h neaktivnosti; ob vsaki aktivnosti se rok podaljša (če je manj kot
+  // updateAge star), da aktiven uporabnik ni po nepotrebnem odjavljen
+  session: {
+    expiresIn: 60 * 60 * 3, // 8 ur
+    updateAge: 60 * 60, // podaljšaj vsako uro aktivnosti
+  },
+
+  // Osnovna zaščita pred brute-force poskusi prijave - zdaj ko je app
+  // javno dostopna preko tool.senzemo.com, ne samo lokalno
+  rateLimit: {
+    enabled: true,
+    window: 60, // 60 sekund
+    max: 10, // max 10 poskusov na okno (per IP)
+  },
+
   emailAndPassword: {
     enabled: true,
-    // Onemogoči javno samoregistracijo - samo admin ustvarja uporabnike
     disableSignUp: true,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
       await resend.emails.send({
-        // Resend-ov vgrajen testni pošiljatelj - deluje TAKOJ, brez verifikacije
-        // lastne domene. Ko bo senzemo.com verificiran v Resend, zamenjaj nazaj
-        // na "Senzemo <noreply@senzemo.com>".
         from: "anze@repse.si",
         to: user.email,
         subject: "Nastavi geslo za svoj Senzemo račun",
@@ -89,7 +135,7 @@ export const auth = betterAuth({
         `,
       });
     },
-    resetPasswordTokenExpiresIn: 3600 * 24, // 24 ur - dovolj časa da uporabnik ukrepa
+    resetPasswordTokenExpiresIn: 3600 * 24,
   },
 
   socialProviders: {
@@ -104,7 +150,6 @@ export const auth = betterAuth({
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
       ],
-      // hd: "company.com",
       mapProfileToUser: (profile) => {
         return {
           googleId: profile.sub,
@@ -116,16 +161,30 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       role: { type: "string", required: false },
-      // POPRAVLJENO: required: false namesto true - uporabniki, ki jih
-      // admin ustvari preko email/password (brez Googla), nimajo googleId,
-      // in required: true bi povzročil constraint napako pri vsakem
-      // takem createUser klicu.
       googleId: { type: "string", required: false, unique: true },
     },
   },
 
-  plugins: [
-    admin(), // omogoči auth.api.createUser, listUsers, banUser, itd. - MORA biti pred nextCookies
-    nextCookies(), // mora biti zadnji v seznamu pluginov — poskrbi za pravilno nastavljanje cookie-jev iz server akcij
-  ],
+  plugins: [admin(), nextCookies()],
 });
+
+export const getUser = async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: Number(session.user.id) },
+    select: {
+      name: true,
+      email: true,
+      image: true, // Better Auth uporablja polje "image", ne "picture" — preveri svoj prisma schema
+    },
+  });
+
+  return dbUser;
+};

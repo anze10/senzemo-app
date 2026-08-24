@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import CpuIcon from "@mui/icons-material/Memory";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import SalesIcon from "@mui/icons-material/BarChart";
-import OrdersIcon from "@mui/icons-material/ShoppingCart";
+//import OrdersIcon from "@mui/icons-material/ShoppingCart";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import List from "@mui/material/List";
@@ -26,7 +26,7 @@ const navItems = [
   { name: "Sensors", href: "/", icon: <CpuIcon /> },
   { name: "Inventory", href: "/inventory", icon: <InventoryIcon /> },
   { name: "Sales", href: "/sales", icon: <SalesIcon /> },
-  { name: "Orders", href: "/orders", icon: <OrdersIcon /> },
+  // { name: "Orders", href: "/orders", icon: <OrdersIcon /> },
 ];
 
 export function Navbar() {

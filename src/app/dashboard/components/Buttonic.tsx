@@ -35,13 +35,13 @@ export default function Dashboard() {
       buttonText: "Preglej zalogo",
       description: "Upravljaj z zalogo in količinami",
     },
-    {
-      title: "Naročila",
-      icon: <FileBox size={22} />,
-      href: "/orders",
-      buttonText: "Preglej naročila",
-      description: "Upravljaj naročila strank",
-    },
+    // {
+    //   title: "Naročila",
+    //   icon: <FileBox size={22} />,
+    //   href: "/orders",
+    //   buttonText: "Preglej naročila",
+    //   description: "Upravljaj naročila strank",
+    // },
     {
       title: "Google Drive",
       icon: <Cloud size={22} />,

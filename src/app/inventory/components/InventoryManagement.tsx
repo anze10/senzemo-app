@@ -2185,7 +2185,7 @@ export default function InventoryManagementPage() {
             // All Sensors with Customers tab
             <>
               {/* Quick Navigation to Orders */}
-              <Box sx={{ mb: 3, display: "flex", justifyContent: "flex-end" }}>
+              {/* <Box sx={{ mb: 3, display: "flex", justifyContent: "flex-end" }}>
                 <Button
                   variant="outlined"
                   color="primary"
@@ -2198,7 +2198,7 @@ export default function InventoryManagementPage() {
                 >
                   Pojdi na naročila
                 </Button>
-              </Box>
+              </Box> */}
 
               {/* Sensors grouped by orders */}
               {sensorsWithCustomers ? (

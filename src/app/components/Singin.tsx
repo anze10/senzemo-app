@@ -22,6 +22,7 @@ export default function Signin() {
       const { error: signInError } = await authClient.signIn.email({
         email,
         password,
+        rememberMe: false,
       });
 
       if (signInError) {
@@ -41,10 +42,22 @@ export default function Signin() {
 
   async function handleGoogleLogin() {
     setError(null);
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard",
-    });
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Napaka pri prijavi z Google računom.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Prišlo je do nepričakovane napake pri prijavi z Google računom.",
+      );
+    }
   }
 
   return (

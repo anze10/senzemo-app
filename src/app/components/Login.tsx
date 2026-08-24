@@ -1,6 +1,6 @@
 import { Container, Paper, Typography } from "@mui/material";
 import Signin from "./Singin";
-import { getUser } from "src/server/LOGIN_LUCIA_ACTION/lucia";
+import { getUser } from "src/server/LOGIN_LUCIA_ACTION/auth";
 import { redirect } from "next/navigation";
 
 const Login = async () => {
