@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "src/server/LOGIN_LUCIA_ACTION/auth-client";
 import {
   AppBar,
   Avatar,
@@ -42,11 +43,11 @@ export default function Navbar() {
   const pathname = usePathname();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    setIsAdmin(localStorage.getItem("role") === "admin");
-  }, []);
+  // Hook vrne { data: { user, session }, isPending, isRefetching, error, ... }
+  const { data: sessionData } = useSession();
+  const isAdmin = sessionData?.user?.role === "admin";
+  const userImage = sessionData?.user?.image ?? "/professional-profile-avatar.png";
 
   const getActiveTab = () => {
     const currentTab = tabs.find((tab) => tab.path === pathname);
@@ -162,7 +163,7 @@ export default function Navbar() {
             </>
           )}
           <Avatar
-            src="/professional-profile-avatar.png"
+            src={userImage}
             alt="Profile"
             sx={{
               width: 32,
@@ -246,7 +247,7 @@ export default function Navbar() {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => handleAdminNavigation("/senzors")}
+                onClick={() => handleAdminNavigation("/sensors")}
                 fullWidth
                 sx={{
                   textTransform: "none",
@@ -263,7 +264,7 @@ export default function Navbar() {
           <Stack spacing={2} sx={{ alignItems: "center" }}>
             <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
               <Avatar
-                src="/professional-profile-avatar.png"
+                src={userImage}
                 alt="Profile"
                 sx={{
                   width: 32,
