@@ -58,7 +58,7 @@ export async function POST() {
 
   // Send test email to single recipient
   const fields = {
-    from: "anze@repse.si", // Use Resend's test domain
+    from: "tool@sensedge.co", // Use Resend's test domain
     to: testEmail,
     subject: `Senzemo Inventory Report (TEST) - ${today.toDateString()}`,
     react: InventoryEmailTemplate({
