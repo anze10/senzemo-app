@@ -208,7 +208,7 @@ export function Konec() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [dataAdded]);
-
+  ///neki
   async function posli(
     sensor_data: RatedSensorData[],
     sensors: Senzor[] | undefined,
