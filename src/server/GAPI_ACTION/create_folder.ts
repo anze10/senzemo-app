@@ -34,6 +34,15 @@ async function createFolder(
     throw err;
   }
 }
+function columnLetter(index: number): string {
+  let letter = "";
+  let n = index;
+  while (n >= 0) {
+    letter = String.fromCharCode((n % 26) + 65) + letter;
+    n = Math.floor(n / 26) - 1;
+  }
+  return letter;
+}
 
 // Funkcija za ustvarjanje preglednice znotraj določene mape
 async function createSpreadsheet(
@@ -42,6 +51,7 @@ async function createSpreadsheet(
   order_number: string | null,
   currentTime: Date,
   name: string,
+  measurementFields: string[], // NOVO: imena physicalData polj iz decoderja
 ) {
   const spreadsheetName =
     customer_name && order_number
@@ -66,6 +76,26 @@ async function createSpreadsheet(
     const spreadsheetId = file.data.id;
     const time = currentTime.toISOString().split("T")[0];
 
+    const baseHeaders = [
+      "Device Type",
+      "DevEUI",
+      "AppEUI",
+      "AppKey",
+      "Frequency Region",
+      "Sub Bands",
+      "HW Version",
+      "FW Version",
+      "Custom FW Version",
+      "Send Period",
+      "ACK",
+      "ADR",
+      "Movement Threshold",
+    ];
+
+    // Dinamično dodaj glave SAMO za meritve, ki jih TA decoder dejansko ima
+    const allHeaders = [...baseHeaders, ...measurementFields];
+    const totalColumns = allHeaders.length;
+
     const data = [
       { range: "A3", values: [["Customer Name:"]] },
       { range: "B3", values: [[customer_name ?? "Stock Inventory"]] },
@@ -75,18 +105,10 @@ async function createSpreadsheet(
       { range: "B5", values: [[time]] },
       { range: "A7", values: [["Fulfilled by:"]] },
       { range: "B7", values: [[name]] },
-      { range: "A9", values: [["Device Type"]] },
-      { range: "B9", values: [["DevEUI"]] },
-      { range: "C9", values: [["AppEUI"]] },
-      { range: "D9", values: [["AppKey"]] },
-      { range: "E9", values: [["Frequency Region"]] },
-      { range: "F9", values: [["Sub Bands"]] },
-      { range: "G9", values: [["HW Version"]] },
-      { range: "H9", values: [["FW Version"]] },
-      { range: "I9", values: [["Custom FW Version"]] },
-      { range: "J9", values: [["Send Period"]] },
-      { range: "K9", values: [["ACK"]] },
-      { range: "L9", values: [["Movement Threshold"]] },
+      ...allHeaders.map((header, i) => ({
+        range: `${columnLetter(i)}9`,
+        values: [[header]],
+      })),
     ];
 
     const requests = data.map((item) => ({
@@ -95,7 +117,7 @@ async function createSpreadsheet(
     }));
 
     await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: spreadsheetId !== null ? spreadsheetId : undefined,
+      spreadsheetId: spreadsheetId ?? undefined,
       requestBody: {
         valueInputOption: "USER_ENTERED",
         data: requests,
@@ -113,9 +135,7 @@ async function createSpreadsheet(
         },
         cell: {
           userEnteredFormat: {
-            textFormat: {
-              bold: true,
-            },
+            textFormat: { bold: true },
             horizontalAlignment: "RIGHT",
           },
         },
@@ -130,20 +150,14 @@ async function createSpreadsheet(
           startRowIndex: 8,
           endRowIndex: 9,
           startColumnIndex: 0,
-          endColumnIndex: 12,
+          endColumnIndex: totalColumns, // DINAMIČNO, ne fiksno 12
         },
         cell: {
           userEnteredFormat: {
-            backgroundColor: {
-              red: 0.9,
-              green: 0.9,
-              blue: 0.9,
-            },
+            backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
             horizontalAlignment: "CENTER",
             verticalAlignment: "MIDDLE",
-            textFormat: {
-              bold: true,
-            },
+            textFormat: { bold: true },
             borders: {
               top: {
                 style: "SOLID",
@@ -175,11 +189,9 @@ async function createSpreadsheet(
           sheetId: 0,
           dimension: "COLUMNS",
           startIndex: 0,
-          endIndex: 12,
+          endIndex: totalColumns, // DINAMIČNO
         },
-        properties: {
-          pixelSize: 150,
-        },
+        properties: { pixelSize: 150 },
         fields: "pixelSize",
       },
     };
@@ -239,7 +251,7 @@ async function createSpreadsheet(
     };
 
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: spreadsheetId !== null ? spreadsheetId : undefined,
+      spreadsheetId: spreadsheetId ?? undefined,
       requestBody: {
         requests: [
           ...boldRightAlignRequests,
@@ -419,6 +431,7 @@ async function insertIntoCsvFile(
 export async function createFolderAndSpreadsheet(
   customer_name: string | null,
   order_number: string | null,
+  measurementFields: string[], // NOVO
 ) {
   const session = await getCurrentSession();
   const currentTime = new Date();
@@ -433,6 +446,7 @@ export async function createFolderAndSpreadsheet(
       order_number,
       currentTime,
       name,
+      measurementFields, // NOVO
     );
 
     const fileId = await createSpreadsheetCsv(folderId, order_number);
@@ -460,7 +474,7 @@ export async function createFolderAndSpreadsheetWithData(
 ) {
   try {
     const { folderId, spreadsheetId, fileId } =
-      await createFolderAndSpreadsheet(customer_name, order_number);
+      await createFolderAndSpreadsheet(customer_name, order_number, []);
 
     for (const device of devices) {
       if (device.devEUI && device.deviceType) {

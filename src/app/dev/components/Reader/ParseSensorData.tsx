@@ -24,6 +24,8 @@ type SensorParserOutput = {
   tolerance?: boolean;
   from?: number;
   upTo?: number;
+  physicalData?: boolean;
+  bitPosition?: number;
 };
 export type SensorParser = {
   input: SensorParserInput;
@@ -47,6 +49,7 @@ export function ParseSensorData(
       format,
       enum_values,
       scale,
+      bitPosition,
     } = parser.output;
 
     try {
@@ -96,7 +99,10 @@ export function ParseSensorData(
         }
 
         case "boolean": {
-          value = bytes[0] !== 0;
+          value =
+            bitPosition !== undefined
+              ? ((bytes[0] ?? 0) & (1 << bitPosition)) !== 0
+              : bytes[0] !== 0;
           break;
         }
       }

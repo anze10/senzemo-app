@@ -5,19 +5,32 @@ import {
   getDetailedSensorInventory,
   getLowComponents,
 } from "src/app/inventory/components/backent";
+import { prisma } from "~/server/DATABASE_ACTION/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST() {
   const today = new Date();
+  const currentDay = today.getDate();
 
-  // Test email configuration - only send to one test email
-  const testEmail = "anze.repse@gmail.com"; // Replace with your test email
-  const testUserName = "Test User";
+  // Najdi VSE naročnine, ki so aktivne IN naj se pošljejo DANES
+  const dueSubscriptions = await prisma.mailing.findMany({
+    where: {
+      isSubscribed: true,
+      dayOfMonth: currentDay,
+    },
+    include: {
+      user: {
+        select: { email: true, name: true },
+      },
+    },
+  });
+
+  if (dueSubscriptions.length === 0) {
+    return Response.json({ message: "Ni naročnin za poslati danes." });
+  }
 
   const componentLowComponents = await getLowComponents();
-
-  // Get detailed inventory data for email
   const rawSensorInventory = await getDetailedSensorInventory();
 
   const detailedSensorInventory = rawSensorInventory.map(
@@ -37,64 +50,71 @@ export async function POST() {
     }),
   );
 
-  // Generate PDF attachment if requested
   let attachments = undefined;
   try {
     console.log("Generating PDF report buffer for email attachment...");
-    // TODO: refactor to use componentLowComponents instead of the user variable lowStockThreshold
     const reportBuffer = await generateInventoryReportBuffer();
     const filename = `inventory-report-${today.toDateString()}.pdf`;
-
-    attachments = [
-      {
-        filename,
-        content: reportBuffer,
-      },
-    ];
+    attachments = [{ filename, content: reportBuffer }];
   } catch (pdfError) {
     console.error("Error generating PDF attachment:", pdfError);
-    // Continue without attachment rather than failing the email
   }
 
-  // Send test email to single recipient
-  const fields = {
-    from: "tool@sensedge.co", // Use Resend's test domain
-    to: testEmail,
-    subject: `Senzemo Inventory Report (TEST) - ${today.toDateString()}`,
-    react: InventoryEmailTemplate({
-      recipientName: testUserName,
-      reportDate: today.toDateString(),
-      sensorInventory: detailedSensorInventory,
-      lowStockItems: componentLowComponents,
-      // reportUrl,
-    }),
-    attachments,
-  };
+  const results: {
+    email: string;
+    success: boolean;
+    emailId?: string;
+    error?: unknown;
+  }[] = [];
 
-  // Send email using Resend
-  try {
-    const { data, error } = await resend.emails.send(fields);
+  for (const subscription of dueSubscriptions) {
+    const recipientEmail = subscription.user.email;
+    const recipientName = subscription.user.name ?? "Uporabnik";
 
-    if (error) {
-      console.error("Error sending test email:", error);
-      return Response.json(
-        { error: "Failed to send test email", details: error },
-        { status: 500 },
-      );
+    // Zgradi subject iz shrambe naročnine, zamenjaj {date} placeholder
+    const subjectTemplate =
+      subscription.subject ?? "Monthly Inventory Report - {date}";
+    const subject = subjectTemplate.replace("{date}", today.toDateString());
+
+    try {
+      const { data, error } = await resend.emails.send({
+        from: "anze@repse.si",
+        to: recipientEmail,
+        subject,
+        react: InventoryEmailTemplate({
+          recipientName,
+          reportDate: today.toDateString(),
+          sensorInventory: detailedSensorInventory,
+          lowStockItems: componentLowComponents,
+        }),
+        attachments,
+      });
+
+      if (error) {
+        console.error(`Error sending to ${recipientEmail}:`, error);
+        results.push({ email: recipientEmail, success: false, error });
+        continue;
+      }
+
+      // Posodobi lastSentAt in Date_of_monthly_report SAMO ob uspehu
+      await prisma.mailing.update({
+        where: { id: subscription.id },
+        data: {
+          lastSentAt: new Date(),
+          Date_of_monthly_report: currentDay,
+        },
+      });
+
+      results.push({ email: recipientEmail, success: true, emailId: data?.id });
+    } catch (err) {
+      console.error(`Error sending to ${recipientEmail}:`, err);
+      results.push({ email: recipientEmail, success: false, error: err });
     }
-
-    console.log("Test email sent successfully:", data);
-    return Response.json({
-      success: true,
-      message: "Test inventory email sent successfully",
-      emailId: data?.id,
-      sentTo: testEmail,
-    });
-  } catch (emailError) {
-    console.error("Error sending test email:", emailError);
-    return Response.json(
-      { error: "Failed to send test email", details: emailError },
-      { status: 500 },
-    );
   }
+
+  return Response.json({
+    success: true,
+    message: `Poslano ${results.filter((r) => r.success).length}/${results.length} email-ov.`,
+    results,
+  });
 }

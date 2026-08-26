@@ -426,9 +426,14 @@ export default function Parameters() {
                       const stepTimer1 = setTimeout(() => setSetupStep(2), 600);
                       const stepTimer2 = setTimeout(() => setSetupStep(3), 1200);
 
+                      const measurementFields = (decoder ?? [])
+                        .filter((p) => p.output.physicalData)
+                        .map((p) => p.output.name);
+
                       const result = await createFolderAndSpreadsheet(
                         addToStock ? null : company_name,
-                        addToStock ? null : order_number
+                        addToStock ? null : order_number,
+                        measurementFields,
                       );
 
                       clearTimeout(stepTimer1);

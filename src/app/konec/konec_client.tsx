@@ -35,6 +35,8 @@ import { CheckCircleIcon } from "lucide-react";
 import { XCircleIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 
+//import type { SensorParserCombinator } from "~/app/dev/components/Reader/ParseSensorData";
+
 const UsedTime = dynamic(
   () =>
     import("./used_time").then(
@@ -183,7 +185,7 @@ export function Konec() {
   const resetStore = useSensorStore((state) => state.reset);
   const router = useRouter();
   const [dataAdded, setDataAdded] = useState(false);
-
+  const decoder = useSensorStore((state) => state.current_decoder);
   const [progress, setProgress] = useState<UploadProgress>({
     current: 0,
     total: 0,
@@ -236,6 +238,7 @@ export function Konec() {
       let band_id = "";
       let Device_Type = "";
       let model_id = "";
+
       const lorawan_version = "RP001_V1_0_3_REV_A";
 
       setProgress((prev) => ({
@@ -254,6 +257,9 @@ export function Konec() {
           model_id = sensor.sensorName ?? "We don't know";
         }
       });
+      const measurementValues: string[] = (decoder ?? [])
+        .filter((p) => p.output.physicalData)
+        .map((p) => String((sensorData as Record<string, unknown>)[p.output.name] ?? ""));
 
       // Determine frequency and band
       switch (sensorData.lora_freq_reg) {
@@ -283,8 +289,10 @@ export function Konec() {
         String(sensorData.device_fw_ver),
         custom_FW,
         String(sensorData.lora_send_period),
-        String(sensorData.device_adc_delay),
-        String(sensorData.device_mov_thr), // Fix typo if necessary
+        String(sensorData.device_ack_delay),
+        String(sensorData.adr),
+        String(sensorData.device_mov_thr),
+        ...measurementValues, // NOVO: dinamično, glede na TA senzorjev decoder
       ];
 
       const newRowCSV: string[] = [
