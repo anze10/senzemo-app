@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Container,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
@@ -71,7 +72,7 @@ export default function Parameters() {
   const [product_id, set_product_id] = useState<number>(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
+  const [nameErrorOpen, setNameErrorOpen] = useState(false);
   const router = useRouter();
 
   // --- Setup progress dialog state ---
@@ -393,7 +394,7 @@ export default function Parameters() {
                   }}
                   onClick={async () => {
                     if (!addToStock && company_name.trim() === "") {
-                      alert("Company name must not be empty.");
+                      setNameErrorOpen(true);
                       return;
                     }
 
@@ -514,6 +515,18 @@ export default function Parameters() {
             )}
           </DialogContent>
         </Dialog>
-      </Container></>
+      </Container>
+      <Dialog open={nameErrorOpen} onClose={() => setNameErrorOpen(false)}>
+        <DialogTitle>Manjka ime podjetja</DialogTitle>
+        <DialogContent>
+          <Typography>Prosim, izpolni polje &quot;Company Name&quot; preden nadaljuješ.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setNameErrorOpen(false)}>
+            V redu
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
