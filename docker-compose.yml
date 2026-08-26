@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   senzemo-db:
     image: postgres:17-alpine
@@ -6,7 +8,7 @@ services:
       - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: senzemo
-      POSTGRES_PASSWORD: testno_geslo_123   # hardkodirano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}        # iz .env
       POSTGRES_DB: senzemo
       POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
@@ -25,9 +27,9 @@ services:
     env_file:
       - .env.docker
     environment:
-      DATABASE_URL: postgresql://senzemo:testno_geslo_123@senzemo-db:5432/senzemo?sslmode=disable
+      DATABASE_URL: postgresql://senzemo:${POSTGRES_PASSWORD}@senzemo-db:5432/senzemo?sslmode=disable
     healthcheck:
-      test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]   # če je curl na voljo
       interval: 30s
       timeout: 5s
       retries: 3
@@ -45,6 +47,18 @@ services:
       - "traefik.http.routers.tool-nfc.tls=true"
       - "traefik.http.routers.tool-nfc.tls.certresolver=mytlschallenge"
       - "traefik.http.services.tool-nfc.loadbalancer.server.port=3000"
+
+  cron:
+    image: alpine:latest
+    restart: unless-stopped
+    command: >
+      sh -c "
+      apk add --no-cache curl dcron &&
+      echo '0 0 * * * curl -X POST http://app:3000/api/send-inventory-report' > /etc/crontab &&
+      crond -f -L /dev/stdout
+      "
+    networks:
+      - internal
 
 volumes:
   postgres_data:
