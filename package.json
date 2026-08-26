@@ -118,6 +118,7 @@
     "appId": "com.senzemo.production_app",
     "productName": "Production app",
     "publish": null,
+    "asar": false,
     "files": [
       "dist-electron/**/*",
       "package.json"
