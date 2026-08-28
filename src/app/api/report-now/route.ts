@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { InventoryEmailTemplate } from "src/app/inventory/components/resender";
 import { Resend } from "resend";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
@@ -5,11 +6,15 @@ import {
   getDetailedSensorInventory,
   getLowComponents,
 } from "src/app/inventory/components/backent";
-//import { prisma } from "~/server/DATABASE_ACTION/prisma";
+
 const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function POST(request: Request) {
   try {
+    console.log("1. send-now started");
+
     const body = await request.json();
+    console.log("2. body:", body);
 
     const { recipientEmails, recipientName, reportDate, subject } = body;
 
@@ -20,8 +25,15 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("3. recipient:", recipientEmails);
+
+    console.log("4. getting low components");
     const componentLowComponents = await getLowComponents();
+    console.log("5. low components ok");
+
+    console.log("6. getting sensor inventory");
     const rawSensorInventory = await getDetailedSensorInventory();
+    console.log("7. sensor inventory ok");
 
     const detailedSensorInventory = rawSensorInventory.map((sensor) => ({
       sensorName: String(sensor.sensorName),
@@ -32,7 +44,9 @@ export async function POST(request: Request) {
       })),
     }));
 
+    console.log("8. generating pdf");
     const reportBuffer = await generateInventoryReportBuffer();
+    console.log("9. pdf generated");
 
     const attachments = [
       {
@@ -41,9 +55,13 @@ export async function POST(request: Request) {
       },
     ];
 
+    console.log("10. sending email");
+
     const results = [];
 
     for (const recipientEmail of recipientEmails) {
+      console.log("11. sending to:", recipientEmail);
+
       const { data, error } = await resend.emails.send({
         from: "tool@sensedge.co",
         to: recipientEmail,
@@ -57,9 +75,9 @@ export async function POST(request: Request) {
         attachments,
       });
 
-      if (error) {
-        console.error("resend error:", error);
+      console.log("12. resend response:", { data, error });
 
+      if (error) {
         results.push({
           email: recipientEmail,
           success: false,
@@ -92,12 +110,12 @@ export async function POST(request: Request) {
       results,
     });
   } catch (error) {
-    console.error("send inventory report error:", error);
+    console.error("SEND-NOW FATAL ERROR:", error);
 
     return Response.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "neznana napaka",
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );
