@@ -99,7 +99,7 @@ const EmailReportManager: React.FC = () => {
       // Get real inventory data for test
       const summary = await getInventorySummary();
 
-      const response = await fetch("/api/send-inventory-report", {
+      const response = await fetch("/api/report-now", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
