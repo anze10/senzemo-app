@@ -78,7 +78,7 @@ export async function POST() {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: "anze@repse.si",
+        from: "tool@sensedge.co",
         to: recipientEmail,
         subject,
         react: InventoryEmailTemplate({

@@ -72,7 +72,8 @@ export default function Parameters() {
   const [product_id, set_product_id] = useState<number>(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [nameErrorOpen, setNameErrorOpen] = useState(false);
+
+  const [validationError, setValidationError] = useState<string | null>(null);
   const router = useRouter();
 
   // --- Setup progress dialog state ---
@@ -393,9 +394,17 @@ export default function Parameters() {
                     minWidth: { xs: "200px", md: "250px" },
                   }}
                   onClick={async () => {
-                    if (!addToStock && company_name.trim() === "") {
-                      setNameErrorOpen(true);
-                      return;
+                    if (!addToStock) {
+                      const missingFields: string[] = [];
+                      if (company_name.trim() === "") missingFields.push("Company Name");
+                      if (order_number.trim() === "") missingFields.push("Order Number");
+
+                      if (missingFields.length > 0) {
+                        setValidationError(
+                          `Prosim, izpolni naslednja polja: ${missingFields.join(", ")}.`,
+                        );
+                        return;
+                      }
                     }
 
                     setSetupError(null);
@@ -516,13 +525,13 @@ export default function Parameters() {
           </DialogContent>
         </Dialog>
       </Container>
-      <Dialog open={nameErrorOpen} onClose={() => setNameErrorOpen(false)}>
-        <DialogTitle>Manjka ime podjetja</DialogTitle>
+      <Dialog open={validationError !== null} onClose={() => setValidationError(null)}>
+        <DialogTitle>Manjkajoči podatki</DialogTitle>
         <DialogContent>
-          <Typography>Prosim, izpolni polje &quot;Company Name&quot; preden nadaljuješ.</Typography>
+          <Typography>{validationError}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button variant="contained" onClick={() => setNameErrorOpen(false)}>
+          <Button variant="contained" onClick={() => setValidationError(null)}>
             V redu
           </Button>
         </DialogActions>

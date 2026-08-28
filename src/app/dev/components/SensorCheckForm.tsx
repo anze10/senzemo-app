@@ -64,7 +64,7 @@ import Printer_settings from "./printer/Printer_settings";
 import { getCurrentSession } from "~/server/LOGIN_LUCIA_ACTION/session";
 //import { removeComponentsFromStockForSensor } from "~/app/inventory/components/backent"; // Konfiguracija za avtomatsko odštevanje komponent
 import { SerialPortPicker } from "src/app/dev/components/Reader/SerialPortPicker";
-import { checkDevEuiExists } from "./PrismaCode";
+//import { checkDevEuiExists } from "./PrismaCode";
 //import type { Sensor } from "~/app/parametrs/components/functions";
 // TODO: To bi lahko bilo shranjen v localStorage ali backend nastavitvah
 // const getAutoDeductComponents = (): boolean => {
@@ -256,10 +256,7 @@ export function SensorCheckForm() {
     else return undefined;
   });
   const checkedIndicesRef = useRef<Set<number>>(new Set());
-  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
-  const [duplicateResolveRef, setDuplicateResolveRef] = useState<
-    ((shouldPrint: boolean) => void) | null
-  >(null);
+
   useEffect(() => {
     if (!current_sensor || !target_sensor_data) return;
 
@@ -1199,56 +1196,18 @@ export function SensorCheckForm() {
                         return;
                       }
 
-                      // PRVA preverba: je senzor ŽE V TRENUTNI SEJI (napaka
-                      // uporabnika - isti senzor bi šel v CSV/Drive DVAKRAT
-                      // v istem izvozu, ker ga je po pomoti skeniral dvakrat)
-                      const inCurrentSession = all_sensors.some(
-                        (sensor, index) =>
-                          index !== current_sensor_index &&
-                          sensor.okay &&
-                          sensor.data.dev_eui === data.dev_eui,
-                      );
-
-                      if (inCurrentSession) {
-                        const proceedAnyway = await new Promise<boolean>(
-                          (resolve) => {
-                            setSessionDuplicateResolveRef(() => resolve);
-                            setSessionDuplicateWarningOpen(true);
-                          },
-                        );
-
-                        if (!proceedAnyway) {
-                          // Uporabnik je preklical - senzor OSTANE
-                          // neobdelan, ni side-effectov
-                          setIsProcessing(false);
-                          setProcessingMessage("");
-                          return;
-                        }
-                        // Če je uporabnik VSEENO potrdil, nadaljuje naprej
-                        // (redek, eksplicitno potrjen primer)
-                      }
-
-                      // DRUGA preverba: je senzor bil ŽE PREJ sprejet V BAZI
-                      // (legitimen scenarij - senzor iz zaloge, vprašaj za
-                      // ponovno tiskanje nalepke)
-                      setProcessingMessage("Preverjam podvajanje...");
-                      const alreadyInDb = await checkDevEuiExists(
-                        data.dev_eui as string,
-                      );
+                      // Ker add_new_sensor PREPIŠE podatke na istem mestu ob
+                      // ponovnem branju istega DevEUI, "current_sensor.okay
+                      // === true" TUKAJ pomeni: ta senzor je bil ŽE SPREJET
+                      // prej v tej seji. Vprašaj SAMO za tiskanje - noben
+                      // "prekliči" gumb, ker se VEDNO nadaljuje naprej (v
+                      // ponovno branje), ne glede na izbiro.
                       let shouldPrint = true;
-
-                      if (alreadyInDb) {
+                      if (current_sensor.okay === true) {
                         shouldPrint = await new Promise<boolean>((resolve) => {
-                          setDuplicateResolveRef(() => resolve);
-                          setDuplicateWarningOpen(true);
+                          setSessionDuplicateResolveRef(() => resolve);
+                          setSessionDuplicateWarningOpen(true);
                         });
-
-                        if (shouldPrint === null) {
-                          // Uporabnik je preklical celotno akcijo
-                          setIsProcessing(false);
-                          setProcessingMessage("");
-                          return;
-                        }
                       }
 
                       console.log("Processing accept for current sensor");
@@ -1344,7 +1303,7 @@ export function SensorCheckForm() {
                       // }
 
                       // Pogojno tiskanje - preskoči, če je uporabnik za
-                      // podvojen DevEUI izbral "Nadaljuj BREZ tiskanja nalepke"
+                      // podvojen DevEUI izbral "brez tiskanja"
                       if (shouldPrint) {
                         setProcessingMessage("Tiskam nalepko...");
                         try {
@@ -1365,7 +1324,8 @@ export function SensorCheckForm() {
                       console.log("Sensor processing completed.");
                       setProcessingMessage("Berem naslednji senzor...");
 
-                      // Avtomatsko preberi naslednji senzor
+                      // Avtomatsko preberi naslednji senzor - VEDNO se
+                      // izvede, ne glede na izbiro tiskanja zgoraj
                       try {
                         console.log("Auto-reading next sensor...");
                         const uint_array = await GetDataFromSensor();
@@ -1374,12 +1334,8 @@ export function SensorCheckForm() {
                           const decoder = RightDecoder(uint_array, sensors);
                           if (decoder) {
                             console.log("Auto-adding next sensor...");
-                            const wasAlreadyAccepted1368 = await add_new_sensor(decoder, uint_array);
-                            setProcessingMessage(
-                              wasAlreadyAccepted1368
-                                ? "OPOZORILO: Naslednji senzor je bil ŽE SPREJET v tej seji!"
-                                : "Senzor uspešno obdelan",
-                            );
+                            add_new_sensor(decoder, uint_array);
+                            setProcessingMessage("Senzor uspešno obdelan");
                           } else {
                             console.log("No decoder found for auto-read sensor");
                             setProcessingMessage("Naslednji senzor ni prepoznan");
@@ -1460,6 +1416,16 @@ export function SensorCheckForm() {
                         return;
                       }
 
+                      // Ista logika kot pri "Sprejmi" - vprašaj SAMO za
+                      // tiskanje, VEDNO nadaljuj naprej v ponovno branje
+                      let shouldPrint = true;
+                      if (current_sensor.okay === true) {
+                        shouldPrint = await new Promise<boolean>((resolve) => {
+                          setSessionDuplicateResolveRef(() => resolve);
+                          setSessionDuplicateWarningOpen(true);
+                        });
+                      }
+
                       console.log(
                         "Processing don't add to inventory for current sensor",
                       );
@@ -1478,26 +1444,30 @@ export function SensorCheckForm() {
                         "Skipping database insertion - storing in store only",
                       );
 
-                      setProcessingMessage("Tiskam nalepko...");
-                      // Print sticker if needed
-                      try {
-                        await PrintSticker(
-                          data.dev_eui as string,
-                          sensors ?? [],
-                          data.family_id as number,
-                          data.product_id as number,
-                          data.frequency_region as string
-                        );
-                      } catch (printError) {
-                        console.error("Error printing sticker:", printError);
-                        setProcessingMessage("Opozorilo: Napaka pri tiskanju");
-                        // Continue execution even if printing fails
+                      // Pogojno tiskanje - preskoči, če je uporabnik za
+                      // podvojen DevEUI izbral "brez tiskanja"
+                      if (shouldPrint) {
+                        setProcessingMessage("Tiskam nalepko...");
+                        try {
+                          await PrintSticker(
+                            data.dev_eui as string,
+                            sensors ?? [],
+                            data.family_id as number,
+                            data.product_id as number,
+                            data.frequency_region as string
+                          );
+                        } catch (printError) {
+                          console.error("Error printing sticker:", printError);
+                          setProcessingMessage("Opozorilo: Napaka pri tiskanju");
+                          // Continue execution even if printing fails
+                        }
                       }
 
                       console.log("Sensor processing completed.");
                       setProcessingMessage("Berem naslednji senzor...");
 
-                      // Avtomatsko preberi naslednji senzor
+                      // Avtomatsko preberi naslednji senzor - VEDNO se
+                      // izvede, ne glede na izbiro tiskanja zgoraj
                       try {
                         console.log("Auto-reading next sensor...");
                         const uint_array = await GetDataFromSensor();
@@ -1506,12 +1476,8 @@ export function SensorCheckForm() {
                           const decoder = RightDecoder(uint_array, sensors);
                           if (decoder) {
                             console.log("Auto-adding next sensor...");
-                            const wasAlreadyAccepted1496 = await add_new_sensor(decoder, uint_array);
-                            setProcessingMessage(
-                              wasAlreadyAccepted1496
-                                ? "OPOZORILO: Naslednji senzor je bil ŽE SPREJET v tej seji!"
-                                : "Senzor uspešno obdelan (brez inventarja)",
-                            );
+                            add_new_sensor(decoder, uint_array);
+                            setProcessingMessage("Senzor uspešno obdelan (brez inventarja)");
                           } else {
                             console.log("No decoder found for auto-read sensor");
                             setProcessingMessage("Naslednji senzor ni prepoznan");
@@ -1725,60 +1691,6 @@ export function SensorCheckForm() {
         </DialogActions>
       </MismatchDialog>
       <Dialog
-        open={duplicateWarningOpen}
-        onClose={() => { }}
-        disableEscapeKeyDown
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <WarningAmberIcon color="error" />
-          Senzor je že bil skeniran!
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
-            Senzor s tem DevEUI (
-            <strong>{current_sensor?.data.dev_eui as string}</strong>) je{" "}
-            <strong>že bil sprejet</strong> v preteklosti. Obstoječ zapis v bazi{" "}
-            <strong>ne bo podvojen</strong> — sistem bo uporabil obstoječ zapis.
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            Ali želiš ponovno natisniti nalepko za ta senzor?
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <Button
-              variant="contained"
-              color="warning"
-              onClick={() => {
-                setDuplicateWarningOpen(false);
-                duplicateResolveRef?.(true);
-              }}
-            >
-              Nadaljuj IN ponovno natisni nalepko
-            </Button>
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={() => {
-                setDuplicateWarningOpen(false);
-                duplicateResolveRef?.(false);
-              }}
-            >
-              Nadaljuj BREZ tiskanja nalepke
-            </Button>
-            <Button
-              variant="text"
-              onClick={() => {
-                setDuplicateWarningOpen(false);
-                duplicateResolveRef?.(null as unknown as boolean);
-              }}
-            >
-              Prekliči celotno akcijo
-            </Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
-      <Dialog
         open={sessionDuplicateWarningOpen}
         onClose={() => { }}
         disableEscapeKeyDown
@@ -1786,18 +1698,18 @@ export function SensorCheckForm() {
         fullWidth
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <WarningAmberIcon color="error" />
-          Senzor je že v trenutnem seznamu!
+          <WarningAmberIcon color="warning" />
+          Senzor je bil že sprejet
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>
-            Senzor s tem DevEUI (
-            <strong>{current_sensor?.data.dev_eui as string}</strong>) je{" "}
-            <strong>že sprejet</strong> v tej seji in bo poslan na Drive/CSV.
-            Če nadaljuješ, bo ta senzor <strong>DVAKRAT</strong> v izvozu.
+            Ta senzor (DevEUI:{" "}
+            <strong>{current_sensor?.data.dev_eui as string}</strong>) je bil{" "}
+            <strong>že sprejet</strong> prej v tej seji branja. Podatki bodo{" "}
+            <strong>posodobljeni v lokalni shrambi</strong> (ne bo podvojen zapis v Drive izvozu).
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            To je verjetno pomota (isti senzor si po nesreči skeniral dvakrat).
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Ali želiš ponovno natisniti nalepko?
           </Typography>
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Button
@@ -1807,21 +1719,21 @@ export function SensorCheckForm() {
                 sessionDuplicateResolveRef?.(false);
               }}
             >
-              Prekliči (priporočeno)
+              Ne, brez tiskanja
             </Button>
             <Button
               variant="contained"
-              color="error"
               onClick={() => {
                 setSessionDuplicateWarningOpen(false);
                 sessionDuplicateResolveRef?.(true);
               }}
             >
-              Vseeno dodaj
+              Da, natisni znova
             </Button>
           </Box>
         </DialogContent>
       </Dialog>
+
     </>
   );
 }

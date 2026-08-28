@@ -124,7 +124,7 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
       await resend.emails.send({
-        from: "anze@repse.si",
+        from: "tool@sensedge.co",
         to: user.email,
         subject: "Nastavi geslo za svoj Senzemo račun",
         html: `
