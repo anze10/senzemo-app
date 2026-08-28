@@ -26,15 +26,16 @@ import {
   Send as SendIcon,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
-import { getInventorySummary } from "./report_generator";
+import {
+  generateInventoryReport,
+  getInventorySummary,
+  previewInventoryReport,
+} from "src/app/inventory/components/report_generator";
 
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PreviewIcon from "@mui/icons-material/Preview";
 import SummarizeIcon from "@mui/icons-material/Summarize";
-import {
-  generateInventoryReport,
-  previewInventoryReport,
-} from "src/app/inventory/components/report_generator";
+
 import { getEmailSettings, UpdateOrSetEmailSettings } from "./EmailsBackend";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
