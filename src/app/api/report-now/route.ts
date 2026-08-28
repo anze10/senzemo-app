@@ -1,4 +1,3 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { InventoryEmailTemplate } from "src/app/inventory/components/resender";
 import { Resend } from "resend";
 import { generateInventoryReportBuffer } from "src/app/inventory/components/report_generator";
@@ -66,17 +65,14 @@ export async function POST(request: Request) {
         from: "tool@sensedge.co",
         to: recipientEmail,
         subject,
-        html: renderToStaticMarkup(
-          InventoryEmailTemplate({
-            recipientName: recipientName || "Uporabnik",
-            reportDate: reportDate || new Date().toDateString(),
-            sensorInventory: detailedSensorInventory,
-            lowStockItems: componentLowComponents,
-          }),
-        ),
+        html: InventoryEmailTemplate({
+          recipientName: recipientName || "Uporabnik",
+          reportDate: reportDate || new Date().toDateString(),
+          sensorInventory: detailedSensorInventory,
+          lowStockItems: componentLowComponents,
+        }),
         attachments,
       });
-
       console.log("12. resend response:", { data, error });
 
       if (error) {
