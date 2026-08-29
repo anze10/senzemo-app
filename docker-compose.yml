@@ -8,13 +8,13 @@ services:
       - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: senzemo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}        # iz .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # iz .env
       POSTGRES_DB: senzemo
       POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U senzemo"]
+      test: [ "CMD-SHELL", "pg_isready -U senzemo" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql://senzemo:${POSTGRES_PASSWORD}@senzemo-db:5432/senzemo?sslmode=disable
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]   # če je curl na voljo
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000 || exit 1" ] # če je curl na voljo
       interval: 30s
       timeout: 5s
       retries: 3
@@ -41,22 +41,26 @@ services:
       - internal
       - n8n_default
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.tool-nfc.entrypoints=web,websecure"
-      - "traefik.http.routers.tool-nfc.rule=Host(`tool.senzemo.com`)"
-      - "traefik.http.routers.tool-nfc.tls=true"
-      - "traefik.http.routers.tool-nfc.tls.certresolver=mytlschallenge"
-      - "traefik.http.services.tool-nfc.loadbalancer.server.port=3000"
+    - "traefik.enable=true"
+    - "traefik.http.routers.tool-nfc.entrypoints=web,websecure"
+    - "traefik.http.routers.tool-nfc.rule=Host(`tool.senzemo.com`)"
+    - "traefik.http.routers.tool-nfc.tls=true"
+    - "traefik.http.routers.tool-nfc.tls.certresolver=mytlschallenge"
+    - "traefik.http.services.tool-nfc.loadbalancer.server.port=3000"
+    - "traefik.http.routers.tool-nfc.middlewares=tool-nfc-security"
+    - "traefik.http.middlewares.tool-nfc-security.headers.stsSeconds=31536000"
+    - "traefik.http.middlewares.tool-nfc-security.headers.stsIncludeSubdomains=true"
+    - "traefik.http.middlewares.tool-nfc-security.headers.stsPreload=true"
+    - "traefik.http.middlewares.tool-nfc-security.headers.contentTypeNosniff=true"
+    - "traefik.http.middlewares.tool-nfc-security.headers.frameDeny=true"
+    - "traefik.http.middlewares.tool-nfc-security.headers.referrerPolicy=strict-origin-when-cross-origin"
+    - "traefik.http.middlewares.tool-nfc-security.headers.customResponseHeaders.Content-Security-Policy=default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://accounts.google.com"
 
   cron:
     image: alpine:latest
     restart: unless-stopped
     command: >
-      sh -c "
-      apk add --no-cache curl dcron &&
-      echo '0 0 * * * curl -X POST http://app:3000/api/send-inventory-report' > /etc/crontab &&
-      crond -f -L /dev/stdout
-      "
+      sh -c " apk add --no-cache curl dcron && echo '0 0 * * * curl -X POST http://app:3000/api/send-inventory-report' > /etc/crontab && crond -f -L /dev/stdout "
     networks:
       - internal
 
