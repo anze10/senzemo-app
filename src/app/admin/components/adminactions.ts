@@ -44,7 +44,7 @@ export async function inviteUser(
   await auth.api.requestPasswordReset({
     body: {
       email,
-      redirectTo: `${process.env.URL}/ressetpass`,
+      redirectTo: `${process.env.URL}/resetpass`,
     },
   });
 
