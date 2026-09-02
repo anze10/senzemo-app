@@ -54,22 +54,29 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => {
-          // Preveri, ali TA email že obstaja kot admin-ustvarjen uporabnik.
-          // Če ne obstaja, ZAVRNI ustvarjanje - Google prijava NE SME
-          // avtomatsko ustvariti novih računov, enako kot email/password
-          // (disableSignUp: true) ne dovoli samoregistracije.
+        before: async (user, context) => {
+          // Better Auth context vsebuje informacijo o TIPU zahteve.
+          // Preveri, ali gre za "internal" admin klic (createUser preko
+          // admin API-ja) - v tem primeru VEDNO dovoli, ker je to
+          // NAMENOMA nov uporabnik, ki ga ustvarja administrator.
+          const path = (context as { path?: string })?.path ?? "";
+          const isAdminCreated = path.includes("/admin/");
+
+          if (isAdminCreated) {
+            return; // dovoli - admin namenoma ustvarja novega uporabnika
+          }
+
+          // Za VSE OSTALE poti (npr. Google OAuth avtomatsko ustvarjanje)
+          // preveri, da email že obstaja - prepreči samodejno registracijo
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
           });
+
           if (!existingUser) {
             throw new Error(
               "Račun s tem e-poštnim naslovom ne obstaja. Kontaktirajte administratorja.",
             );
           }
-          // Uporabnik obstaja (admin ga je ustvaril preko email/password
-          // poti) - dovoli, da se Google prijava POVEŽE z obstoječim
-          // računom, ne ustvarja novega
         },
       },
     },
