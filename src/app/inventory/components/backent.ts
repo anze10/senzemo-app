@@ -536,6 +536,7 @@ export async function adjustComponentStockWithInvoice(
   fileKey: string | null = null,
   price: number | null = null,
   supplier: string | null = null,
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -717,7 +718,7 @@ export async function adjustComponentStockWithInvoice(
             itemName: currentStock.component.name,
             change: quantity,
             reason: quantity !== 0 ? reason : `Invoice update: ${reason}`,
-            user: "System",
+            user: userName,
             details: logDetails.join(" | "),
             invoiceId: invoiceRecord?.id,
             componentStockId: stockId,
@@ -751,6 +752,7 @@ export async function addComponentToInventory(
   phone: string | null = null,
   sensorAssignments: { sensorId: number; requiredQuantity: number }[] = [],
   fileKey: string | null = null, // Add file key for B2 storage
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -880,7 +882,7 @@ export async function addComponentToInventory(
           itemName: component?.name ?? "Unknown",
           change: quantity,
           reason: "Added to inventory",
-          user: "System",
+          user: userName,
           details: invoiceNumber
             ? `Component ID: ${componentId} | Invoice: ${invoiceNumber} | Total invoice amount: €${invoiceRecord?.amount || 0} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`
             : `Component ID: ${componentId} | Sensor assignments: ${sensorAssignments.length}${fileKey ? ` | File: ${fileKey}` : ""}`,
@@ -916,6 +918,7 @@ export async function updateComponentStock(
   phone?: string,
   price?: number,
   fileKey?: string | null, // Add file key for B2 storage
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -1048,7 +1051,7 @@ export async function updateComponentStock(
             itemName: currentStock.component.name,
             change: quantityChange,
             reason: quantityChange !== 0 ? reason : `Invoice update: ${reason}`,
-            user: "System",
+            user: userName,
             details: logDetails.join(" | "),
             invoiceId: invoiceRecord?.id,
             componentStockId: stockId,
@@ -1111,7 +1114,10 @@ export async function updateComponentSensorAssignments(
   }
 }
 
-export async function deleteSensorFromInventory(devEUI: string) {
+export async function deleteSensorFromInventory(
+  devEUI: string,
+  userName: string = "System",
+) {
   try {
     const result = await prisma.$transaction(async (tx) => {
       // Check if device exists and is not assigned to an order
@@ -1139,7 +1145,7 @@ export async function deleteSensorFromInventory(devEUI: string) {
           itemName: device.DeviceType || "Unknown",
           change: -1,
           reason: "Deleted from inventory",
-          user: "System",
+          user: userName,
           details: `DevEUI: ${devEUI} deleted from inventory`,
         },
       });
@@ -1504,6 +1510,7 @@ export async function addSensorToInventoryHierarchical(
   dev_eui: string,
   appEUI?: string,
   appKey?: string,
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -1537,7 +1544,7 @@ export async function addSensorToInventoryHierarchical(
           itemName: deviceType,
           change: 1,
           reason: "Dodajanje v zalogo",
-          user: "System",
+          user: userName,
           details: `DevEUI: ${dev_eui} | DeviceType: ${deviceType} | Frequency: ${frequency}`,
         },
       });
@@ -1563,6 +1570,7 @@ export async function transferSensorLocation(
   devEUI: string,
   newOrderId: number | null,
   reason: string,
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -1587,7 +1595,7 @@ export async function transferSensorLocation(
           itemName: currentDevice.DeviceType || "Unknown",
           change: 0, // No quantity change, just transfer
           reason: `Transfer: ${reason}`,
-          user: "System",
+          user: userName,
           details: `DevEUI: ${devEUI} | ${currentDevice.orderId ? `Order ${currentDevice.orderId}` : "Inventory"} → ${newOrderId ? `Order ${newOrderId}` : "Inventory"}`,
         },
       });
@@ -2080,6 +2088,7 @@ export async function assignDeviceToOrder(
 export async function releaseDeviceFromOrder(
   devEUI: string,
   reason: string = "Released from order",
+  userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -2111,7 +2120,7 @@ export async function releaseDeviceFromOrder(
           itemName: device.DeviceType || "Unknown",
           change: 1, // Back to inventory
           reason: reason,
-          user: "System",
+          user: userName,
           details: `DevEUI: ${devEUI} released from order ${device.orderId} (${device.order?.customerName})`,
         },
       });

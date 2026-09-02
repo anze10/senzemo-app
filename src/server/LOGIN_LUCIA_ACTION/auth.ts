@@ -52,6 +52,27 @@ export const auth = betterAuth({
   },
 
   databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          // Preveri, ali TA email že obstaja kot admin-ustvarjen uporabnik.
+          // Če ne obstaja, ZAVRNI ustvarjanje - Google prijava NE SME
+          // avtomatsko ustvariti novih računov, enako kot email/password
+          // (disableSignUp: true) ne dovoli samoregistracije.
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+          if (!existingUser) {
+            throw new Error(
+              "Račun s tem e-poštnim naslovom ne obstaja. Kontaktirajte administratorja.",
+            );
+          }
+          // Uporabnik obstaja (admin ga je ustvaril preko email/password
+          // poti) - dovoli, da se Google prijava POVEŽE z obstoječim
+          // računom, ne ustvarja novega
+        },
+      },
+    },
     account: {
       create: {
         before: async (account) => {
@@ -147,8 +168,6 @@ export const auth = betterAuth({
       scope: [
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
       ],
       mapProfileToUser: (profile) => {
         return {

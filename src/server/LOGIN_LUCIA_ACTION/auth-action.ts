@@ -9,22 +9,3 @@ export async function logOut() {
   });
   return { success };
 }
-
-export async function getGoogleOauthConsentUrl() {
-  try {
-    const { url } = await auth.api.signInSocial({
-      body: {
-        provider: "google",
-        scopes: [
-          "https://www.googleapis.com/auth/spreadsheets",
-          "https://www.googleapis.com/auth/drive",
-        ],
-        callbackURL: "/dashboard", // kam preusmeri po uspešni prijavi
-      },
-    });
-
-    return { success: true, url };
-  } catch (error: unknown) {
-    return { success: false, error };
-  }
-}

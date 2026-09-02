@@ -11,7 +11,12 @@ import {
   useReducer,
   useState,
 } from "react";
+import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";// prilagodi pot glede na tvojo strukturo
 
+
+
+const { data: session } = authClient.useSession();
+const currentUserName = session?.user?.name ?? session?.user?.email ?? "Neznan uporabnik";
 interface ComponentDetail {
   name: string;
   available: number;
@@ -1323,6 +1328,7 @@ export default function InventoryManagementPage() {
         params.fileKey || null,
         params.price || null,
         params.supplier || null,
+        currentUserName
       );
     },
     onSuccess: () => {
@@ -1424,6 +1430,7 @@ export default function InventoryManagementPage() {
           updatedItem.contactDetails.phone,
           updatedItem.price,
           fileKey || undefined, // Pass file key to backend
+          currentUserName,
         );
 
         await updateComponentSensorAssignments(
@@ -1450,6 +1457,7 @@ export default function InventoryManagementPage() {
           updatedItem.contactDetails.phone,
           updatedItem.sensorAssignments,
           fileKey || undefined,
+          currentUserName,
         );
 
         queryClient.invalidateQueries({ queryKey: ["components-inventory"] });
@@ -1476,7 +1484,7 @@ export default function InventoryManagementPage() {
     if (!editItem) return;
     try {
       if ("senzorId" in editItem) {
-        await deleteSensorFromInventory((editItem as SenzorStockItem).dev_eui!);
+        await deleteSensorFromInventory((editItem as SenzorStockItem).dev_eui!, currentUserName);
       } else {
         await deleteComponentFromInventory(editItem.id!);
       }
@@ -1737,7 +1745,7 @@ export default function InventoryManagementPage() {
     reason: string,
   ) => {
     try {
-      await releaseDeviceFromOrder(device.devEUI, reason);
+      await releaseDeviceFromOrder(device.devEUI, reason, currentUserName);
       // Refresh the production hierarchy data
       queryClient.invalidateQueries({ queryKey: ["production-hierarchy"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
