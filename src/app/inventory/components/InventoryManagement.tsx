@@ -11,12 +11,10 @@ import {
   useReducer,
   useState,
 } from "react";
-//import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";// prilagodi pot glede na tvojo strukturo
+import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";// prilagodi pot glede na tvojo strukturo
 
 
 
-//const { data: session } = authClient.useSession();
-const currentUserName = "system"
 interface ComponentDetail {
   name: string;
   available: number;
@@ -432,6 +430,7 @@ type ProductionDevice = {
   isAvailable: boolean;
 };
 
+
 // Component for handling sensor images with fallback
 const SensorImage = ({ sensorName }: { sensorName: string }) => {
   const [imageError, setImageError] = useState(false);
@@ -488,6 +487,9 @@ const SensorImage = ({ sensorName }: { sensorName: string }) => {
     imageLoaded,
     hasUrl: !!imageUrl,
   });
+
+
+
 
   if (imageError || !imageUrl) {
     console.log("🔄 Showing fallback placeholder for:", sensorName, {
@@ -584,6 +586,8 @@ const SensorImage = ({ sensorName }: { sensorName: string }) => {
 };
 
 export default function InventoryManagementPage() {
+  const { data: session } = authClient.useSession();
+  const currentUserName = session?.user?.name ?? session?.user?.email ?? "Neznan uporabnik";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [activeTab, setActiveTab] = useState(0);
