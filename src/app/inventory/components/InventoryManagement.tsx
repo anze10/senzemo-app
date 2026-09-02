@@ -11,12 +11,12 @@ import {
   useReducer,
   useState,
 } from "react";
-import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";// prilagodi pot glede na tvojo strukturo
+//import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";// prilagodi pot glede na tvojo strukturo
 
 
 
-const { data: session } = authClient.useSession();
-const currentUserName = session?.user?.name ?? session?.user?.email ?? "Neznan uporabnik";
+//const { data: session } = authClient.useSession();
+const currentUserName = "system"
 interface ComponentDetail {
   name: string;
   available: number;
@@ -118,6 +118,7 @@ import {
   updateComponentStock,
   updateSensorFrequency,
 } from "src/app/inventory/components/backent";
+import Image from "next/image";
 
 type Frequency = "AS923" | "EU868" | "US915" | "2.4 GHz";
 
@@ -565,7 +566,7 @@ const SensorImage = ({ sensorName }: { sensorName: string }) => {
           <MemoryIcon sx={{ fontSize: 40 }} />
         </Box>
       )}
-      <img
+      <Image
         src={imageUrl}
         alt={`${sensorName} sensor`}
         style={{
@@ -2588,6 +2589,17 @@ export default function InventoryManagementPage() {
                           >
                             Ustvari dokumente zaloge
                           </Button>
+                          <Button
+                            variant="outlined"
+                            startIcon={<DescriptionIcon />}
+                            onClick={() => {
+                              window.location.href = "/api/export-components";
+                            }}
+                          >
+                            Izvozi kot Excel
+                          </Button>
+
+
                         </Box>
                       </CardContent>
                     </Card>
