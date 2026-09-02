@@ -118,7 +118,7 @@ import {
   updateComponentStock,
   updateSensorFrequency,
 } from "src/app/inventory/components/backent";
-import Image from "next/image";
+
 
 type Frequency = "AS923" | "EU868" | "US915" | "2.4 GHz";
 
@@ -566,7 +566,7 @@ const SensorImage = ({ sensorName }: { sensorName: string }) => {
           <MemoryIcon sx={{ fontSize: 40 }} />
         </Box>
       )}
-      <Image
+      <img
         src={imageUrl}
         alt={`${sensorName} sensor`}
         style={{
@@ -2589,15 +2589,7 @@ export default function InventoryManagementPage() {
                           >
                             Ustvari dokumente zaloge
                           </Button>
-                          <Button
-                            variant="outlined"
-                            startIcon={<DescriptionIcon />}
-                            onClick={() => {
-                              window.location.href = "/api/export-components";
-                            }}
-                          >
-                            Izvozi kot Excel
-                          </Button>
+
 
 
                         </Box>
@@ -4166,6 +4158,7 @@ export default function InventoryManagementPage() {
                       >
                         Dodaj {activeTab === 0 ? "napravo" : "komponento"}
                       </Button>
+
                     </Box>
                   </>
                 );
@@ -4176,6 +4169,7 @@ export default function InventoryManagementPage() {
           {/* Production Capacity Summary - shown on both Devices and Components tabs */}
           {activeTab === 0 && capacitySummary && (
             <Paper elevation={3} sx={{ mb: 3 }}>
+
               <Box sx={{ p: { xs: 2, md: 4 } }}>
                 <Box
                   sx={{

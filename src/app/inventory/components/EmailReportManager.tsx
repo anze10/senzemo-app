@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import DescriptionIcon from "@mui/icons-material/Description";
 import {
   CheckCircle as CheckCircleIcon,
   Email as EmailIcon,
@@ -271,6 +272,15 @@ const EmailReportManager: React.FC = () => {
                   : isMobile
                     ? "Ustvari PDF"
                     : "Ustvari poročilo"}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DescriptionIcon />}
+                onClick={() => {
+                  window.location.href = "/api/export-components";
+                }}
+              >
+                Izvozi kot Excel
               </Button>
 
               <Button
