@@ -16,7 +16,7 @@ export async function GET() {
   sheet.columns = [
     { header: "Komponenta", key: "name", width: 30 },
     { header: "Količina", key: "quantity", width: 12 },
-    { header: "Lokacija", key: "location", width: 20 },
+    // { header: "Lokacija", key: "location", width: 20 },
     { header: "Dobavitelj", key: "supplier", width: 20 },
     { header: "Cena (€)", key: "price", width: 12 },
     { header: "Skupna vrednost (€)", key: "totalValue", width: 18 },
@@ -36,7 +36,7 @@ export async function GET() {
     sheet.addRow({
       name: stock.component.name,
       quantity: stock.quantity,
-      location: stock.location ?? "",
+      // location: stock.location ?? "",
       supplier: stock.supplier ?? "",
       price: stock.component.Component_price ?? 0, // popravljeno ime
       totalValue: { formula: `B${rowNumber}*E${rowNumber}` },
