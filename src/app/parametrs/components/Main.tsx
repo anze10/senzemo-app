@@ -80,7 +80,7 @@ export default function Parameters() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupStep, setSetupStep] = useState(0);
   const [setupError, setSetupError] = useState<string | null>(null);
-
+  const [batchNumber, setBatchNumber] = useState("");
   const set_order_id = useSensorStore((state) => state.set_order_id);
   const set_target_sensor_data = useSensorStore(
     (state) => state.set_target_sensor_data,
@@ -330,6 +330,14 @@ export default function Parameters() {
                       </FormControl>
                     </>
                   )}
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel htmlFor="batch_number">Batch Number</InputLabel>
+                    <Input
+                      id="batch_number"
+                      value={batchNumber}
+                      onChange={(e) => setBatchNumber(e.target.value)}
+                    />
+                  </FormControl>
 
                   <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
                     {decoder?.map((parser) => (
@@ -420,6 +428,7 @@ export default function Parameters() {
                         ...formValues,
                       };
 
+
                       // Korak 1: Ustvari naročilo v bazi
                       set_order_id(
                         await CreateOrder(company_name, Number(order_number))
@@ -444,6 +453,7 @@ export default function Parameters() {
                         addToStock ? null : company_name,
                         addToStock ? null : order_number,
                         measurementFields,
+                        batchNumber
                       );
 
                       clearTimeout(stepTimer1);

@@ -51,7 +51,8 @@ async function createSpreadsheet(
   order_number: string | null,
   currentTime: Date,
   name: string,
-  measurementFields: string[], // NOVO: imena physicalData polj iz decoderja
+  measurementFields: string[], //Podatki iz dekoderja
+  batchNumber: string, // NOVO: številka serije
 ) {
   const spreadsheetName =
     customer_name && order_number
@@ -103,6 +104,8 @@ async function createSpreadsheet(
       { range: "B4", values: [[order_number ?? "N/A"]] },
       { range: "A5", values: [["Date of production:"]] },
       { range: "B5", values: [[time]] },
+      { range: "A6", values: [["Batch Number:"]] }, // NOVO
+      { range: "B6", values: [[batchNumber || "N/A"]] }, // NOVO
       { range: "A7", values: [["Fulfilled by:"]] },
       { range: "B7", values: [[name]] },
       ...allHeaders.map((header, i) => ({
@@ -124,24 +127,26 @@ async function createSpreadsheet(
       },
     });
 
-    const boldRightAlignRequests = ["B3", "B4", "B5", "B7"].map((cell) => ({
-      repeatCell: {
-        range: {
-          sheetId: 0,
-          startRowIndex: parseInt(cell.substring(1)) - 1,
-          endRowIndex: parseInt(cell.substring(1)),
-          startColumnIndex: cell.charCodeAt(0) - 65,
-          endColumnIndex: cell.charCodeAt(0) - 64,
-        },
-        cell: {
-          userEnteredFormat: {
-            textFormat: { bold: true },
-            horizontalAlignment: "RIGHT",
+    const boldRightAlignRequests = ["B3", "B4", "B5", "B6", "B7"].map(
+      (cell) => ({
+        repeatCell: {
+          range: {
+            sheetId: 0,
+            startRowIndex: parseInt(cell.substring(1)) - 1,
+            endRowIndex: parseInt(cell.substring(1)),
+            startColumnIndex: cell.charCodeAt(0) - 65,
+            endColumnIndex: cell.charCodeAt(0) - 64,
           },
+          cell: {
+            userEnteredFormat: {
+              textFormat: { bold: true },
+              horizontalAlignment: "RIGHT",
+            },
+          },
+          fields: "userEnteredFormat(textFormat,horizontalAlignment)",
         },
-        fields: "userEnteredFormat(textFormat,horizontalAlignment)",
-      },
-    }));
+      }),
+    );
 
     const headerFormattingRequest = {
       repeatCell: {
@@ -431,7 +436,8 @@ async function insertIntoCsvFile(
 export async function createFolderAndSpreadsheet(
   customer_name: string | null,
   order_number: string | null,
-  measurementFields: string[], // NOVO
+  measurementFields: string[],
+  batchNumber: string,
 ) {
   const session = await getCurrentSession();
   const currentTime = new Date();
@@ -446,7 +452,8 @@ export async function createFolderAndSpreadsheet(
       order_number,
       currentTime,
       name,
-      measurementFields, // NOVO
+      measurementFields,
+      batchNumber,
     );
 
     const fileId = await createSpreadsheetCsv(folderId, order_number);
@@ -471,10 +478,16 @@ export async function createFolderAndSpreadsheetWithData(
     deviceType: string | null;
     frequency: string | null;
   }>,
+  batchNumber: string = "",
 ) {
   try {
     const { folderId, spreadsheetId, fileId } =
-      await createFolderAndSpreadsheet(customer_name, order_number, []);
+      await createFolderAndSpreadsheet(
+        customer_name,
+        order_number,
+        [],
+        batchNumber,
+      );
 
     for (const device of devices) {
       if (device.devEUI && device.deviceType) {
@@ -680,6 +693,7 @@ export async function insert(
   console.log("Inserting new row into the spreadsheet...");
   try {
     await insertIntoCsvFile(fileId, newRow);
+    console.log("Inserted new row into the CSV file.");
     await insertIntoSpreadsheet(spreadsheetId, nerEXE);
   } catch (err) {
     console.error(err);
