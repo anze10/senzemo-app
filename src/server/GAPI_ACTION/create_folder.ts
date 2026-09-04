@@ -391,13 +391,10 @@ async function insertIntoCsvFile(
 ): Promise<void> {
   try {
     const newRowString = newRow.join(",") + "\n";
+    console.log("[CSV DEBUG] newRowString:", JSON.stringify(newRowString));
 
     const response = await drive.files.get(
-      {
-        fileId: fileId,
-        alt: "media",
-        supportsAllDrives: true,
-      },
+      { fileId: fileId, alt: "media", supportsAllDrives: true },
       { responseType: "stream" },
     );
 
@@ -410,7 +407,21 @@ async function insertIntoCsvFile(
       response.data.on("end", resolve);
       response.data.on("error", reject);
     });
+
+    console.log(
+      "[CSV DEBUG] existingCsvContent PRED zapisom (dolžina:",
+      existingCsvContent.length,
+      "):",
+      JSON.stringify(existingCsvContent),
+    );
+
     const updatedCsvContent = existingCsvContent + newRowString;
+    console.log(
+      "[CSV DEBUG] updatedCsvContent, ki se zapiše (dolžina:",
+      updatedCsvContent.length,
+      "):",
+      JSON.stringify(updatedCsvContent),
+    );
 
     const media = {
       mimeType: "text/csv",
