@@ -1312,7 +1312,7 @@ export function SensorCheckForm() {
                             sensors ?? [],
                             data.family_id as number,
                             data.product_id as number,
-                            data.frequency_region as string,
+                            (data.lora_freq_reg ?? data.frequency_region) as string,
                           );
                         } catch (printError) {
                           console.error("Error printing sticker:", printError);
@@ -1454,7 +1454,7 @@ export function SensorCheckForm() {
                             sensors ?? [],
                             data.family_id as number,
                             data.product_id as number,
-                            data.frequency_region as string
+                            (data.lora_freq_reg ?? data.frequency_region) as string
                           );
                         } catch (printError) {
                           console.error("Error printing sticker:", printError);
