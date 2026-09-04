@@ -52,34 +52,6 @@ export const auth = betterAuth({
   },
 
   databaseHooks: {
-    user: {
-      create: {
-        before: async (user, context) => {
-          // Better Auth context vsebuje informacijo o TIPU zahteve.
-          // Preveri, ali gre za "internal" admin klic (createUser preko
-          // admin API-ja) - v tem primeru VEDNO dovoli, ker je to
-          // NAMENOMA nov uporabnik, ki ga ustvarja administrator.
-          const path = (context as { path?: string })?.path ?? "";
-          const isAdminCreated = path.includes("/admin/");
-
-          if (isAdminCreated) {
-            return; // dovoli - admin namenoma ustvarja novega uporabnika
-          }
-
-          // Za VSE OSTALE poti (npr. Google OAuth avtomatsko ustvarjanje)
-          // preveri, da email že obstaja - prepreči samodejno registracijo
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email },
-          });
-
-          if (!existingUser) {
-            throw new Error(
-              "Račun s tem e-poštnim naslovom ne obstaja. Kontaktirajte administratorja.",
-            );
-          }
-        },
-      },
-    },
     account: {
       create: {
         before: async (account) => {
@@ -164,24 +136,6 @@ export const auth = betterAuth({
       });
     },
     resetPasswordTokenExpiresIn: 3600 * 24,
-  },
-
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      accessType: "offline",
-      prompt: "select_account consent",
-      scope: [
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
-      ],
-      mapProfileToUser: (profile) => {
-        return {
-          googleId: profile.sub,
-        };
-      },
-    },
   },
 
   user: {

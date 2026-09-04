@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Box, Button, Divider, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, TextField, Typography } from "@mui/material";
 import { authClient } from "src/server/LOGIN_LUCIA_ACTION/auth-client";
-import GoogleIcon from "@mui/icons-material/Google";
+
 
 export default function Signin() {
   const router = useRouter();
@@ -40,25 +40,7 @@ export default function Signin() {
     }
   }
 
-  async function handleGoogleLogin() {
-    setError(null);
-    try {
-      const result = await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/dashboard",
-      });
 
-      if (result.error) {
-        setError(result.error.message ?? "Napaka pri prijavi z Google računom.");
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Prišlo je do nepričakovane napake pri prijavi z Google računom.",
-      );
-    }
-  }
 
   return (
     <Box
@@ -136,26 +118,6 @@ export default function Signin() {
         </Button>
       </Box>
 
-      <Divider sx={{ my: 3, borderColor: "#4b5563", color: "#9ca3af" }}>
-        ali
-      </Divider>
-
-      <Button
-        onClick={handleGoogleLogin}
-        fullWidth
-        variant="outlined"
-        startIcon={<GoogleIcon />}
-        sx={{
-          color: "#e5e7eb",
-          backgroundColor: "#374151",
-          borderColor: "#9ca3af",
-          "&:hover": {
-            backgroundColor: "#4b5563",
-          },
-        }}
-      >
-        Prijava z Google računom
-      </Button>
     </Box>
   );
 }
