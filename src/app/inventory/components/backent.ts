@@ -906,7 +906,6 @@ export async function addComponentToInventory(
     throw new Error("Failed to add component to inventory");
   }
 }
-
 export async function updateComponentStock(
   stockId: number,
   newQuantity: number,
@@ -917,8 +916,9 @@ export async function updateComponentStock(
   supplier?: string,
   phone?: string,
   price?: number,
-  fileKey?: string | null, // Add file key for B2 storage
+  fileKey?: string | null,
   userName: string = "System",
+  name?: string, // NOVO - ime komponente, opcijsko
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -935,7 +935,6 @@ export async function updateComponentStock(
 
       const quantityChange = newQuantity - currentStock.quantity;
 
-      // Prepare update data
       const updateData: Partial<{
         quantity: number;
         lastUpdated: Date;
@@ -966,9 +965,23 @@ export async function updateComponentStock(
         data: updateData,
       });
 
-      // Update component price if provided
+      // NOVO - posodobi ime komponente, če je podano in se razlikuje
+      // od trenutnega (isti vzorec kot posodabljanje cene spodaj)
+      if (
+        name !== undefined &&
+        name.trim() !== "" &&
+        name !== currentStock.component.name
+      ) {
+        console.log(
+          `Updating component ${currentStock.componentId} name to: ${name}`,
+        );
+        await tx.component.update({
+          where: { id: currentStock.componentId },
+          data: { name },
+        });
+      }
+
       if (price !== undefined) {
-        // Ensure price is a valid number
         const numericPrice = parseFloat(String(price));
 
         if (!isNaN(numericPrice)) {
@@ -986,7 +999,8 @@ export async function updateComponentStock(
         }
       }
 
-      // Create invoice record if provided
+      // ... ostanek funkcije (invoice, log, itd.) OSTANE POPOLNOMA NESPREMENJEN ...
+
       let invoiceRecord = null;
       if (invoiceNumber) {
         invoiceRecord = await tx.invoice.upsert({
@@ -996,23 +1010,21 @@ export async function updateComponentStock(
             amount: (price || 0) * Math.abs(quantityChange),
             supplier: supplier || currentStock.supplier || "",
             uploadDate: new Date(),
-            filename: fileKey || null, // Store the full B2 file path
+            filename: fileKey || null,
           },
           update: {
             amount: (price || 0) * Math.abs(quantityChange),
             supplier: supplier || currentStock.supplier || "",
-            filename: fileKey || null, // Store the full B2 file path
+            filename: fileKey || null,
           },
         });
 
-        // Link the component stock to the invoice if created
         await tx.componentStock.update({
           where: { id: stockId },
           data: { invoiceId: invoiceRecord.id },
         });
       }
 
-      // Create detailed log entry - always log when invoice information is provided
       const hasInvoiceUpdate =
         invoiceNumber ||
         fileKey ||
@@ -1087,6 +1099,7 @@ export async function updateComponentStock(
     throw new Error("Failed to update component stock", error as Error);
   }
 }
+
 export async function updateComponentSensorAssignments(
   componentId: number,
   assignments: { sensorId: number; requiredQuantity: number }[],

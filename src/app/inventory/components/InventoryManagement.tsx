@@ -96,7 +96,7 @@ import {
   assignDeviceToOrder,
   deleteComponentFromInventory,
   deleteSensorFromInventory,
-  getAllComponents,
+  //getAllComponents,
   getAllOrders,
   getAllSensorsWithCustomers,
   // getAllOrders,
@@ -840,13 +840,13 @@ export default function InventoryManagementPage() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: componentOptions = [] } = useQuery({
-    queryKey: ["all-components"],
-    queryFn: getAllComponents,
-    enabled: activeTab === 1, // Only fetch when on components tab
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  // const { data: componentOptions = [] } = useQuery({
+  //   queryKey: ["all-components"],
+  //   queryFn: getAllComponents,
+  //   enabled: activeTab === 1, // Only fetch when on components tab
+  //   staleTime: 5 * 60 * 1000,
+  //   refetchOnWindowFocus: false,
+  // });
   const { data: LowComponents = [] } = useQuery({
     queryKey: [" LowComponents "],
     queryFn: getLowComponents,
@@ -1428,14 +1428,15 @@ export default function InventoryManagementPage() {
           editItem.id,
           updatedItem.quantity,
           "Manual update",
-          invoiceNumber || undefined, // Always pass invoice number if provided
+          invoiceNumber || undefined,
           updatedItem.location,
           updatedItem.contactDetails.email,
           updatedItem.contactDetails.supplier,
           updatedItem.contactDetails.phone,
           updatedItem.price,
-          fileKey || undefined, // Pass file key to backend
+          fileKey || undefined,
           currentUserName,
+          updatedItem.name, // NOVO
         );
 
         await updateComponentSensorAssignments(
@@ -4563,75 +4564,23 @@ export default function InventoryManagementPage() {
                   </>
                 ) : (
                   <>
-                    <Select
-                      value={
-                        (editItem as ComponentStockItem)?.componentId || ""
-                      }
-                      onChange={(e) => {
-                        const componentId = Number(e.target.value);
-                        const selectedComponent = componentOptions.find(
-                          (c: { id: number }) => c.id === componentId,
-                        );
-                        if (selectedComponent) {
-                          dispatchDialog({
-                            type: "UPDATE_EDIT_ITEM",
-                            item: {
-                              ...editItem,
-                              componentId: selectedComponent.id,
-                              name: selectedComponent.name,
-                            } as ComponentStockItem,
-                          });
-                        }
-                      }}
+
+                    <TextField
                       label="Component"
+                      value={(editItem as ComponentStockItem)?.name || ""}
+                      onChange={(e) => {
+                        dispatchDialog({
+                          type: "UPDATE_EDIT_ITEM",
+                          item: {
+                            ...editItem,
+                            name: e.target.value,
+                          } as ComponentStockItem,
+                        });
+                      }}
                       fullWidth
                       required
                       className="mb-4"
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        Select a component
-                      </MenuItem>
-                      {componentOptions.map(
-                        (component: {
-                          id: Key | readonly string[] | null | undefined;
-                          name:
-                          | string
-                          | number
-                          | bigint
-                          | boolean
-                          | ReactElement<
-                            unknown,
-                            string | JSXElementConstructor<unknown>
-                          >
-                          | Iterable<ReactNode>
-                          | ReactPortal
-                          | Promise<
-                            | string
-                            | number
-                            | bigint
-                            | boolean
-                            | ReactPortal
-                            | ReactElement<
-                              unknown,
-                              string | JSXElementConstructor<unknown>
-                            >
-                            | Iterable<ReactNode>
-                            | null
-                            | undefined
-                          >
-                          | null
-                          | undefined;
-                        }) => (
-                          <MenuItem
-                            key={String(component.id)}
-                            value={String(component.id)}
-                          >
-                            {component.name}
-                          </MenuItem>
-                        ),
-                      )}
-                    </Select>
+                    />
 
                     <TextField
                       margin="dense"
