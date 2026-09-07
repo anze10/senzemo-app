@@ -67,6 +67,7 @@ export default function Parameters() {
   const [decoder, setDecoder] = useState<SensorParserCombinator | undefined>();
   const [formValues, setFormValues] = useState<ParsedSensorData>({});
   const [family_id, set_family_id] = useState<number>(1);
+  const [deviceName, setDeviceName] = useState<string>("");
   const [company_name, set_company_name] = useState<string>("");
   const [addToStock, setAddToStock] = useState<boolean>(false);
   const [product_id, set_product_id] = useState<number>(0);
@@ -121,6 +122,7 @@ export default function Parameters() {
       const selectedDevice = devices?.find(
         (device) => device.familyId === familyId && device.product === productId,
       );
+      setDeviceName(selectedDevice?.name ?? "");
       setDecoder(selectedDevice?.decoder);
 
       const newValues: ParsedSensorData = {};
@@ -453,7 +455,8 @@ export default function Parameters() {
                         addToStock ? null : company_name,
                         addToStock ? null : order_number,
                         measurementFields,
-                        batchNumber
+                        batchNumber,
+                        deviceName
                       );
 
                       clearTimeout(stepTimer1);

@@ -2446,6 +2446,8 @@ export default function InventoryManagementPage() {
                                       deviceType: string | null;
                                       frequency: string | null;
                                     }>,
+                                    "batch-number-neznan-ker-je-to-zaloga",
+                                    "senzor-type-se-izpolni-ročno"
                                   );
                                   // You can add a success notification here
                                   console.log(
@@ -2580,6 +2582,8 @@ export default function InventoryManagementPage() {
                                   null,
                                   sensorsWithCustomers.unassignedDevices
                                     .devices,
+                                  "batch-number-neznan-ker-je-to-zaloga",
+                                  "senzor-type-se-izpolni-ročno"
                                 );
                                 console.log(
                                   "Inventory drive documents created successfully",

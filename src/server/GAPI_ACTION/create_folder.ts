@@ -60,7 +60,7 @@ async function createSpreadsheet(
       : `Stock Inventory-Device list ${currentTime.toISOString().split("T")[0]}`;
 
   const fileMetadata = {
-    name: spreadsheetName,
+    name: `INTERNAL${spreadsheetName}`,
     parents: folderId ? [folderId] : [DRIVE_FOLDER_ID],
     mimeType: "application/vnd.google-apps.spreadsheet",
   };
@@ -367,7 +367,7 @@ async function createSpreadsheetCsv(
 
   const media = {
     mimeType: "text/csv",
-    body: "id,dev_eui,join_eui,name,frequency_plan_id,lorawan_version,lorawan_phy_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id\n",
+    body: "id,dev_eui,join_eui,frequency_plan_id,lorawan_version,app_key,brand_id,model_id,hardware_version,firmware_version,band_id\n",
   };
 
   try {
@@ -441,6 +441,140 @@ async function insertIntoCsvFile(
   }
 }
 
+export async function createCustomerDocument(
+  folderId: string | null | undefined,
+  sensorTypeName: string | null,
+) {
+  const fileMetadata = {
+    name: sensorTypeName,
+    parents: folderId ? [folderId] : [DRIVE_FOLDER_ID],
+    mimeType: "application/vnd.google-apps.spreadsheet",
+  };
+  try {
+    const file = await drive.files.create({
+      requestBody: fileMetadata,
+      media: {},
+      fields: "id",
+      supportsAllDrives: true,
+    });
+    const spreadsheetId = file.data.id;
+
+    const headerData = [
+      { range: "A1", values: [[sensorTypeName]] },
+      { range: "A2", values: [["DEV EUI", "AppEUI", "AppKey"]] },
+    ];
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: spreadsheetId ?? undefined,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: headerData,
+      },
+    });
+
+    // Formatiranje - naslov razpet čez A1:C1, obarvan, poudarjen
+    const mergeTitleRequest = {
+      mergeCells: {
+        range: {
+          sheetId: 0,
+          startRowIndex: 0,
+          endRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        },
+        mergeType: "MERGE_ALL",
+      },
+    };
+    const titleFormatRequest = {
+      repeatCell: {
+        range: {
+          sheetId: 0,
+          startRowIndex: 0,
+          endRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.85, green: 0.85, blue: 0.85 },
+            horizontalAlignment: "CENTER",
+            textFormat: { bold: true },
+          },
+        },
+        fields:
+          "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)",
+      },
+    };
+    const headerRowFormatRequest = {
+      repeatCell: {
+        range: {
+          sheetId: 0,
+          startRowIndex: 1,
+          endRowIndex: 2,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        },
+        cell: { userEnteredFormat: { textFormat: { bold: true } } },
+        fields: "userEnteredFormat(textFormat)",
+      },
+    };
+    const resizeColumnsRequest = {
+      updateDimensionProperties: {
+        range: { sheetId: 0, dimension: "COLUMNS", startIndex: 0, endIndex: 3 },
+        properties: { pixelSize: 200 },
+        fields: "pixelSize",
+      },
+    };
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetId ?? undefined,
+      requestBody: {
+        requests: [
+          mergeTitleRequest,
+          titleFormatRequest,
+          headerRowFormatRequest,
+          resizeColumnsRequest,
+        ],
+      },
+    });
+
+    return spreadsheetId;
+  } catch (err) {
+    console.error("Error creating customer document:", err);
+    throw err;
+  }
+}
+
+export async function insertIntoCustomerDocument(
+  spreadsheetId: string,
+  devEUI: string,
+  appEUI: string,
+  appKey: string,
+): Promise<void> {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "A2:A",
+    });
+
+    const rows = response.data.values ?? [];
+    const nextRow = rows.length + 2;
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: [{ range: `A${nextRow}`, values: [[devEUI, appEUI, appKey]] }],
+      },
+    });
+
+    console.log(`Vrstica dodana v customer document na vrstico ${nextRow}`);
+  } catch (error) {
+    console.error("Error inserting into customer document:", error);
+    throw error;
+  }
+}
+
 // Glavna funkcija - zdaj brez per-user OAuth tokena, uporablja skupen
 // Service Account. `getCurrentSession()` obdržimo SAMO za pridobitev
 // imena uporabnika (za "Fulfilled by" polje), ne za avtentikacijo proti Google-u.
@@ -449,6 +583,7 @@ export async function createFolderAndSpreadsheet(
   order_number: string | null,
   measurementFields: string[],
   batchNumber: string,
+  SensorTypeName: string | null,
 ) {
   const session = await getCurrentSession();
   const currentTime = new Date();
@@ -469,11 +604,16 @@ export async function createFolderAndSpreadsheet(
 
     const fileId = await createSpreadsheetCsv(folderId, order_number);
 
-    if (!folderId || !spreadsheetId || !fileId) {
+    const customerDocumentId = await createCustomerDocument(
+      folderId,
+      SensorTypeName,
+    );
+
+    if (!folderId || !spreadsheetId || !fileId || !customerDocumentId) {
       throw new Error("Error creating folder, spreadsheet or csv file");
     }
 
-    return { folderId, spreadsheetId, fileId };
+    return { folderId, spreadsheetId, fileId, customerDocumentId };
   } catch (err) {
     console.error(err);
     throw err;
@@ -490,14 +630,16 @@ export async function createFolderAndSpreadsheetWithData(
     frequency: string | null;
   }>,
   batchNumber: string = "",
+  SensorTypeName: string | null,
 ) {
   try {
-    const { folderId, spreadsheetId, fileId } =
+    const { folderId, spreadsheetId, fileId, customerDocumentId } =
       await createFolderAndSpreadsheet(
         customer_name,
         order_number,
         [],
         batchNumber,
+        SensorTypeName,
       );
 
     for (const device of devices) {
@@ -541,14 +683,14 @@ export async function createFolderAndSpreadsheetWithData(
         const frequencyPlan = mapFrequencyToTTNFormat(frequencyRegion);
         const sanitizedModelId = sanitizeModelId(deviceType);
         const sanitizedBrandId = sanitizeBrandId("senzemo");
-        const deviceName = `${sanitizedModelId}-${devEUI}`;
+        // const deviceName = `${sanitizedModelId}-${devEUI}`;
         const ttnFirmwareVersion = "";
 
         const csvRow = [
           deviceId,
           devEUI,
           appEUI,
-          deviceName,
+          // deviceName,
           frequencyPlan,
           "1.0.3",
           "1.0.3-a",
@@ -575,11 +717,18 @@ export async function createFolderAndSpreadsheetWithData(
           movementThreshold,
         ];
 
-        await insert(fileId, csvRow, spreadsheetId, spreadsheetRow);
+        await insert(
+          fileId,
+          csvRow,
+          spreadsheetId,
+          spreadsheetRow,
+          customerDocumentId,
+          [devEUI, appEUI, appKey],
+        );
       }
     }
 
-    return { folderId, spreadsheetId, fileId };
+    return { folderId, spreadsheetId, fileId, customerDocumentId };
   } catch (err) {
     console.error("Error creating documents with data:", err);
     throw err;
@@ -700,12 +849,22 @@ export async function insert(
   newRow: string[],
   spreadsheetId: string,
   nerEXE: string[],
+  customerDocumentId: string,
+  newRow2: string[],
 ) {
   console.log("Inserting new row into the spreadsheet...");
   try {
     await insertIntoCsvFile(fileId, newRow);
     console.log("Inserted new row into the CSV file.");
     await insertIntoSpreadsheet(spreadsheetId, nerEXE);
+    console.log("Inserted new row into the Google Spreadsheet.");
+    await insertIntoCustomerDocument(
+      customerDocumentId,
+      newRow2[1]!,
+      newRow2[2]!,
+      newRow2[3]!,
+    );
+    console.log("Inserted new row into the Customer Document.");
   } catch (err) {
     console.error(err);
     throw err;

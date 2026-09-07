@@ -6,6 +6,7 @@ import { createSafeStorage } from "~/lib/storage";
 export interface GoogleDriveType {
   folderId: string;
   spreadsheetId: string;
+  customerDocumentId: string;
   fileId: string;
 }
 
@@ -17,6 +18,7 @@ interface CredentialsState {
 const initial_state: GoogleDriveType = {
   folderId: "",
   spreadsheetId: "",
+  customerDocumentId: "",
   fileId: "",
 };
 

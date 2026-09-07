@@ -310,6 +310,10 @@ export function Konec() {
         String(sensorData.device_fw_ver),
         band_id,
       ];
+      const newRowCustomer: string[] = [
+        String(sensorData.dev_eui),
+        String(sensorData.join_eui),
+        String(sensorData.app_key),];
 
       try {
         // Insert the row for this sensor
@@ -318,6 +322,9 @@ export function Konec() {
           newRowCSV,
           credentials.spreadsheetId,
           newROWEXE,
+          credentials.customerDocumentId,
+          newRowCustomer
+
         );
       } catch (err) {
         setProgress((prev) => ({
