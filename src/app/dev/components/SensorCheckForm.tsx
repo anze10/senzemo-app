@@ -310,7 +310,7 @@ export function SensorCheckForm() {
   }, [current_sensor_index, current_sensor, target_sensor_data, sensor_parsers]);
 
   // Remove static dataforDB object - it will be created dynamically in useMemo
-  const all_sensors = useSensorStore((state) => state.sensors);
+  // const all_sensors = useSensorStore((state) => state.sensors);
 
   const add_new_sensor = useSensorStore((state) => state.add_new_sensor);
 
@@ -374,25 +374,25 @@ export function SensorCheckForm() {
     queryFn: () => GetSensors(),
   });
 
-  const onSubmit = async (data: ParsedSensorData, okay: boolean) => {
-    console.log("onSubmit before", {
-      all_sensors,
-      current_sensor_index,
-      current_sensor,
-    });
+  // const onSubmit = async (data: ParsedSensorData, okay: boolean) => {
+  //   console.log("onSubmit before", {
+  //     all_sensors,
+  //     current_sensor_index,
+  //     current_sensor,
+  //   });
 
-    set_sensor_status(current_sensor_index, okay);
+  //   set_sensor_status(current_sensor_index, okay);
 
-    set_sensor_data(current_sensor_index, data);
+  //   set_sensor_data(current_sensor_index, data);
 
-    console.log("onSubmit after", {
-      all_sensors,
-      current_sensor_index,
-      current_sensor,
-    });
+  //   console.log("onSubmit after", {
+  //     all_sensors,
+  //     current_sensor_index,
+  //     current_sensor,
+  //   });
 
-    console.log("onSubmit completed - no automatic sensor reading");
-  };
+  //   console.log("onSubmit completed - no automatic sensor reading");
+  // };
 
   const GetDataFromSensor = async (maxRetries = 3) => {
     console.log("GetDataFromSensor called");
@@ -737,25 +737,25 @@ export function SensorCheckForm() {
     set_sensor_data(current_sensor_index, new_data);
   }
 
-  async function handleSubmit(
-    dataHandler: (data: ParsedSensorData) => Promise<void>,
-  ): Promise<void> {
-    if (!current_sensor) {
-      console.log("No current sensor available");
-      return;
-    }
+  // async function handleSubmit(
+  //   dataHandler: (data: ParsedSensorData) => Promise<void>,
+  // ): Promise<void> {
+  //   if (!current_sensor) {
+  //     console.log("No current sensor available");
+  //     return;
+  //   }
 
-    try {
-      await dataHandler(current_sensor.data as ParsedSensorData);
-      set_sensor_data(
-        current_sensor_index,
-        current_sensor.data as ParsedSensorData,
-      );
-      console.log("Data handler completed successfully");
-    } catch (error) {
-      console.error("Error in data handler:", error);
-    }
-  }
+  //   try {
+  //     await dataHandler(current_sensor.data as ParsedSensorData);
+  //     set_sensor_data(
+  //       current_sensor_index,
+  //       current_sensor.data as ParsedSensorData,
+  //     );
+  //     console.log("Data handler completed successfully");
+  //   } catch (error) {
+  //     console.error("Error in data handler:", error);
+  //   }
+  // }
 
   return (
     <>
@@ -1622,12 +1622,64 @@ export function SensorCheckForm() {
               <Button
                 variant="outlined"
                 color="warning"
-                onClick={() =>
-                  handleSubmit((data: ParsedSensorData) => onSubmit(data, false))
-                }
+                disabled={isProcessing}
+                onClick={async () => {
+                  console.log("Reject button clicked");
+                  if (isProcessing) return;
+
+                  setIsProcessing(true);
+                  setProcessingMessage("Zavračam senzor...");
+
+                  try {
+                    if (!current_sensor) {
+                      setProcessingMessage("Ni trenutnega senzorja");
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setProcessingMessage("");
+                      }, 2000);
+                      return;
+                    }
+
+                    const data = current_sensor.data as ParsedSensorData;
+
+                    set_sensor_status(current_sensor_index, false);
+                    set_sensor_data(current_sensor_index, data);
+
+                    setProcessingMessage("Senzor zavrnjen. Berem naslednji senzor...");
+
+                    // Avtomatsko preberi naslednji senzor - ISTI vzorec kot "Sprejmi",
+                    // BREZ tiskanja (zavrnjeni senzorji se NIKOLI ne tiskajo)
+                    try {
+                      const uint_array = await GetDataFromSensor();
+                      if (uint_array && sensors) {
+                        const decoder = RightDecoder(uint_array, sensors);
+                        if (decoder) {
+                          add_new_sensor(decoder, uint_array);
+                          setProcessingMessage("Naslednji senzor prebran");
+                        } else {
+                          setProcessingMessage("Naslednji senzor ni prepoznan");
+                        }
+                      } else {
+                        setProcessingMessage("Ni podatkov iz bralnika");
+                      }
+                    } catch (autoReadError) {
+                      console.log("Auto-read failed:", autoReadError);
+                      setProcessingMessage("Senzor zavrnjen - ročno preberite naslednjega");
+                    }
+                  } catch (error) {
+                    console.error("Error in reject button:", error);
+                    setProcessingMessage("Napaka pri obdelavi senzorja");
+                    resetOperationFlags();
+                  } finally {
+                    setTimeout(() => {
+                      setIsProcessing(false);
+                      setProcessingMessage("");
+                    }, 3000);
+                  }
+                }}
                 sx={{ flex: 1 }}
               >
-                Zavrni
+                {isProcessing ? "Obdelujem..." : "Zavrni"}
               </Button>
             </Box>
 
