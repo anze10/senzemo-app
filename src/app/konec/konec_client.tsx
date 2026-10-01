@@ -34,6 +34,7 @@ import { insert } from "~/server/GAPI_ACTION/create_folder";
 import { CheckCircleIcon } from "lucide-react";
 import { XCircleIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import * as XLSX from "xlsx";
 
 //import type { SensorParserCombinator } from "~/app/dev/components/Reader/ParseSensorData";
 
@@ -49,6 +50,28 @@ const UsedTime = dynamic(
 interface SensorReportProps {
   sensorData: RatedSensorData[];
   startTime?: Date;
+}
+function downloadCSV(headers: string[], rows: string[][], filename: string) {
+  const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadXLSX(
+  headers: string[],
+  rows: string[][],
+  filename: string,
+  sheetName = "Sheet1",
+) {
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  XLSX.writeFile(workbook, filename);
 }
 
 function SensorReport({ sensorData }: SensorReportProps) {
@@ -229,7 +252,15 @@ export function Konec() {
       status: "uploading",
     });
 
-    // Process each sensor individually
+    // NOVO: zbiraj VSE vrstice sproti, neodvisno od Drive uspeha -
+    // če Drive pozneje odpove, imamo že pripravljene vse podatke
+    const allCsvRows: string[][] = [];
+    const allSheetRows: string[][] = [];
+    const allCustomerRows: string[][] = [];
+    const measurementNames = (decoder ?? [])
+      .filter((p) => p.output.physicalData)
+      .map((p) => p.output.name);
+
     for (let i = 0; i < validSensors.length; i++) {
       const element = validSensors[i]!;
       const sensorData = element.data;
@@ -247,7 +278,6 @@ export function Konec() {
         currentDevEui: String(sensorData.dev_eui ?? `#${i + 1}`),
       }));
 
-      // Find matching sensor details
       (sensors ?? []).forEach((sensor: Senzor) => {
         if (
           sensor.productId === sensorData.product_id &&
@@ -257,11 +287,11 @@ export function Konec() {
           model_id = sensor.sensorName ?? "We don't know";
         }
       });
+
       const measurementValues: string[] = (decoder ?? [])
         .filter((p) => p.output.physicalData)
         .map((p) => String((sensorData as Record<string, unknown>)[p.output.name] ?? ""));
 
-      // Determine frequency and band
       switch (sensorData.lora_freq_reg) {
         case "AS923":
           freq_reg = "AS_920_923_TTN_AU";
@@ -277,7 +307,6 @@ export function Konec() {
           break;
       }
 
-      // Build EXE and CSV rows for this sensor
       const newROWEXE: string[] = [
         model_id,
         String(sensorData.dev_eui),
@@ -292,7 +321,7 @@ export function Konec() {
         String(sensorData.device_ack_delay),
         String(sensorData.adr),
         String(sensorData.device_mov_thr),
-        ...measurementValues, // NOVO: dinamično, glede na TA senzorjev decoder
+        ...measurementValues,
       ];
 
       const newRowCSV: string[] = [
@@ -310,30 +339,66 @@ export function Konec() {
         String(sensorData.device_fw_ver),
         band_id,
       ];
+
       const newRowCustomer: string[] = [
         String(sensorData.dev_eui),
         String(sensorData.join_eui),
-        String(sensorData.app_key),];
+        String(sensorData.app_key),
+      ];
+
+      // NOVO: shrani VNAPREJ, preden poskusimo Drive klic
+      allCsvRows.push(newRowCSV);
+      allSheetRows.push(newROWEXE);
+      allCustomerRows.push(newRowCustomer);
 
       try {
-        // Insert the row for this sensor
         await insert(
           credentials.fileId,
           newRowCSV,
           credentials.spreadsheetId,
           newROWEXE,
           credentials.customerDocumentId,
-          newRowCustomer
-
+          newRowCustomer,
         );
       } catch (err) {
+        console.error("Drive napaka, preklapljam na lokalen prenos:", err);
+
+        const timestamp = new Date().toISOString().split("T")[0];
+
+        downloadCSV(
+          [
+            "id", "dev_eui", "join_eui", "name", "frequency_plan_id",
+            "lorawan_version", "lorawan_phy_version", "app_key", "brand_id",
+            "model_id", "hardware_version", "firmware_version", "band_id",
+          ],
+          allCsvRows,
+          `TTN-import-${timestamp}.csv`,
+        );
+
+        downloadXLSX(
+          [
+            "DeviceType", "DevEUI", "AppKey", "JoinEUI", "FreqRegion",
+            "SubBands", "HW", "FW", "CustomFW", "SendPeriod", "ACKDelay",
+            "ADR", "MovThr", ...measurementNames,
+          ],
+          allSheetRows,
+          `Device-list-${timestamp}.xlsx`,
+          "Device List",
+        );
+
+        downloadXLSX(
+          ["DEV EUI", "AppEUI", "AppKey"],
+          allCustomerRows,
+          `Customer-document-${timestamp}.xlsx`,
+          "Senzorji",
+        );
+
         setProgress((prev) => ({
           ...prev,
           status: "error",
-          errorMessage: `Napaka pri pošiljanju senzorja ${sensorData.dev_eui}: ${(err as Error).message
-            }`,
+          errorMessage: `Napaka pri pošiljanju na Drive: ${(err as Error).message}. Podatki so bili preneseni lokalno (3 datoteke) - preveri Downloads mapo.`,
         }));
-        return; // ustavi ob prvi napaki, ne nadaljuj tiho
+        return;
       }
 
       setProgress((prev) => ({
@@ -343,7 +408,7 @@ export function Konec() {
     }
 
     setProgress((prev) => ({ ...prev, status: "done" }));
-    setDataAdded(true); // Mark data as added
+    setDataAdded(true);
   }
 
   const progressPercent =

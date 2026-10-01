@@ -1453,7 +1453,7 @@ export default function InventoryManagementPage() {
         });
       } else {
         await addComponentToInventory(
-          updatedItem.componentId,
+          updatedItem.name,  // SPREMENJENO - ime, ne componentId
           updatedItem.quantity,
           updatedItem.location,
           updatedItem.contactDetails.email,

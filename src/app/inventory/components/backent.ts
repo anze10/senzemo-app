@@ -742,7 +742,7 @@ export async function adjustComponentStockWithInvoice(
 }
 
 export async function addComponentToInventory(
-  componentId: number,
+  componentName: string, // SPREMENJENO iz componentId: number
   quantity: number,
   location: string,
   email: string | null = null,
@@ -751,12 +751,26 @@ export async function addComponentToInventory(
   price: number | null = null,
   phone: string | null = null,
   sensorAssignments: { sensorId: number; requiredQuantity: number }[] = [],
-  fileKey: string | null = null, // Add file key for B2 storage
+  fileKey: string | null = null,
   userName: string = "System",
 ) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Check if invoice already exists and get its data
+      // NOVO: poišči obstoječo komponento PO IMENU, ali ustvari novo,
+      // če ta naziv še ne obstaja - to je pravi vir componentId naprej
+      let componentRecord = await tx.component.findUnique({
+        where: { name: componentName },
+      });
+
+      if (!componentRecord) {
+        console.log(`Komponenta "${componentName}" ne obstaja, ustvarjam novo`);
+        componentRecord = await tx.component.create({
+          data: { name: componentName },
+        });
+      }
+
+      const componentId = componentRecord.id; // VELJAVEN ID od tu naprej
+
       let existingInvoice = null;
       if (invoiceNumber) {
         existingInvoice = await tx.invoice.findUnique({
@@ -773,7 +787,6 @@ export async function addComponentToInventory(
         });
       }
 
-      // Create invoice record if provided and doesn't exist
       let invoiceRecord = null;
       if (invoiceNumber) {
         invoiceRecord = await tx.invoice.upsert({
@@ -783,18 +796,16 @@ export async function addComponentToInventory(
             amount: (price || 0) * quantity,
             supplier: supplier || "",
             uploadDate: new Date(),
-            filename: fileKey || null, // Store the full B2 file path directly
+            filename: fileKey || null,
           },
           update: {
-            // Update amount by adding new component cost to existing amount
             amount: (existingInvoice?.amount || 0) + (price || 0) * quantity,
             supplier: supplier || existingInvoice?.supplier || "",
-            filename: fileKey || existingInvoice?.filename, // Store the full B2 file path directly
+            filename: fileKey || existingInvoice?.filename,
           },
         });
       }
 
-      // Create component stock
       console.log(
         "addComponentToInventory: Creating component stock with invoiceFileKey:",
         fileKey,
@@ -807,8 +818,8 @@ export async function addComponentToInventory(
           email,
           supplier,
           phone,
-          invoiceFileKey: fileKey, // Store the B2 file key
-          invoiceId: invoiceRecord?.id, // Link to invoice if created
+          invoiceFileKey: fileKey,
+          invoiceId: invoiceRecord?.id,
         },
       });
       console.log(
@@ -816,9 +827,7 @@ export async function addComponentToInventory(
         componentStock.invoiceFileKey,
       );
 
-      // Update the component price if provided
       if (price !== null) {
-        // Ensure price is a valid number
         const numericPrice = parseFloat(String(price));
 
         if (!isNaN(numericPrice)) {
@@ -838,14 +847,11 @@ export async function addComponentToInventory(
         console.log(`No price provided for component ${componentId}`);
       }
 
-      // Handle sensor assignments
       if (sensorAssignments.length > 0) {
-        // Remove existing assignments for this component
         await tx.senzorComponent.deleteMany({
           where: { componentId },
         });
 
-        // Add new assignments
         for (const assignment of sensorAssignments) {
           await tx.senzorComponent.create({
             data: {
@@ -875,7 +881,6 @@ export async function addComponentToInventory(
         },
       });
 
-      // Create inventory log with invoice reference
       await tx.inventoryLog.create({
         data: {
           itemType: "component",

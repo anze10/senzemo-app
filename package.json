@@ -83,6 +83,7 @@
     "uuid": "^11.1.0",
     "web-serial-api": "^1.1.4",
     "web-serial-polyfill": "^1.0.15",
+    "xlsx": "^0.18.5",
     "zod": "^4.0.5",
     "zod-key-parser": "^1.5.5",
     "zustand": "^5.0.6"
